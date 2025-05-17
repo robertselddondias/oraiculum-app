@@ -33,6 +33,10 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    // Obter dimensões para layout responsivo
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tarô'),
@@ -50,6 +54,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
               curve: Curves.easeInOut,
             );
           },
+          labelStyle: TextStyle(
+            fontSize: isSmallScreen ? 12 : 14,
+            fontWeight: FontWeight.bold,
+          ),
+          unselectedLabelStyle: TextStyle(
+            fontSize: isSmallScreen ? 12 : 14,
+          ),
         ),
       ),
       body: PageView(
@@ -58,15 +69,22 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
           _tabController.animateTo(index);
         },
         children: [
-          _buildCardSelectionPage(),
-          _buildReadingPage(),
-          _buildHistoryPage(),
+          _buildCardSelectionPage(isSmallScreen),
+          _buildReadingPage(isSmallScreen),
+          _buildHistoryPage(isSmallScreen),
         ],
       ),
     );
   }
 
-  Widget _buildCardSelectionPage() {
+  Widget _buildCardSelectionPage(bool isSmallScreen) {
+    final padding = isSmallScreen ? 12.0 : 16.0;
+    final titleSize = isSmallScreen ? 14.0 : 16.0;
+    final subtitleSize = isSmallScreen ? 12.0 : 14.0;
+    final cardAspectRatio = isSmallScreen ? 0.65 : 0.7;
+    final crossAxisSpacing = isSmallScreen ? 8.0 : 12.0;
+    final mainAxisSpacing = isSmallScreen ? 8.0 : 12.0;
+
     return Obx(() {
       if (_controller.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
@@ -91,10 +109,12 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
       return Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(padding),
             child: Text(
               'Selecione até 3 cartas para sua leitura',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontSize: titleSize,
+              ),
               textAlign: TextAlign.center,
             ),
           ),
@@ -107,27 +127,28 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
               fontWeight: _controller.selectedCards.length == 3
                   ? FontWeight.bold
                   : FontWeight.normal,
+              fontSize: subtitleSize,
             ),
           )),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Expanded(
             child: GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.7,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+              padding: EdgeInsets.all(padding),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isSmallScreen ? 3 : 3,
+                childAspectRatio: cardAspectRatio,
+                crossAxisSpacing: crossAxisSpacing,
+                mainAxisSpacing: mainAxisSpacing,
               ),
               itemCount: _controller.allCards.length,
               itemBuilder: (context, index) {
                 final card = _controller.allCards[index];
-                return _buildTarotCard(card);
+                return _buildTarotCard(card, isSmallScreen);
               },
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(padding),
             child: Row(
               children: [
                 Expanded(
@@ -142,7 +163,15 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                       );
                     }
                         : null,
-                    child: const Text('Realizar Leitura'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 15),
+                    ),
+                    child: Text(
+                      'Realizar Leitura',
+                      style: TextStyle(
+                        fontSize: isSmallScreen ? 14 : 16,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -163,6 +192,10 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Theme.of(context).colorScheme.secondary,
+                    padding: EdgeInsets.symmetric(
+                      vertical: isSmallScreen ? 12 : 15,
+                      horizontal: isSmallScreen ? 12 : 16,
+                    ),
                   ),
                   child: const Icon(Icons.shuffle),
                 ),
@@ -174,7 +207,12 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
     });
   }
 
-  Widget _buildTarotCard(TarotCard card) {
+  Widget _buildTarotCard(TarotCard card, bool isSmallScreen) {
+    final textSize = isSmallScreen ? 10.0 : 12.0;
+    final cardPadding = isSmallScreen ? 4.0 : 8.0;
+    final checkIconSize = isSmallScreen ? 14.0 : 16.0;
+    final checkCircleSize = isSmallScreen ? 20.0 : 24.0;
+
     return Obx(() {
       final isSelected = _controller.selectedCards.contains(card);
       return GestureDetector(
@@ -184,7 +222,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
             Card(
               elevation: isSelected ? 8 : 2,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 side: BorderSide(
                   color: isSelected
                       ? Theme.of(context).colorScheme.primary
@@ -203,7 +241,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                     Expanded(
                       child: ClipRRect(
                         borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(10),
+                          top: Radius.circular(8),
                         ),
                         child: Image.network(
                           card.imageUrl,
@@ -211,7 +249,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                           loadingBuilder: (context, child, loadingProgress) {
                             if (loadingProgress == null) return child;
                             return const Center(
-                              child: CircularProgressIndicator(),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             );
                           },
                           errorBuilder: (context, error, stackTrace) {
@@ -219,7 +263,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                               color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                               child: const Icon(
                                 Icons.image_not_supported,
-                                size: 32,
+                                size: 24,
                               ),
                             );
                           },
@@ -227,15 +271,15 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 8,
-                        horizontal: 4,
+                      padding: EdgeInsets.symmetric(
+                        vertical: cardPadding,
+                        horizontal: cardPadding / 2,
                       ),
                       child: Text(
                         card.name,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: textSize,
                           fontWeight: FontWeight.bold,
                         ),
                         maxLines: 1,
@@ -251,16 +295,16 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                 top: 8,
                 right: 8,
                 child: Container(
-                  width: 24,
-                  height: 24,
+                  width: checkCircleSize,
+                  height: checkCircleSize,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.check,
                     color: Colors.white,
-                    size: 16,
+                    size: checkIconSize,
                   ),
                 ),
               ),
@@ -270,7 +314,14 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
     });
   }
 
-  Widget _buildReadingPage() {
+  Widget _buildReadingPage(bool isSmallScreen) {
+    final padding = isSmallScreen ? 12.0 : 16.0;
+    final titleSize = isSmallScreen ? 18.0 : 20.0;
+    final contentSize = isSmallScreen ? 14.0 : 16.0;
+    final cardWidth = isSmallScreen ? 100.0 : 120.0;
+    final cardTextSize = isSmallScreen ? 12.0 : 14.0;
+    final buttonSize = isSmallScreen ? 14.0 : 16.0;
+
     return Obx(() {
       if (_controller.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
@@ -312,20 +363,20 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
       }
 
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(padding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Mostrar as cartas selecionadas em row
             SizedBox(
-              height: 180,
+              height: isSmallScreen ? 160 : 180,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: _controller.selectedCards.length,
                 itemBuilder: (context, index) {
                   final card = _controller.selectedCards[index];
                   return Container(
-                    width: 120,
+                    width: cardWidth,
                     margin: const EdgeInsets.only(right: 16),
                     child: Column(
                       children: [
@@ -342,8 +393,9 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                         Text(
                           card.name,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
+                            fontSize: cardTextSize,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -358,10 +410,10 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Interpretação',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: titleSize,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -372,10 +424,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(padding),
                 child: Text(
                   _controller.interpretation.value,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: TextStyle(
+                    fontSize: contentSize,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ).animate().fadeIn(
@@ -384,13 +439,20 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
             ),
             const SizedBox(height: 24),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _controller.saveReading(),
                     icon: const Icon(Icons.save),
-                    label: const Text('Salvar Leitura'),
+                    label: Text(
+                      'Salvar Leitura',
+                      style: TextStyle(fontSize: buttonSize),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(
+                        vertical: isSmallScreen ? 12 : 16,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -398,11 +460,22 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                   child: ElevatedButton.icon(
                     onPressed: () {
                       // Implementar compartilhamento
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Compartilhando leitura...'),
+                        ),
+                      );
                     },
                     icon: const Icon(Icons.share),
-                    label: const Text('Compartilhar'),
+                    label: Text(
+                      'Compartilhar',
+                      style: TextStyle(fontSize: buttonSize),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.secondary,
+                      padding: EdgeInsets.symmetric(
+                        vertical: isSmallScreen ? 12 : 16,
+                      ),
                     ),
                   ),
                 ),
@@ -419,9 +492,15 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
                 );
               },
               icon: const Icon(Icons.refresh),
-              label: const Text('Nova Leitura'),
+              label: Text(
+                'Nova Leitura',
+                style: TextStyle(fontSize: buttonSize),
+              ),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
+                padding: EdgeInsets.symmetric(
+                  vertical: isSmallScreen ? 12 : 16,
+                ),
               ),
             ),
           ],
@@ -430,10 +509,62 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with SingleTick
     });
   }
 
-  Widget _buildHistoryPage() {
-    // Esta é uma implementação básica. Idealmente, carregaria o histórico de leituras do usuário.
-    return const Center(
-      child: Text('Histórico de leituras em implementação'),
-    );
+  Widget _buildHistoryPage(bool isSmallScreen) {
+    // Implementação responsiva para o histórico de leituras
+    final emptyIconSize = isSmallScreen ? 48.0 : 64.0;
+    final titleSize = isSmallScreen ? 16.0 : 18.0;
+    final subtitleSize = isSmallScreen ? 14.0 : 16.0;
+    final buttonSize = isSmallScreen ? 14.0 : 16.0;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.history,
+            size: emptyIconSize,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Histórico de leituras',
+            style: TextStyle(
+              fontSize: titleSize,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Suas leituras salvas aparecerão aqui',
+            style: TextStyle(
+              fontSize: subtitleSize,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () {
+              _pageController.animateToPage(
+                0,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            icon: const Icon(Icons.add),
+            label: Text(
+              'Nova Leitura',
+              style: TextStyle(fontSize: buttonSize),
+            ),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: isSmallScreen ? 12 : 16,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: const Duration(milliseconds: 500));
   }
 }

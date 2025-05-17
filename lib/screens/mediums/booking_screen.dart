@@ -28,10 +28,23 @@ class _BookingScreenState extends State<BookingScreen> {
       _mediumController.selectedMedium.value!.pricePerMinute * _selectedDuration;
 
   @override
+  void initState() {
+    super.initState();
+    // Garantir que os créditos do usuário estejam atualizados
+    _paymentController.loadUserCredits();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // Ajustes responsivos baseados no tamanho da tela
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Agendar Consulta'),
+        elevation: 0,
       ),
       body: Obx(() {
         if (_mediumController.selectedMedium.value == null) {
@@ -41,21 +54,22 @@ class _BookingScreenState extends State<BookingScreen> {
         final medium = _mediumController.selectedMedium.value!;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(horizontalPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildMediumCard(medium),
-              const SizedBox(height: 24),
-              _buildDateSelection(),
-              const SizedBox(height: 24),
-              _buildTimeSelection(),
-              const SizedBox(height: 24),
-              _buildDurationSelection(),
-              const SizedBox(height: 24),
-              _buildPriceSummary(),
-              const SizedBox(height: 32),
-              _buildBookingButton(),
+              _buildMediumCard(medium, isSmallScreen),
+              SizedBox(height: isSmallScreen ? 16 : 24),
+              _buildDateSelection(isSmallScreen),
+              SizedBox(height: isSmallScreen ? 16 : 24),
+              _buildTimeSelection(isSmallScreen),
+              SizedBox(height: isSmallScreen ? 16 : 24),
+              _buildDurationSelection(isSmallScreen),
+              SizedBox(height: isSmallScreen ? 16 : 24),
+              _buildPriceSummary(isSmallScreen),
+              SizedBox(height: isSmallScreen ? 24 : 32),
+              _buildBookingButton(isSmallScreen),
+              const SizedBox(height: 16),
             ],
           ),
         );
@@ -63,25 +77,30 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildMediumCard(medium) {
+  Widget _buildMediumCard(medium, bool isSmallScreen) {
+    final titleSize = isSmallScreen ? 16.0 : 18.0;
+    final subtitleSize = isSmallScreen ? 12.0 : 14.0;
+    final priceSize = isSmallScreen ? 14.0 : 15.0;
+    final avatarSize = isSmallScreen ? 25.0 : 30.0;
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 30,
+              radius: avatarSize,
               backgroundImage: NetworkImage(medium.imageUrl),
               backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
               onBackgroundImageError: (_, __) {},
               child: medium.imageUrl.isEmpty
                   ? Icon(
                 Icons.person,
-                size: 30,
+                size: avatarSize,
                 color: Theme.of(context).colorScheme.primary,
               )
                   : null,
@@ -93,8 +112,8 @@ class _BookingScreenState extends State<BookingScreen> {
                 children: [
                   Text(
                     medium.name,
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: titleSize,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -104,13 +123,14 @@ class _BookingScreenState extends State<BookingScreen> {
                       const Icon(
                         Icons.star,
                         color: Colors.amber,
-                        size: 16,
+                        size: 14,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         medium.rating.toStringAsFixed(1),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: subtitleSize,
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -118,7 +138,7 @@ class _BookingScreenState extends State<BookingScreen> {
                         '(${medium.reviewsCount} avaliações)',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          fontSize: 12,
+                          fontSize: subtitleSize - 2,
                         ),
                       ),
                     ],
@@ -129,6 +149,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,
+                      fontSize: priceSize,
                     ),
                   ),
                 ],
@@ -140,25 +161,28 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildDateSelection() {
+  Widget _buildDateSelection(bool isSmallScreen) {
+    final sectionTitleSize = isSmallScreen ? 15.0 : 16.0;
+    final contentTextSize = isSmallScreen ? 14.0 : 16.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Data da Consulta',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: sectionTitleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Card(
           elevation: 1,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             child: Column(
               children: [
                 Row(
@@ -166,12 +190,13 @@ class _BookingScreenState extends State<BookingScreen> {
                     Icon(
                       Icons.calendar_today,
                       color: Theme.of(context).colorScheme.primary,
+                      size: isSmallScreen ? 20 : 24,
                     ),
                     const SizedBox(width: 12),
                     Text(
                       DateFormat.yMMMMd().format(_selectedDate),
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: contentTextSize,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -216,25 +241,28 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  Widget _buildTimeSelection() {
+  Widget _buildTimeSelection(bool isSmallScreen) {
+    final sectionTitleSize = isSmallScreen ? 15.0 : 16.0;
+    final contentTextSize = isSmallScreen ? 14.0 : 16.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Horário da Consulta',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: sectionTitleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Card(
           elevation: 1,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             child: Column(
               children: [
                 Row(
@@ -242,6 +270,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     Icon(
                       Icons.access_time,
                       color: Theme.of(context).colorScheme.primary,
+                      size: isSmallScreen ? 20 : 24,
                     ),
                     const SizedBox(width: 12),
                     DropdownButton<String>(
@@ -261,8 +290,8 @@ class _BookingScreenState extends State<BookingScreen> {
                         );
                       }).toList(),
                       underline: Container(),
-                      style: const TextStyle(
-                        fontSize: 16,
+                      style: TextStyle(
+                        fontSize: contentTextSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
@@ -277,20 +306,23 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildDurationSelection() {
+  Widget _buildDurationSelection(bool isSmallScreen) {
+    final sectionTitleSize = isSmallScreen ? 15.0 : 16.0;
+    final chipTextSize = isSmallScreen ? 13.0 : 14.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Duração da Consulta',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: sectionTitleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         SizedBox(
-          height: 60,
+          height: isSmallScreen ? 50 : 60,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: _availableDurations.length,
@@ -305,17 +337,17 @@ class _BookingScreenState extends State<BookingScreen> {
                   });
                 },
                 child: Container(
-                  width: 80,
+                  width: isSmallScreen ? 70 : 80,
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? Theme.of(context).colorScheme.primary
                         : Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
                     border: Border.all(
                       color: isSelected
                           ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                          : Colors.grey.withOpacity(0.5),
                     ),
                     boxShadow: isSelected
                         ? [
@@ -335,6 +367,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             ? Colors.white
                             : Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
+                        fontSize: chipTextSize,
                       ),
                     ),
                   ),
@@ -347,35 +380,46 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildPriceSummary() {
+  Widget _buildPriceSummary(bool isSmallScreen) {
+    final sectionTitleSize = isSmallScreen ? 15.0 : 16.0;
+    final titleTextSize = isSmallScreen ? 14.0 : 16.0;
+    final contentTextSize = isSmallScreen ? 12.0 : 14.0;
+    final totalTextSize = isSmallScreen ? 16.0 : 18.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Resumo de Pagamento',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: sectionTitleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Card(
           elevation: 2,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Consulta'),
+                    Text(
+                      'Consulta',
+                      style: TextStyle(
+                        fontSize: titleTextSize,
+                      ),
+                    ),
                     Text(
                       'R\$ ${_totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
+                        fontSize: titleTextSize,
                       ),
                     ),
                   ],
@@ -387,14 +431,14 @@ class _BookingScreenState extends State<BookingScreen> {
                     Text(
                       'Preço: R\$ ${_mediumController.selectedMedium.value!.pricePerMinute.toStringAsFixed(2)}/min',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: contentTextSize,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
                     Text(
                       'Duração: $_selectedDuration min',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: contentTextSize,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
@@ -404,17 +448,17 @@ class _BookingScreenState extends State<BookingScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Total',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: totalTextSize,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
                       'R\$ ${_totalAmount.toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: totalTextSize,
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.primary,
                       ),
@@ -428,14 +472,14 @@ class _BookingScreenState extends State<BookingScreen> {
                     Text(
                       'Seus créditos',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: contentTextSize,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     Obx(() => Text(
                       'R\$ ${_paymentController.userCredits.value.toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: contentTextSize,
                         fontWeight: FontWeight.bold,
                         color: _paymentController.userCredits.value >= _totalAmount
                             ? Colors.green
@@ -452,9 +496,11 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildBookingButton() {
+  Widget _buildBookingButton(bool isSmallScreen) {
     return Obx(() {
       final hasEnoughCredits = _paymentController.userCredits.value >= _totalAmount;
+      final buttonTextSize = isSmallScreen ? 14.0 : 16.0;
+      final errorTextSize = isSmallScreen ? 12.0 : 14.0;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -467,9 +513,9 @@ class _BookingScreenState extends State<BookingScreen> {
                   ? null
                   : () => _confirmBooking(),
               style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
                 ),
               ),
               child: (_mediumController.isLoading.value ||
@@ -482,10 +528,10 @@ class _BookingScreenState extends State<BookingScreen> {
                   color: Colors.white,
                 ),
               )
-                  : const Text(
+                  : Text(
                 'Confirmar Agendamento',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: buttonTextSize,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -497,6 +543,7 @@ class _BookingScreenState extends State<BookingScreen> {
               'Você não possui créditos suficientes para este agendamento.',
               style: TextStyle(
                 color: Theme.of(context).colorScheme.error,
+                fontSize: errorTextSize,
               ),
               textAlign: TextAlign.center,
             ),
@@ -506,15 +553,15 @@ class _BookingScreenState extends State<BookingScreen> {
               child: OutlinedButton(
                 onPressed: () => Get.toNamed(AppRoutes.paymentMethods),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Adicionar Créditos',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: buttonTextSize,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

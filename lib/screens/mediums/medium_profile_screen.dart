@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/models/medium_model.dart';
+import 'package:intl/intl.dart';
 
 class MediumProfileScreen extends StatelessWidget {
   const MediumProfileScreen({Key? key}) : super(key: key);
@@ -10,6 +11,13 @@ class MediumProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final MediumController controller = Get.find<MediumController>();
+
+    // Obter dimensões da tela para layout responsivo
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+
+    // Ajustar padding baseado no tamanho da tela
+    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
 
     return Scaffold(
       body: Obx(() {
@@ -21,24 +29,24 @@ class MediumProfileScreen extends StatelessWidget {
 
         return CustomScrollView(
           slivers: [
-            _buildAppBar(context, medium),
+            _buildAppBar(context, medium, isSmallScreen),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildProfileHeader(context, medium),
-                    const SizedBox(height: 24),
-                    _buildAboutSection(context, medium),
-                    const SizedBox(height: 24),
-                    _buildSpecialtiesSection(context, medium),
-                    const SizedBox(height: 24),
-                    _buildInfoSection(context, medium),
-                    const SizedBox(height: 32),
-                    _buildAvailability(context, medium),
-                    const SizedBox(height: 32),
-                    _buildBookingButton(context, medium),
+                    _buildProfileHeader(context, medium, isSmallScreen),
+                    SizedBox(height: isSmallScreen ? 16 : 24),
+                    _buildAboutSection(context, medium, isSmallScreen),
+                    SizedBox(height: isSmallScreen ? 16 : 24),
+                    _buildSpecialtiesSection(context, medium, isSmallScreen),
+                    SizedBox(height: isSmallScreen ? 16 : 24),
+                    _buildInfoSection(context, medium, isSmallScreen),
+                    SizedBox(height: isSmallScreen ? 24 : 32),
+                    _buildAvailability(context, medium, isSmallScreen),
+                    SizedBox(height: isSmallScreen ? 24 : 32),
+                    _buildBookingButton(context, medium, isSmallScreen),
                     const SizedBox(height: 16),
                   ],
                 ),
@@ -50,10 +58,14 @@ class MediumProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAppBar(BuildContext context, MediumModel medium) {
+  Widget _buildAppBar(BuildContext context, MediumModel medium, bool isSmallScreen) {
+    final expandedHeight = isSmallScreen ? 180.0 : 200.0;
+
     return SliverAppBar(
-      expandedHeight: 200,
+      expandedHeight: expandedHeight,
       pinned: true,
+      elevation: 0,
+      stretch: true,
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -100,6 +112,9 @@ class MediumProfileScreen extends StatelessWidget {
           icon: const Icon(Icons.favorite_border),
           onPressed: () {
             // Implementar adição aos favoritos
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Adicionado aos favoritos"))
+            );
           },
           tooltip: 'Adicionar aos favoritos',
         ),
@@ -107,6 +122,9 @@ class MediumProfileScreen extends StatelessWidget {
           icon: const Icon(Icons.share),
           onPressed: () {
             // Implementar compartilhamento
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Compartilhando perfil..."))
+            );
           },
           tooltip: 'Compartilhar',
         ),
@@ -114,7 +132,11 @@ class MediumProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileHeader(BuildContext context, MediumModel medium) {
+  Widget _buildProfileHeader(BuildContext context, MediumModel medium, bool isSmallScreen) {
+    // Ajustes para telas pequenas
+    final titleSize = isSmallScreen ? 20.0 : 22.0;
+    final iconSize = isSmallScreen ? 16.0 : 18.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -126,24 +148,24 @@ class MediumProfileScreen extends StatelessWidget {
                 children: [
                   Text(
                     medium.name,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    style: TextStyle(
+                      fontSize: titleSize,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.star,
                         color: Colors.amber,
-                        size: 20,
+                        size: iconSize,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         medium.rating.toStringAsFixed(1),
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -151,7 +173,7 @@ class MediumProfileScreen extends StatelessWidget {
                         '(${medium.reviewsCount} avaliações)',
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          fontSize: 14,
+                          fontSize: isSmallScreen ? 12 : 14,
                         ),
                       ),
                     ],
@@ -160,17 +182,17 @@ class MediumProfileScreen extends StatelessWidget {
               ),
             ),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: medium.isAvailable ? Colors.green : Colors.grey,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 medium.isAvailable ? 'Disponível' : 'Indisponível',
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 12,
+                  fontSize: isSmallScreen ? 11 : 12,
                 ),
               ),
             ),
@@ -181,54 +203,20 @@ class MediumProfileScreen extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Card(
-                elevation: 1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(
-                        'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const Text('por minuto',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
+              child: _buildInfoCard(
+                context,
+                title: 'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}',
+                subtitle: 'por minuto',
+                isSmallScreen: isSmallScreen,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: isSmallScreen ? 8 : 16),
             Expanded(
-              child: Card(
-                elevation: 1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Text(
-                        '${medium.yearsOfExperience}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const Text('anos de experiência',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
+              child: _buildInfoCard(
+                context,
+                title: '${medium.yearsOfExperience}',
+                subtitle: 'anos de experiência',
+                isSmallScreen: isSmallScreen,
               ),
             ),
           ],
@@ -237,14 +225,43 @@ class MediumProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAboutSection(BuildContext context, MediumModel medium) {
+  Widget _buildInfoCard(BuildContext context, {required String title, required String subtitle, required bool isSmallScreen}) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+        child: Column(
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: isSmallScreen ? 16 : 18,
+              ),
+            ),
+            Text(subtitle,
+              style: TextStyle(fontSize: isSmallScreen ? 11 : 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAboutSection(BuildContext context, MediumModel medium, bool isSmallScreen) {
+    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
+    final contentTextSize = isSmallScreen ? 13.0 : 14.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Sobre',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: sectionTitleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -254,32 +271,36 @@ class MediumProfileScreen extends StatelessWidget {
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
             height: 1.5,
+            fontSize: contentTextSize,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSpecialtiesSection(BuildContext context, MediumModel medium) {
+  Widget _buildSpecialtiesSection(BuildContext context, MediumModel medium, bool isSmallScreen) {
+    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
+    final chipTextSize = isSmallScreen ? 11.0 : 12.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Especialidades',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: sectionTitleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: medium.specialties.map((specialty) {
             return Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 10 : 12,
+                vertical: isSmallScreen ? 6 : 8,
               ),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
@@ -293,6 +314,7 @@ class MediumProfileScreen extends StatelessWidget {
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.bold,
+                  fontSize: chipTextSize,
                 ),
               ),
             );
@@ -302,25 +324,27 @@ class MediumProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoSection(BuildContext context, MediumModel medium) {
+  Widget _buildInfoSection(BuildContext context, MediumModel medium, bool isSmallScreen) {
+    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Informações',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: sectionTitleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Card(
           elevation: 1,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             child: Column(
               children: [
                 _buildInfoRow(
@@ -328,6 +352,7 @@ class MediumProfileScreen extends StatelessWidget {
                   'Idiomas',
                   medium.languages.join(', '),
                   Icons.language,
+                  isSmallScreen: isSmallScreen,
                 ),
                 const Divider(),
                 _buildInfoRow(
@@ -335,6 +360,7 @@ class MediumProfileScreen extends StatelessWidget {
                   'Experiência',
                   '${medium.yearsOfExperience} anos',
                   Icons.history,
+                  isSmallScreen: isSmallScreen,
                 ),
                 if (medium.isAvailable) ...[
                   const Divider(),
@@ -344,6 +370,7 @@ class MediumProfileScreen extends StatelessWidget {
                     'Disponível para agendamento',
                     Icons.check_circle,
                     valueColor: Colors.green,
+                    isSmallScreen: isSmallScreen,
                   ),
                 ],
               ],
@@ -360,6 +387,7 @@ class MediumProfileScreen extends StatelessWidget {
       String value,
       IconData icon, {
         Color? valueColor,
+        required bool isSmallScreen,
       }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -368,9 +396,9 @@ class MediumProfileScreen extends StatelessWidget {
           Icon(
             icon,
             color: Theme.of(context).colorScheme.primary,
-            size: 20,
+            size: isSmallScreen ? 18 : 20,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: isSmallScreen ? 8 : 12),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -378,7 +406,7 @@ class MediumProfileScreen extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  fontSize: 12,
+                  fontSize: isSmallScreen ? 11 : 12,
                 ),
               ),
               Text(
@@ -386,6 +414,7 @@ class MediumProfileScreen extends StatelessWidget {
                 style: TextStyle(
                   color: valueColor ?? Theme.of(context).colorScheme.onSurface,
                   fontWeight: FontWeight.bold,
+                  fontSize: isSmallScreen ? 13 : 14,
                 ),
               ),
             ],
@@ -395,42 +424,51 @@ class MediumProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAvailability(BuildContext context, MediumModel medium) {
-    // Esta é uma simplificação. Idealmente, você teria uma lógica mais complexa
-    // para mostrar a disponibilidade com base nos dados do Firebase.
+  Widget _buildAvailability(BuildContext context, MediumModel medium, bool isSmallScreen) {
+    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
+    final dayTextSize = isSmallScreen ? 13.0 : 14.0;
+    final hoursTextSize = isSmallScreen ? 12.0 : 13.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Disponibilidade',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: sectionTitleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Card(
           elevation: 1,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
             child: Column(
               children: [
-                _buildAvailabilityRow(context, 'Segunda', '09:00 - 18:00'),
+                _buildAvailabilityRow(context, 'Segunda', '09:00 - 18:00',
+                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
                 const Divider(),
-                _buildAvailabilityRow(context, 'Terça', '09:00 - 18:00'),
+                _buildAvailabilityRow(context, 'Terça', '09:00 - 18:00',
+                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
                 const Divider(),
-                _buildAvailabilityRow(context, 'Quarta', '09:00 - 18:00'),
+                _buildAvailabilityRow(context, 'Quarta', '09:00 - 18:00',
+                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
                 const Divider(),
-                _buildAvailabilityRow(context, 'Quinta', '09:00 - 18:00'),
+                _buildAvailabilityRow(context, 'Quinta', '09:00 - 18:00',
+                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
                 const Divider(),
-                _buildAvailabilityRow(context, 'Sexta', '09:00 - 18:00'),
+                _buildAvailabilityRow(context, 'Sexta', '09:00 - 18:00',
+                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
                 const Divider(),
-                _buildAvailabilityRow(context, 'Sábado', '10:00 - 14:00'),
+                _buildAvailabilityRow(context, 'Sábado', '10:00 - 14:00',
+                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
                 const Divider(),
-                _buildAvailabilityRow(context, 'Domingo', 'Indisponível', isAvailable: false),
+                _buildAvailabilityRow(context, 'Domingo', 'Indisponível',
+                    isAvailable: false, dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
               ],
             ),
           ),
@@ -444,6 +482,8 @@ class MediumProfileScreen extends StatelessWidget {
       String day,
       String hours, {
         bool isAvailable = true,
+        required double dayTextSize,
+        required double hoursTextSize,
       }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -455,6 +495,7 @@ class MediumProfileScreen extends StatelessWidget {
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,
+              fontSize: dayTextSize,
             ),
           ),
           Text(
@@ -463,6 +504,7 @@ class MediumProfileScreen extends StatelessWidget {
               color: isAvailable
                   ? Theme.of(context).colorScheme.onSurface
                   : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              fontSize: hoursTextSize,
             ),
           ),
         ],
@@ -470,7 +512,9 @@ class MediumProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBookingButton(BuildContext context, MediumModel medium) {
+  Widget _buildBookingButton(BuildContext context, MediumModel medium, bool isSmallScreen) {
+    final buttonTextSize = isSmallScreen ? 14.0 : 16.0;
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -478,15 +522,15 @@ class MediumProfileScreen extends StatelessWidget {
             ? () => Get.toNamed(AppRoutes.booking)
             : null,
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
+          padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
           ),
         ),
         child: Text(
           medium.isAvailable ? 'Agendar Consulta' : 'Indisponível para Agendamento',
-          style: const TextStyle(
-            fontSize: 16,
+          style: TextStyle(
+            fontSize: buttonTextSize,
             fontWeight: FontWeight.bold,
           ),
         ),

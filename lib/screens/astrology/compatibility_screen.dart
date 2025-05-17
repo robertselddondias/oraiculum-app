@@ -20,35 +20,44 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Obter dimensões para layout responsivo
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final padding = isSmallScreen ? 12.0 : 16.0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Compatibilidade'),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(padding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 24),
-            _buildSignSelectors(),
-            const SizedBox(height: 24),
-            _buildAnalyzeButton(),
-            const SizedBox(height: 24),
-            _buildResultCard(),
+            _buildHeader(isSmallScreen),
+            SizedBox(height: isSmallScreen ? 16 : 24),
+            _buildSignSelectors(isSmallScreen),
+            SizedBox(height: isSmallScreen ? 16 : 24),
+            _buildAnalyzeButton(isSmallScreen),
+            SizedBox(height: isSmallScreen ? 16 : 24),
+            _buildResultCard(isSmallScreen, padding),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isSmallScreen) {
+    final titleSize = isSmallScreen ? 20.0 : 24.0;
+    final subtitleSize = isSmallScreen ? 14.0 : 16.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Análise de Compatibilidade',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+          style: TextStyle(
+            fontSize: titleSize,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -57,7 +66,7 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
           'Descubra a compatibilidade entre dois signos do zodíaco e entenda como suas energias interagem.',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            fontSize: 16,
+            fontSize: subtitleSize,
           ),
         ),
       ],
@@ -69,9 +78,13 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
     );
   }
 
-  Widget _buildSignSelectors() {
+  Widget _buildSignSelectors(bool isSmallScreen) {
+    final containerPadding = isSmallScreen ? 12.0 : 16.0;
+    final labelSize = isSmallScreen ? 12.0 : 14.0;
+    final iconSize = isSmallScreen ? 40.0 : 50.0;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(containerPadding),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -98,12 +111,13 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
                       });
                     }
                   },
+                  isSmallScreen: isSmallScreen,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: isSmallScreen ? 8 : 16),
               Container(
-                width: 50,
-                height: 50,
+                width: iconSize,
+                height: iconSize,
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                   shape: BoxShape.circle,
@@ -111,9 +125,10 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
                 child: Icon(
                   Icons.favorite,
                   color: Theme.of(context).colorScheme.primary,
+                  size: iconSize * 0.6,
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: isSmallScreen ? 8 : 16),
               Expanded(
                 child: _buildSignSelector(
                   title: 'Segundo Signo',
@@ -125,6 +140,7 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
                       });
                     }
                   },
+                  isSmallScreen: isSmallScreen,
                 ),
               ),
             ],
@@ -141,7 +157,12 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
     required String title,
     required String currentSign,
     required ValueChanged<String?> onChanged,
+    required bool isSmallScreen,
   }) {
+    final titleSize = isSmallScreen ? 12.0 : 14.0;
+    final dropdownItemSize = isSmallScreen ? 13.0 : 15.0;
+    final iconSize = isSmallScreen ? 16.0 : 20.0;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -149,7 +170,7 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
           title,
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-            fontSize: 14,
+            fontSize: titleSize,
           ),
         ),
         const SizedBox(height: 8),
@@ -165,7 +186,9 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
               value: currentSign,
               icon: const Icon(Icons.arrow_drop_down),
               isExpanded: true,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
+              padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 8 : 12
+              ),
               borderRadius: BorderRadius.circular(12),
               items: _controller.zodiacSigns.map((String sign) {
                 return DropdownMenuItem<String>(
@@ -174,11 +197,16 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
                     children: [
                       Icon(
                         _getZodiacIcon(sign),
-                        size: 20,
+                        size: iconSize,
                         color: Theme.of(context).colorScheme.primary,
                       ),
-                      const SizedBox(width: 8),
-                      Text(sign),
+                      SizedBox(width: isSmallScreen ? 4 : 8),
+                      Text(
+                        sign,
+                        style: TextStyle(
+                            fontSize: dropdownItemSize
+                        ),
+                      ),
                     ],
                   ),
                 );
@@ -191,15 +219,28 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
     );
   }
 
-  Widget _buildAnalyzeButton() {
+  Widget _buildAnalyzeButton(bool isSmallScreen) {
+    final buttonHeight = isSmallScreen ? 48.0 : 56.0;
+    final fontSize = isSmallScreen ? 14.0 : 16.0;
+    final iconSize = isSmallScreen ? 18.0 : 22.0;
+
     return SizedBox(
       width: double.infinity,
+      height: buttonHeight,
       child: ElevatedButton.icon(
         onPressed: _analyzeCompatibility,
-        icon: const Icon(Icons.psychology),
-        label: const Text('Analisar Compatibilidade'),
+        icon: Icon(
+          Icons.psychology,
+          size: iconSize,
+        ),
+        label: Text(
+          'Analisar Compatibilidade',
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -211,11 +252,19 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
     );
   }
 
-  Widget _buildResultCard() {
+  Widget _buildResultCard(bool isSmallScreen, double padding) {
+    final titleSize = isSmallScreen ? 16.0 : 18.0;
+    final contentSize = isSmallScreen ? 14.0 : 16.0;
+    final iconSize = isSmallScreen ? 32.0 : 40.0;
+    final buttonSize = isSmallScreen ? 14.0 : 16.0;
+
     return Obx(() {
       if (_isLoading.value) {
         return const Center(
-          child: CircularProgressIndicator(),
+          child: Padding(
+            padding: EdgeInsets.all(32.0),
+            child: CircularProgressIndicator(),
+          ),
         );
       }
 
@@ -229,7 +278,7 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
           borderRadius: BorderRadius.circular(16),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(padding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -237,23 +286,27 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
                 children: [
                   CircleAvatar(
                     backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    radius: iconSize / 2,
                     child: Icon(
                       _getZodiacIcon(_sign1),
                       color: Theme.of(context).colorScheme.primary,
+                      size: iconSize / 2,
                     ),
                   ),
                   Expanded(
                     child: Divider(
-                      indent: 16,
-                      endIndent: 16,
+                      indent: isSmallScreen ? 8 : 16,
+                      endIndent: isSmallScreen ? 8 : 16,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   CircleAvatar(
                     backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    radius: iconSize / 2,
                     child: Icon(
                       _getZodiacIcon(_sign2),
                       color: Theme.of(context).colorScheme.primary,
+                      size: iconSize / 2,
                     ),
                   ),
                 ],
@@ -264,8 +317,8 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
                 children: [
                   Text(
                     '$_sign1 ❤️ $_sign2',
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: TextStyle(
+                      fontSize: titleSize,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -276,23 +329,32 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> {
               const SizedBox(height: 8),
               Text(
                 _compatibilityResult.value,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: contentSize,
                   height: 1.5,
                 ),
               ),
               const SizedBox(height: 16),
-              OutlinedButton(
+              OutlinedButton.icon(
                 onPressed: () {
                   // Implementar compartilhamento
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Compatibilidade compartilhada!')),
+                  );
                 },
+                icon: const Icon(Icons.share),
+                label: Text(
+                  'Compartilhar Análise',
+                  style: TextStyle(
+                    fontSize: buttonSize,
+                  ),
+                ),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 48),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text('Compartilhar Análise'),
               ),
             ],
           ),

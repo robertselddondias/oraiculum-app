@@ -1,4 +1,3 @@
-import 'package:oraculum/config/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
@@ -26,31 +25,36 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Obter dimensões para layout responsivo
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final padding = isSmallScreen ? 12.0 : 16.0;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Horóscopo Diário'),
         actions: [
           IconButton(
             icon: const Icon(Icons.compare_arrows),
-            onPressed: () => Get.toNamed(AppRoutes.compatibility),
+            onPressed: () => Get.toNamed('/compatibility'),
             tooltip: 'Compatibilidade',
           ),
           IconButton(
             icon: const Icon(Icons.account_circle),
-            onPressed: () => Get.toNamed(AppRoutes.birthChart),
+            onPressed: () => Get.toNamed('/birthChart'),
             tooltip: 'Mapa Astral',
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildSignSelector(),
+          _buildSignSelector(isSmallScreen),
           Expanded(
             child: Obx(() {
               if (_controller.isLoading.value) {
                 return const Center(child: CircularProgressIndicator());
               }
-              return _buildHoroscopeContent();
+              return _buildHoroscopeContent(isSmallScreen, padding);
             }),
           ),
         ],
@@ -58,9 +62,14 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
     );
   }
 
-  Widget _buildSignSelector() {
+  Widget _buildSignSelector(bool isSmallScreen) {
+    final signHeight = isSmallScreen ? 100.0 : 120.0;
+    final itemWidth = isSmallScreen ? 60.0 : 70.0;
+    final iconSize = isSmallScreen ? 40.0 : 48.0;
+    final fontSize = isSmallScreen ? 12.0 : 14.0;
+
     return Container(
-      height: 120,
+      height: signHeight,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
@@ -73,7 +82,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
       ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        padding: EdgeInsets.symmetric(vertical: 12, horizontal: isSmallScreen ? 4 : 8),
         itemCount: _controller.zodiacSigns.length,
         itemBuilder: (context, index) {
           final sign = _controller.zodiacSigns[index];
@@ -82,8 +91,8 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
             return GestureDetector(
               onTap: () => _controller.getDailyHoroscope(sign),
               child: Container(
-                width: 70,
-                margin: const EdgeInsets.symmetric(horizontal: 8),
+                width: itemWidth,
+                margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 4 : 8),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? Theme.of(context).colorScheme.primary.withOpacity(0.15)
@@ -100,8 +109,8 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: iconSize,
+                      height: iconSize,
                       decoration: BoxDecoration(
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
@@ -121,11 +130,11 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                           color: isSelected
                               ? Colors.white
                               : Theme.of(context).colorScheme.primary,
-                          size: 28,
+                          size: isSmallScreen ? 24 : 28,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       sign,
                       style: TextStyle(
@@ -133,7 +142,10 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
                             : Theme.of(context).colorScheme.onSurface,
+                        fontSize: fontSize,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -145,23 +157,29 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
     );
   }
 
-  Widget _buildHoroscopeContent() {
+  Widget _buildHoroscopeContent(bool isSmallScreen, double padding) {
     return Obx(() {
       final horoscope = _controller.dailyHoroscope.value;
       if (horoscope == null) {
         return const Center(child: Text('Selecione um signo para ver o horóscopo'));
       }
 
+      final titleSize = isSmallScreen ? 18.0 : 20.0;
+      final dateSize = isSmallScreen ? 12.0 : 14.0;
+      final contentSize = isSmallScreen ? 14.0 : 16.0;
+      final iconSize = isSmallScreen ? 50.0 : 60.0;
+      final buttonSize = isSmallScreen ? 14.0 : 16.0;
+
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(padding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: iconSize,
+                  height: iconSize,
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
@@ -169,7 +187,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                   child: Icon(
                     _getZodiacIcon(_controller.currentSign.value),
                     color: Colors.white,
-                    size: 36,
+                    size: iconSize * 0.6,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -179,14 +197,16 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                     children: [
                       Text(
                         _controller.currentSign.value,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: titleSize,
                         ),
                       ),
                       Text(
                         DateFormat.yMMMMd().format(horoscope.date),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          fontSize: dateSize,
                         ),
                       ),
                     ],
@@ -196,6 +216,9 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                   icon: const Icon(Icons.share),
                   onPressed: () {
                     // Implementar compartilhamento
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Compartilhando horóscopo...'))
+                    );
                   },
                   tooltip: 'Compartilhar',
                 ),
@@ -213,10 +236,13 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(padding),
                 child: Text(
                   horoscope.content,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: TextStyle(
+                    fontSize: contentSize,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ).animate().fadeIn(
@@ -228,14 +254,18 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildActionButton(
+                  context: context,
                   icon: Icons.compare_arrows,
                   label: 'Compatibilidade',
-                  onTap: () => Get.toNamed(AppRoutes.compatibility),
+                  onTap: () => Get.toNamed('/compatibility'),
+                  isSmallScreen: isSmallScreen,
                 ),
                 _buildActionButton(
+                  context: context,
                   icon: Icons.account_circle,
                   label: 'Mapa Astral',
-                  onTap: () => Get.toNamed(AppRoutes.birthChart),
+                  onTap: () => Get.toNamed('/birthChart'),
+                  isSmallScreen: isSmallScreen,
                 ),
               ],
             ).animate().fadeIn(
@@ -249,16 +279,25 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
   }
 
   Widget _buildActionButton({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    required bool isSmallScreen,
   }) {
+    final buttonWidth = isSmallScreen ? 130.0 : 150.0;
+    final iconSize = isSmallScreen ? 28.0 : 32.0;
+    final fontSize = isSmallScreen ? 12.0 : 14.0;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(15),
       child: Container(
-        width: 150,
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        width: buttonWidth,
+        padding: EdgeInsets.symmetric(
+            vertical: isSmallScreen ? 12 : 16,
+            horizontal: isSmallScreen ? 6 : 8
+        ),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(15),
@@ -275,7 +314,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
             Icon(
               icon,
               color: Theme.of(context).colorScheme.primary,
-              size: 32,
+              size: iconSize,
             ),
             const SizedBox(height: 8),
             Text(
@@ -284,6 +323,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.bold,
+                fontSize: fontSize,
               ),
             ),
           ],

@@ -64,6 +64,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Obter dimensões da tela para layout responsivo
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final padding = MediaQuery.of(context).padding;
+    final isSmallScreen = screenWidth < 360;
+
+    // Ajustar padding baseado no tamanho da tela
+    final horizontalPadding = isSmallScreen ? 8.0 : 16.0;
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _loadInitialData,
@@ -71,22 +80,31 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             _buildAppBar(),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildWelcomeCard(),
-                    const SizedBox(height: 24),
-                    _buildMainServices(),
-                    const SizedBox(height: 24),
-                    _buildDailyHoroscope(),
-                    const SizedBox(height: 24),
-                    _buildFeaturedMediums(),
-                    const SizedBox(height: 24),
-                    _buildPromotionalBanner(),
-                    const SizedBox(height: 24),
-                  ],
+              child: SingleChildScrollView(
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: 16.0,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: screenHeight - padding.top - padding.bottom - 80,  // Considerando bottom nav bar height
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildWelcomeCard(),
+                      const SizedBox(height: 16),
+                      _buildMainServices(isSmallScreen),
+                      const SizedBox(height: 16),
+                      _buildDailyHoroscope(),
+                      const SizedBox(height: 16),
+                      _buildFeaturedMediums(isSmallScreen),
+                      const SizedBox(height: 16),
+                      _buildPromotionalBanner(),
+                      // Garantir espaço no final da página
+                      SizedBox(height: padding.bottom + 16),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -98,32 +116,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildAppBar() {
     return SliverAppBar(
-      expandedHeight: 120,
+      expandedHeight: 100,
       pinned: true,
       flexibleSpace: FlexibleSpaceBar(
-        title: const Row(
-          children: [
-            Icon(
-              Icons.nights_stay_rounded,
-              size: 24,
-              color: Colors.white,
-            ),
-            SizedBox(width: 8),
-            Text(
-              'Astral Connect',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-          ],
+        title: const Text(
+          'Astral Connect',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
         ),
+        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
         background: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [Color(0xFF392F5A), Color(0xFF8C6BAE)],
+            ),
+          ),
+          child: const Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: EdgeInsets.only(left: 52, bottom: 16),
+              child: Icon(
+                Icons.nights_stay_rounded,
+                color: Colors.white70,
+                size: 24,
+              ),
             ),
           ),
         ),
@@ -135,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Implementar notificações
           },
         ),
+        const SizedBox(width: 8),
       ],
     );
   }
@@ -146,51 +167,55 @@ class _HomeScreenState extends State<HomeScreen> {
       final userName = user != null ? user.name.split(' ')[0] : 'Visitante';
 
       return Card(
-        elevation: 3,
+        elevation: 2,
+        clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    backgroundImage: user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty
-                        ? NetworkImage(user.profileImageUrl!)
-                        : null,
-                    child: user?.profileImageUrl == null || user!.profileImageUrl!.isEmpty
-                        ? Icon(
-                      Icons.person,
-                      size: 25,
-                      color: Theme.of(context).colorScheme.primary,
-                    )
-                        : null,
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$greeting, $userName!',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                backgroundImage: user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty
+                    ? NetworkImage(user.profileImageUrl!)
+                    : null,
+                child: user?.profileImageUrl == null || user!.profileImageUrl!.isEmpty
+                    ? Icon(
+                  Icons.person,
+                  size: 24,
+                  color: Theme.of(context).colorScheme.primary,
+                )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$greeting, $userName!',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
                       ),
-                      Text(
-                        'O que o universo tem para você hoje?',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'O que o universo tem para você hoje?',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
-                    ],
-                  ),
-                ],
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -211,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Boa noite';
   }
 
-  Widget _buildMainServices() {
+  Widget _buildMainServices(bool isSmallScreen) {
     final services = [
       {
         'title': 'Horóscopo',
@@ -239,6 +264,9 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     ];
 
+    // Ajuste aspectRatio baseado no tamanho da tela
+    final aspectRatio = isSmallScreen ? 1.5 : 1.8;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -249,15 +277,15 @@ class _HomeScreenState extends State<HomeScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 2,
-            childAspectRatio: 1.5,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
+            childAspectRatio: aspectRatio,
+            crossAxisSpacing: isSmallScreen ? 8 : 16,
+            mainAxisSpacing: isSmallScreen ? 8 : 16,
           ),
           itemCount: services.length,
           itemBuilder: (context, index) {
@@ -267,6 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: service['icon'] as IconData,
               color: service['color'] as Color,
               onTap: () => Get.toNamed(service['route'] as String),
+              isSmallScreen: isSmallScreen,
             ).animate().fadeIn(
               delay: Duration(milliseconds: 100 * index),
               duration: const Duration(milliseconds: 300),
@@ -282,23 +311,32 @@ class _HomeScreenState extends State<HomeScreen> {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    required bool isSmallScreen,
   }) {
+    // Ajustar tamanhos baseado no tamanho da tela
+    final iconSize = isSmallScreen ? 36.0 : 40.0;
+    final fontSize = isSmallScreen ? 12.0 : 13.0;
+    final padding = isSmallScreen ?
+    const EdgeInsets.symmetric(horizontal: 8, vertical: 12) :
+    const EdgeInsets.symmetric(horizontal: 12, vertical: 12);
+
     return Card(
       elevation: 2,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: padding,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: iconSize,
+                height: iconSize,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.1),
                   shape: BoxShape.circle,
@@ -306,15 +344,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   icon,
                   color: color,
-                  size: 24,
+                  size: iconSize * 0.5,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
+                  fontSize: fontSize,
                 ),
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -335,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'Seu Horóscopo de Hoje',
+                'Seu Horóscopo',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -350,6 +391,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
           Card(
             elevation: 2,
+            clipBehavior: Clip.antiAlias,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -357,11 +399,21 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(16),
               child: isLoading
                   ? const Center(
-                child: CircularProgressIndicator(),
+                child: SizedBox(
+                  height: 150,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
               )
                   : horoscope == null
                   ? const Center(
-                child: Text('Carregando seu horóscopo...'),
+                child: SizedBox(
+                  height: 150,
+                  child: Center(
+                    child: Text('Carregando seu horóscopo...'),
+                  ),
+                ),
               )
                   : Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,8 +421,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                           shape: BoxShape.circle,
@@ -378,47 +430,53 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Icon(
                           _getZodiacIcon(horoscope.sign),
                           color: Theme.of(context).colorScheme.primary,
+                          size: 20,
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            horoscope.sign,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              horoscope.sign,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
-                          ),
-                          Text(
-                            DateFormat.yMMMMd().format(horoscope.date),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                              fontSize: 12,
+                            Text(
+                              DateFormat.yMMMMd().format(horoscope.date),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                fontSize: 12,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Text(
                     horoscope.content.length > 150
                         ? '${horoscope.content.substring(0, 150)}...'
                         : horoscope.content,
-                    style: const TextStyle(height: 1.5),
+                    style: const TextStyle(height: 1.4, fontSize: 14),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => Get.toNamed(AppRoutes.horoscope),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Get.toNamed(AppRoutes.horoscope),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
+                      child: const Text('Ler Horóscopo Completo'),
                     ),
-                    child: const Text('Ler Horóscopo Completo'),
                   ),
                 ],
               ),
@@ -432,10 +490,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Widget _buildFeaturedMediums() {
+  Widget _buildFeaturedMediums(bool isSmallScreen) {
     return Obx(() {
       final mediums = _mediumController.allMediums;
       final isLoading = _mediumController.isLoading.value;
+
+      // Ajuste de altura baseado no tamanho da tela
+      final cardHeight = isSmallScreen ? 180.0 : 200.0;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -458,7 +519,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 200,
+            height: cardHeight,
             child: isLoading
                 ? const Center(
               child: CircularProgressIndicator(),
@@ -472,43 +533,48 @@ class _HomeScreenState extends State<HomeScreen> {
               itemCount: mediums.length > 5 ? 5 : mediums.length,
               itemBuilder: (context, index) {
                 final medium = mediums[index];
+                // Ajuste de largura baseado no tamanho da tela
+                final cardWidth = isSmallScreen ? 140.0 : 160.0;
+
                 return GestureDetector(
                   onTap: () {
                     _mediumController.selectMedium(medium.id);
                     Get.toNamed(AppRoutes.mediumProfile);
                   },
                   child: Container(
-                    width: 160,
-                    margin: const EdgeInsets.only(right: 16),
+                    width: cardWidth,
+                    margin: const EdgeInsets.only(right: 12),
                     child: Card(
                       elevation: 2,
+                      clipBehavior: Clip.antiAlias,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             CircleAvatar(
-                              radius: 40,
+                              radius: isSmallScreen ? 35 : 40,
                               backgroundImage: NetworkImage(medium.imageUrl),
                               backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                               onBackgroundImageError: (_, __) {},
                               child: medium.imageUrl.isEmpty
                                   ? Icon(
                                 Icons.person,
-                                size: 40,
+                                size: isSmallScreen ? 35 : 40,
                                 color: Theme.of(context).colorScheme.primary,
                               )
                                   : null,
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 8),
                             Text(
                               medium.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: isSmallScreen ? 14 : 15,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -521,30 +587,33 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const Icon(
                                   Icons.star,
                                   color: Colors.amber,
-                                  size: 16,
+                                  size: 14,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   medium.rating.toStringAsFixed(1),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    fontSize: 12,
                                   ),
                                 ),
-                                Text(
-                                  ' (${medium.reviewsCount})',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                Flexible(
+                                  child: Text(
+                                    ' (${medium.reviewsCount})',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 4),
                             Text(
-                              medium.specialties.take(2).join(', '),
+                              medium.specialties.take(1).join(', '),
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
                                 color: Theme.of(context).colorScheme.primary,
                               ),
                               maxLines: 1,
@@ -572,9 +641,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () {
         // Implementar navegação para promoção
+        Get.toNamed(AppRoutes.paymentMethods);
       },
       child: Container(
-        height: 150,
+        height: 120,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: const LinearGradient(
@@ -585,48 +655,63 @@ class _HomeScreenState extends State<HomeScreen> {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
+              blurRadius: 8,
               spreadRadius: 1,
             ),
           ],
         ),
+        clipBehavior: Clip.antiAlias,
         child: Stack(
+          fit: StackFit.expand,
+          clipBehavior: Clip.none,
           children: [
+            // Efeito de fundo
             Positioned(
               right: -20,
               bottom: -20,
               child: Icon(
                 Icons.nights_stay_rounded,
-                size: 150,
+                size: 120,
                 color: Colors.white.withOpacity(0.1),
               ),
             ),
+            // Conteúdo
             Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Text(
-                    'Oferta Especial',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text(
+                          'Oferta Especial',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Ganhe 20% de desconto em créditos',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Ganhe 20% de desconto em créditos na primeira compra',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
+                  const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
+                      horizontal: 12,
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
@@ -638,6 +723,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
+                        fontSize: 13,
                       ),
                     ),
                   ),
