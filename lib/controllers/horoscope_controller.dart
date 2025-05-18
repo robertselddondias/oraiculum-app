@@ -5,6 +5,7 @@ import 'package:oraculum/models/horoscope_model.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'dart:convert';
 
 class HoroscopeController extends GetxController {
   final GeminiService _geminiService = Get.find<GeminiService>();
@@ -42,7 +43,7 @@ class HoroscopeController extends GetxController {
         dailyHoroscope.value = HoroscopeModel.fromMap(data, horoscopeDoc.id);
       } else {
         // Gerar novo horóscopo com Gemini
-        final horoscopeText = await _geminiService.getDailyHoroscope(sign);
+        final horoscopeText = await _generateStructuredHoroscope(sign);
 
         // Salvar no Firestore
         final horoscopeData = {
@@ -69,6 +70,89 @@ class HoroscopeController extends GetxController {
       isLoading.value = false;
       update();
     }
+  }
+
+  // Gerar horóscopo estruturado em formato JSON
+  Future<String> _generateStructuredHoroscope(String sign) async {
+    try {
+      // Solicitação ao Gemini para retornar um horóscopo estruturado
+      final prompt = '''
+        Gere um horóscopo para o signo de $sign no formato JSON com os seguintes tópicos:
+        
+        1. Uma visão geral do dia ("geral")
+        2. Perspectivas para amor e relacionamentos ("amor")
+        3. Perspectivas para carreira e finanças ("profissional")
+        4. Conselhos gerais para o dia ("conselhos")
+        5. Seis números da sorte aleatórios entre 1 e 60 ("numeros_sorte")
+        
+        Para cada um dos tópicos 1-4, inclua um "title" e um "body". 
+        Exemplo da estrutura do JSON:
+        
+        {
+          "geral": {
+            "title": "Visão Geral", 
+            "body": "Texto da previsão geral..."
+          },
+          "amor": {
+            "title": "Amor e Relacionamentos", 
+            "body": "Texto sobre amor..."
+          },
+          "profissional": {
+            "title": "Carreira e Finanças", 
+            "body": "Texto sobre trabalho..."
+          },
+          "conselhos": {
+            "title": "Conselhos para Hoje", 
+            "body": "Texto com conselhos..."
+          },
+          "numeros_sorte": [7, 13, 25, 36, 42, 58]
+        }
+        
+        A resposta deve ser somente o JSON válido, sem explicações adicionais ou formatação extra.
+        Todas as previsões devem ser positivas, motivadoras e inspiradoras.
+      ''';
+
+      String response = await _geminiService.generateJsonHoroscope(prompt);
+
+      // Validar se a resposta é um JSON válido
+      try {
+        // Tentar analisar o JSON
+        json.decode(response);
+        return response;
+      } catch (e) {
+        // Se não for um JSON válido, criar uma estrutura básica
+        return json.encode({
+          "geral": {
+            "title": "Visão Geral para $sign",
+            "body": response
+          },
+          "numeros_sorte": _generateRandomNumbers()
+        });
+      }
+    } catch (e) {
+      return json.encode({
+        "geral": {
+          "title": "Visão Geral para $sign",
+          "body": "Hoje o universo reserva energias especiais para você. Aproveite as oportunidades que surgirem."
+        },
+        "numeros_sorte": _generateRandomNumbers()
+      });
+    }
+  }
+
+  // Gerar números aleatórios para números da sorte
+  List<int> _generateRandomNumbers() {
+    final numbers = <int>[];
+    final random = DateTime.now().millisecondsSinceEpoch;
+
+    while (numbers.length < 6) {
+      final next = (random % 60) + 1;
+      if (!numbers.contains(next)) {
+        numbers.add(next);
+      }
+    }
+
+    return numbers;
   }
 
   Future<String> getCompatibilityAnalysis(String sign1, String sign2) async {

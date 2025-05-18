@@ -11,6 +11,38 @@ class GeminiService {
   final String baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/';
   final String defaultModel = 'gemini-2.0-flash'; // Usando a versão correta do modelo
 
+  // Método para obter a previsão do horóscopo diário em formato JSON
+  Future<String> generateJsonHoroscope(String prompt) async {
+    try {
+      final response = await _generateContent(prompt, temperature: 0.7, maxOutputTokens: 1024);
+
+      // Limpar a resposta para garantir que seja um JSON válido
+      String cleanedResponse = response.trim();
+
+      // Verificar se o texto começa com ``` e termina com ``` (caso o Gemini encapsule em código)
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.substring(7);
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.substring(3);
+      }
+
+      if (cleanedResponse.endsWith('```')) {
+        cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3);
+      }
+
+      // Verificar se é um JSON válido
+      try {
+        json.decode(cleanedResponse);
+        return cleanedResponse;
+      } catch (e) {
+        throw Exception('Resposta não é um JSON válido: $e');
+      }
+    } catch (e) {
+      debugPrint('Erro ao gerar horóscopo JSON: $e');
+      throw Exception('Falha ao gerar horóscopo: $e');
+    }
+  }
+
   // Método para obter a previsão do horóscopo diário
   Future<String> getDailyHoroscope(String sign) async {
     try {
@@ -122,10 +154,10 @@ class GeminiService {
   }
 
   // Método principal para fazer requisições à API do Gemini
-  Future<String> _generateContent(String prompt) async {
+  Future<String> _generateContent(String prompt, {double? temperature, int? maxOutputTokens}) async {
     final url = '$baseUrl$defaultModel:generateContent?key=$apiKey';
 
-    final requestBody = jsonEncode({
+    final Map<String, dynamic> requestBody = {
       "contents": [
         {
           "parts": [
@@ -136,12 +168,12 @@ class GeminiService {
         }
       ],
       "generationConfig": {
-        "temperature": 0.7,
+        "temperature": temperature ?? 0.7,
         "topK": 40,
         "topP": 0.95,
-        "maxOutputTokens": 1024,
+        "maxOutputTokens": maxOutputTokens ?? 1024,
       }
-    });
+    };
 
     try {
       final response = await http.post(
@@ -149,7 +181,7 @@ class GeminiService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: requestBody,
+        body: jsonEncode(requestBody),
       );
 
       if (response.statusCode == 200) {
