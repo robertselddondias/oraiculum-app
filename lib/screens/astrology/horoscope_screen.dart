@@ -344,15 +344,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
       _getSignAssetPath(sign),
       width: size,
       height: size,
-      color: color,
-      errorBuilder: (context, error, stackTrace) {
-        // Fallback para ícone caso a imagem não seja encontrada
-        return Icon(
-          _getSignIcon(sign),
-          color: color,
-          size: size,
-        );
-      },
+      color: color
     );
   }
 
@@ -414,38 +406,6 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
         break;
     }
 
-    return 'assets/icons/$normalizedSign.png';
-  }
-
-  // Ícones para usar como fallback caso as imagens não sejam encontradas
-  IconData _getSignIcon(String sign) {
-    switch (sign) {
-      case 'Áries':
-        return Icons.fitness_center;
-      case 'Touro':
-        return Icons.spa;
-      case 'Gêmeos':
-        return Icons.people;
-      case 'Câncer':
-        return Icons.home;
-      case 'Leão':
-        return Icons.star;
-      case 'Virgem':
-        return Icons.healing;
-      case 'Libra':
-        return Icons.balance;
-      case 'Escorpião':
-        return Icons.psychology;
-      case 'Sagitário':
-        return Icons.explore;
-      case 'Capricórnio':
-        return Icons.landscape;
-      case 'Aquário':
-        return Icons.waves;
-      case 'Peixes':
-        return Icons.water;
-      default:
-        return Icons.stars;
-    }
+    return 'assets/images/zodiac/$normalizedSign.png';
   }
 }
