@@ -43,6 +43,38 @@ class GeminiService {
     }
   }
 
+  // Método para obter a análise de compatibilidade em formato JSON
+  Future<String> generateJsonCompatibility(String prompt) async {
+    try {
+      final response = await _generateContent(prompt, temperature: 0.7, maxOutputTokens: 1024);
+
+      // Limpar a resposta para garantir que seja um JSON válido
+      String cleanedResponse = response.trim();
+
+      // Verificar se o texto começa com ``` e termina com ``` (caso o Gemini encapsule em código)
+      if (cleanedResponse.startsWith('```json')) {
+        cleanedResponse = cleanedResponse.substring(7);
+      } else if (cleanedResponse.startsWith('```')) {
+        cleanedResponse = cleanedResponse.substring(3);
+      }
+
+      if (cleanedResponse.endsWith('```')) {
+        cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3);
+      }
+
+      // Verificar se é um JSON válido
+      try {
+        json.decode(cleanedResponse);
+        return cleanedResponse;
+      } catch (e) {
+        throw Exception('Resposta não é um JSON válido: $e');
+      }
+    } catch (e) {
+      debugPrint('Erro ao gerar análise de compatibilidade JSON: $e');
+      throw Exception('Falha ao gerar análise de compatibilidade: $e');
+    }
+  }
+
   // Método para obter a previsão do horóscopo diário
   Future<String> getDailyHoroscope(String sign) async {
     try {

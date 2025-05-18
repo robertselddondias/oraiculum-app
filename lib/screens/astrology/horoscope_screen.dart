@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -15,7 +16,9 @@ class HoroscopeScreen extends StatefulWidget {
 
 class _HoroscopeScreenState extends State<HoroscopeScreen> {
   final HoroscopeController _controller = Get.find<HoroscopeController>();
+  final AuthController _authController = Get.find<AuthController>();
   final RxMap<String, dynamic> _parsedHoroscope = <String, dynamic>{}.obs;
+  final RxBool _isInitialLoadComplete = false.obs;
 
   @override
   void initState() {
@@ -23,17 +26,53 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
     // Inicializar formatação de data em português
     initializeDateFormatting('pt_BR', null);
 
-    // Carregar horóscopo padrão se não tiver nenhum selecionado
-    if (_controller.currentSign.isEmpty) {
-      _controller.getDailyHoroscope('Áries');
-    }
+    // Carregar o signo do usuário logado ou padrão automaticamente
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserSign();
+    });
 
     // Observar mudanças no horóscopo diário
     ever(_controller.dailyHoroscope, (horoscope) {
       if (horoscope != null) {
         _parseHoroscopeData(horoscope.content);
+        _isInitialLoadComplete.value = true;
       }
     });
+  }
+
+  // Método para carregar o signo do usuário logado
+  Future<void> _loadUserSign() async {
+    // Verificar se o usuário está logado e tem um perfil
+    if (_authController.userModel.value != null && _authController.isLoggedIn) {
+      final birthDate = _authController.userModel.value!.birthDate;
+      final userSign = _getZodiacSignFromDate(birthDate);
+
+      // Carregar o horóscopo para o signo do usuário
+      await _controller.getDailyHoroscope(userSign);
+    } else {
+      // Carregar horóscopo padrão se não tiver nenhum usuário logado
+      await _controller.getDailyHoroscope('Áries');
+    }
+  }
+
+  // Método para determinar o signo com base na data de nascimento
+  String _getZodiacSignFromDate(DateTime birthDate) {
+    final day = birthDate.day;
+    final month = birthDate.month;
+
+    if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 'Aquário';
+    if ((month == 2 && day >= 19) || (month == 3 && day <= 20)) return 'Peixes';
+    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return 'Áries';
+    if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return 'Touro';
+    if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return 'Gêmeos';
+    if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return 'Câncer';
+    if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return 'Leão';
+    if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return 'Virgem';
+    if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return 'Libra';
+    if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return 'Escorpião';
+    if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return 'Sagitário';
+
+    return 'Capricórnio';
   }
 
   void _parseHoroscopeData(String content) {
@@ -101,8 +140,17 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
             _buildSignSelector(isSmallScreen),
             Expanded(
               child: Obx(() {
-                if (_controller.isLoading.value) {
-                  return const Center(child: CircularProgressIndicator());
+                if (_controller.isLoading.value || !_isInitialLoadComplete.value) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Carregando seu horóscopo...'),
+                      ],
+                    ),
+                  );
                 }
                 return _buildHoroscopeContent(isSmallScreen, padding);
               }),
@@ -115,7 +163,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
 
   Widget _buildSignBackground() {
     final sign = _controller.currentSign.value;
-    final normalizedSign = _getSignAssetPath(sign).split('/').last.split('.').first;
+    final color = _getSignColor(sign);
 
     return Container(
       decoration: BoxDecoration(
@@ -123,8 +171,8 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            _getSignColor(sign).withOpacity(0.7),
-            _getSignColor(sign).withOpacity(0.9),
+            color.withOpacity(0.7),
+            color.withOpacity(0.9),
           ],
         ),
       ),
@@ -151,18 +199,13 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
             );
           }),
 
-          // Logo do signo com opacidade
+          // Imagem do signo com opacidade
           Positioned(
             right: -50,
             bottom: -20,
             child: Opacity(
               opacity: 0.2,
-              child: Image.asset(
-                _getSignAssetPath(sign),
-                width: 200,
-                height: 200,
-                color: Colors.white,
-              ),
+              child: _buildZodiacImage(sign, size: 200),
             ),
           ),
 
@@ -211,6 +254,12 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
           final sign = _controller.zodiacSigns[index];
           return Obx(() {
             final isSelected = _controller.currentSign.value == sign;
+            final signColor = _getSignColor(sign);
+
+            // Destacar o signo do usuário se estiver logado
+            final isUserSign = _authController.userModel.value != null &&
+                _getZodiacSignFromDate(_authController.userModel.value!.birthDate) == sign;
+
             return GestureDetector(
               onTap: () => _controller.getDailyHoroscope(sign),
               child: Container(
@@ -218,53 +267,84 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                 margin: EdgeInsets.symmetric(horizontal: isSmallScreen ? 4 : 8),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? _getSignColor(sign).withOpacity(0.15)
+                      ? signColor.withOpacity(0.08)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(15),
-                  border: Border.all(
-                    color: isSelected
-                        ? _getSignColor(sign)
-                        : Colors.transparent,
-                    width: 2,
-                  ),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      width: iconSize,
-                      height: iconSize,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? _getSignColor(sign)
-                            : Theme.of(context).colorScheme.surface,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 6,
-                            spreadRadius: 1,
+                    // Signo selecionado - versão melhorada com efeito de destaque
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          width: iconSize,
+                          height: iconSize,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? signColor
+                                  : isUserSign
+                                  ? signColor.withOpacity(0.5)
+                                  : Colors.transparent,
+                              width: isSelected ? 2 : 1,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                              BoxShadow(
+                                color: signColor.withOpacity(0.4),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                                : null,
                           ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Image.asset(
-                          _getSignAssetPath(sign),
-                          width: iconSize * 0.6,
-                          height: iconSize * 0.6,
-                          color: isSelected
-                              ? Colors.white
-                              : _getSignColor(sign),
+                          child: ClipOval(
+                            child: _buildZodiacImage(
+                              sign,
+                              size: iconSize * 0.6,
+                            ),
+                          ),
                         ),
-                      ),
+
+                        // Indicador de que é o signo do usuário
+                        if (isUserSign && !isSelected)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: signColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  width: 2,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 8,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 6),
                     Text(
                       sign,
                       style: TextStyle(
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isSelected || isUserSign ? FontWeight.bold : FontWeight.normal,
                         color: isSelected
-                            ? _getSignColor(sign)
+                            ? signColor
+                            : isUserSign
+                            ? signColor.withOpacity(0.7)
                             : Theme.of(context).colorScheme.onSurface,
                         fontSize: fontSize,
                       ),
@@ -644,64 +724,110 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
     );
   }
 
-  // Função que retorna o caminho para a imagem do signo
-  String _getSignAssetPath(String sign) {
+  // Widget para exibir a imagem do signo
+  Widget _buildZodiacImage(String sign, {double? size, Color? color}) {
     // Normaliza o nome do signo para corresponder ao nome do arquivo
-    // Converte para minúsculas e remove acentos
-    String normalizedSign = sign.toLowerCase()
-        .replaceAll('á', 'a')
-        .replaceAll('â', 'a')
-        .replaceAll('ã', 'a')
-        .replaceAll('à', 'a')
-        .replaceAll('é', 'e')
-        .replaceAll('ê', 'e')
-        .replaceAll('í', 'i')
-        .replaceAll('ó', 'o')
-        .replaceAll('ô', 'o')
-        .replaceAll('õ', 'o')
-        .replaceAll('ú', 'u')
-        .replaceAll('ç', 'c');
+    final signAssetName = _getSignAssetName(sign);
 
+    try {
+      return Image.asset(
+        'assets/images/zodiac/$signAssetName.png',
+        width: size,
+        height: size,
+        color: color, // Aplicar uma cor de filtro, se fornecida
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback para ícone em caso de erro no carregamento da imagem
+          return Icon(
+            _getZodiacFallbackIcon(sign),
+            size: size,
+            color: color ?? _getSignColor(sign),
+          );
+        },
+      );
+    } catch (e) {
+      // Fallback para ícone em caso de exceção
+      return Icon(
+        _getZodiacFallbackIcon(sign),
+        size: size,
+        color: color ?? _getSignColor(sign),
+      );
+    }
+  }
+
+  // Função para normalizar o nome do signo para o nome do arquivo
+  String _getSignAssetName(String sign) {
+    switch (sign.toLowerCase()) {
+      case 'áries':
+        return 'aries';
+      case 'touro':
+        return 'touro';
+      case 'gêmeos':
+        return 'gemeos';
+      case 'câncer':
+        return 'cancer';
+      case 'leão':
+        return 'leao';
+      case 'virgem':
+        return 'virgem';
+      case 'libra':
+        return 'libra';
+      case 'escorpião':
+        return 'escorpiao';
+      case 'sagitário':
+        return 'sagitario';
+      case 'capricórnio':
+        return 'capricornio';
+      case 'aquário':
+        return 'aquario';
+      case 'peixes':
+        return 'peixes';
+      default:
+        return sign.toLowerCase()
+            .replaceAll('á', 'a')
+            .replaceAll('â', 'a')
+            .replaceAll('ã', 'a')
+            .replaceAll('à', 'a')
+            .replaceAll('é', 'e')
+            .replaceAll('ê', 'e')
+            .replaceAll('í', 'i')
+            .replaceAll('ó', 'o')
+            .replaceAll('ô', 'o')
+            .replaceAll('õ', 'o')
+            .replaceAll('ú', 'u')
+            .replaceAll('ç', 'c');
+    }
+  }
+
+  // Ícones de fallback caso a imagem não seja encontrada
+  IconData _getZodiacFallbackIcon(String sign) {
     switch (sign) {
       case 'Áries':
-        normalizedSign = 'aries';
-        break;
+        return Icons.fitness_center;
       case 'Touro':
-        normalizedSign = 'touro';
-        break;
+        return Icons.spa;
       case 'Gêmeos':
-        normalizedSign = 'gemeos';
-        break;
+        return Icons.people;
       case 'Câncer':
-        normalizedSign = 'cancer';
-        break;
+        return Icons.home;
       case 'Leão':
-        normalizedSign = 'leao';
-        break;
+        return Icons.star;
       case 'Virgem':
-        normalizedSign = 'virgem';
-        break;
+        return Icons.healing;
       case 'Libra':
-        normalizedSign = 'libra';
-        break;
+        return Icons.balance;
       case 'Escorpião':
-        normalizedSign = 'escorpiao';
-        break;
+        return Icons.psychology;
       case 'Sagitário':
-        normalizedSign = 'sargitario';
-        break;
+        return Icons.explore;
       case 'Capricórnio':
-        normalizedSign = 'capricornio';
-        break;
+        return Icons.landscape;
       case 'Aquário':
-        normalizedSign = 'aquario';
-        break;
+        return Icons.waves;
       case 'Peixes':
-        normalizedSign = 'peixes';
-        break;
+        return Icons.water;
+      default:
+        return Icons.stars;
     }
-
-    return 'assets/images/zodiac/$normalizedSign.png';
   }
 
   // Função para obter a cor associada a cada signo

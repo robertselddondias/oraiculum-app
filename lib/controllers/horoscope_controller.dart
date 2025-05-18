@@ -155,17 +155,138 @@ class HoroscopeController extends GetxController {
     return numbers;
   }
 
+  // Método atualizado para análise de compatibilidade em formato JSON
   Future<String> getCompatibilityAnalysis(String sign1, String sign2) async {
     try {
       isLoading.value = true;
-      final compatibilityText = await _geminiService.getCompatibilityAnalysis(sign1, sign2);
+
+      // Verificar se a análise já existe no Firebase
+      final compatibilityId = '${sign1}_${sign2}';
+      final reversedId = '${sign2}_${sign1}';
+
+      // Verificar no Firestore se já existe esta análise
+      final compatibilityDoc = await _firebaseService.firestore
+          .collection('compatibility_analyses')
+          .doc(compatibilityId)
+          .get();
+
+      // Verificar também a ordem inversa dos signos
+      final reversedCompatibilityDoc = await _firebaseService.firestore
+          .collection('compatibility_analyses')
+          .doc(reversedId)
+          .get();
+
+      // Se já existe, retornar o conteúdo salvo
+      if (compatibilityDoc.exists) {
+        final data = compatibilityDoc.data() as Map<String, dynamic>;
+        return data['content'] as String;
+      } else if (reversedCompatibilityDoc.exists) {
+        final data = reversedCompatibilityDoc.data() as Map<String, dynamic>;
+        return data['content'] as String;
+      }
+
+      // Se não existe, gerar nova análise com Gemini
+      final compatibilityText = await _generateStructuredCompatibility(sign1, sign2);
+
+      // Salvar no Firestore para futuras consultas
+      await _firebaseService.firestore.collection('compatibility_analyses').doc(compatibilityId).set({
+        'sign1': sign1,
+        'sign2': sign2,
+        'content': compatibilityText,
+        'createdAt': DateTime.now(),
+      });
+
       return compatibilityText;
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível gerar a análise de compatibilidade: $e');
-      return 'Erro ao gerar análise de compatibilidade.';
+      return json.encode({
+        "geral": {
+          "title": "Compatibilidade Geral",
+          "body": "Não foi possível gerar a análise de compatibilidade no momento. Por favor, tente novamente mais tarde."
+        }
+      });
     } finally {
       isLoading.value = false;
       update();
+    }
+  }
+
+  // Gerar compatibilidade estruturada em formato JSON
+  Future<String> _generateStructuredCompatibility(String sign1, String sign2) async {
+    try {
+      // Solicitação ao Gemini para retornar uma análise de compatibilidade estruturada
+      final prompt = '''
+        Gere uma análise de compatibilidade entre $sign1 e $sign2 no formato JSON com os seguintes tópicos:
+        
+        1. Compatibilidade geral ("geral")
+        2. Compatibilidade emocional ("emocional")
+        3. Compatibilidade de comunicação ("comunicacao")
+        4. Compatibilidade sexual ("sexual")
+        5. Pontos fortes da relação ("pontos_fortes")
+        6. Desafios potenciais ("desafios")
+        7. Conselhos para melhorar a relação ("conselhos")
+        
+        Para cada um dos tópicos, inclua um "title" e um "body". 
+        Exemplo da estrutura do JSON:
+        
+        {
+          "geral": {
+            "title": "Compatibilidade Geral", 
+            "body": "Texto da análise geral..."
+          },
+          "emocional": {
+            "title": "Conexão Emocional", 
+            "body": "Texto sobre a conexão emocional..."
+          },
+          "comunicacao": {
+            "title": "Comunicação", 
+            "body": "Texto sobre como se comunicam..."
+          },
+          "sexual": {
+            "title": "Compatibilidade Sexual", 
+            "body": "Texto sobre compatibilidade íntima..."
+          },
+          "pontos_fortes": {
+            "title": "Pontos Fortes", 
+            "body": "Texto sobre os pontos fortes do relacionamento..."
+          },
+          "desafios": {
+            "title": "Desafios", 
+            "body": "Texto sobre os desafios a superar..."
+          },
+          "conselhos": {
+            "title": "Conselhos para o Casal", 
+            "body": "Dicas e conselhos para melhorar a relação..."
+          }
+        }
+        
+        A resposta deve ser somente o JSON válido, sem explicações adicionais ou formatação extra.
+        Mantenha a análise equilibrada, destacando tanto os aspectos positivos quanto os desafios da combinação desses dois signos.
+      ''';
+
+      String response = await _geminiService.generateJsonCompatibility(prompt);
+
+      // Validar se a resposta é um JSON válido
+      try {
+        // Tentar analisar o JSON
+        json.decode(response);
+        return response;
+      } catch (e) {
+        // Se não for um JSON válido, criar uma estrutura básica
+        return json.encode({
+          "geral": {
+            "title": "Compatibilidade entre $sign1 e $sign2",
+            "body": response
+          }
+        });
+      }
+    } catch (e) {
+      return json.encode({
+        "geral": {
+          "title": "Compatibilidade entre $sign1 e $sign2",
+          "body": "A combinação desses signos traz elementos interessantes para o relacionamento. Cada um traz suas próprias qualidades e desafios para a relação."
+        }
+      });
     }
   }
 
