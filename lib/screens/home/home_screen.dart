@@ -350,14 +350,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                           : null,
                     ),
                     // Indicador de signo
-                    CircleAvatar(
-                      radius: 14,
-                      backgroundColor: signColor,
-                      child: ZodiacUtils.buildZodiacImage(
-                        userSign,
-                        size: 16,
-                        color: Colors.white,
-                      ),
+                    ZodiacUtils.buildZodiacImage(
+                      userSign,
+                      size: 16,
+                      color: Colors.white,
                     ),
                   ],
                 ),

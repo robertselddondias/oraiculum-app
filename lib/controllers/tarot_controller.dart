@@ -68,7 +68,7 @@ class TarotController extends GetxController {
     try {
       isLoading.value = true;
       final cardNames = selectedCards.map((card) => card.name).toList();
-      final readingResult = null; //await _geminiService.getTarotInterpretation(cardNames);
+      final readingResult = await _geminiService.getTarotInterpretation(cardNames);
       interpretation.value = readingResult;
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível realizar a leitura: $e');

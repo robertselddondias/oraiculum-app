@@ -3,6 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 
+import 'package:oraculum/models/tarot_model.dart';
+import 'package:uuid/uuid.dart';
+
 class FirebaseService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -35,6 +38,21 @@ class FirebaseService {
 
   Future<void> createUserData(String userId, Map<String, dynamic> data) {
     return usersCollection.doc(userId).set(data);
+  }
+
+  Future<void> persistAllCards(List<TarotCard> cards) async {
+    try {
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+      for (final card in cards) {
+        final DocumentReference docRef = tarotCardsCollection.doc(Uuid().v6());
+        batch.set(docRef, card.toMap());
+      }
+      await batch.commit();
+      print('Todas as cartas foram persistidas com sucesso no Firestore.');
+    } catch (e) {
+      print('Erro ao persistir as cartas no Firestore: $e');
+      rethrow;
+    }
   }
 
   // Métodos de médiuns

@@ -5,6 +5,7 @@ import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
+import 'package:share_plus/share_plus.dart';
 
 class BirthChartScreen extends StatefulWidget {
   const BirthChartScreen({Key? key}) : super(key: key);
@@ -585,7 +586,9 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    // Implementar compartilhamento
+                    SharePlus.instance.share(
+                        ShareParams(text: 'check out my website https://example.com')
+                    );
                   },
                   icon: const Icon(Icons.share),
                   label: const Text('Compartilhar'),

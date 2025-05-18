@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'dart:convert';
 
+import 'package:share_plus/share_plus.dart';
+
 class HoroscopeScreen extends StatefulWidget {
   const HoroscopeScreen({Key? key}) : super(key: key);
 
@@ -478,9 +480,9 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: () {
-                  // Implementar compartilhamento
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Compartilhando horóscopo...'))
+                  String horoscopo = _parsedHoroscope['geral']['body'].substring(0, 180);
+                  SharePlus.instance.share(
+                      ShareParams(text: 'Meu horóscopo de hoje:\n$horoscopo... \n\nBaixe agora o Oraculum.')
                   );
                 },
                 icon: const Icon(Icons.share),
