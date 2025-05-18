@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:oraculum/config/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -19,11 +21,33 @@ class _HomeScreenState extends State<HomeScreen> {
   final HoroscopeController _horoscopeController = Get.find<HoroscopeController>();
   final MediumController _mediumController = Get.find<MediumController>();
 
+  final RxMap<String, dynamic> _parsedHoroscope = <String, dynamic>{}.obs;
+
   @override
   void initState() {
     super.initState();
     // Carregar dados iniciais
     _loadInitialData();
+
+    ever(_horoscopeController.dailyHoroscope, (horoscope) {
+      if (horoscope != null) {
+        _parseHoroscopeData(horoscope.content);
+      }
+    });
+
+  }
+
+  void _parseHoroscopeData(String content) {
+    try {
+      // Tentar analisar o conteúdo como JSON
+      final Map<String, dynamic> data = json.decode(content);
+      _parsedHoroscope.value = data;
+    } catch (e) {
+      // Se falhar, usar o conteúdo como texto geral
+      _parsedHoroscope.value = {
+        'geral': {'title': 'Geral', 'body': content},
+      };
+    }
   }
 
   Future<void> _loadInitialData() async {
@@ -120,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
       pinned: true,
       flexibleSpace: FlexibleSpaceBar(
         title: const Text(
-          'Astral Connect',
+          'Oraculum',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -212,7 +236,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         fontSize: 14,
                         color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -461,10 +484,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
-                          _getZodiacIcon(horoscope.sign),
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 20,
+                        child: Positioned(
+                          right: -50,
+                          bottom: -20,
+                          child: Opacity(
+                            opacity: 0.2,
+                            child: _buildZodiacImage(horoscope.sign, size: 200),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -480,7 +506,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             Text(
-                              DateFormat.yMMMMd().format(horoscope.date),
+                              DateFormat.MMMMEEEEd('pt_BR').format(horoscope.date),
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                                 fontSize: 12,
@@ -493,9 +519,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    horoscope.content.length > 150
-                        ? '${horoscope.content.substring(0, 150)}...'
-                        : horoscope.content,
+                    _parsedHoroscope['geral']['body'].length > 150
+                        ? '${_parsedHoroscope['geral']['body'].substring(0, 150)}...'
+                        : _parsedHoroscope['geral']['body'],
                     style: const TextStyle(height: 1.4, fontSize: 14),
                   ),
                   const SizedBox(height: 12),
@@ -773,7 +799,82 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  IconData _getZodiacIcon(String sign) {
+  // Widget para exibir a imagem do signo
+  Widget _buildZodiacImage(String sign, {double? size, Color? color}) {
+    // Normaliza o nome do signo para corresponder ao nome do arquivo
+    final signAssetName = _getSignAssetName(sign);
+
+    try {
+      return Image.asset(
+        'assets/images/zodiac/$signAssetName.png',
+        width: size,
+        height: size,
+        color: color, // Aplicar uma cor de filtro, se fornecida
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback para ícone em caso de erro no carregamento da imagem
+          return Icon(
+            _getZodiacFallbackIcon(sign),
+            size: size,
+            color: color ?? _getSignColor(sign),
+          );
+        },
+      );
+    } catch (e) {
+      // Fallback para ícone em caso de exceção
+      return Icon(
+        _getZodiacFallbackIcon(sign),
+        size: size,
+        color: color ?? _getSignColor(sign),
+      );
+    }
+  }
+
+  // Função para normalizar o nome do signo para o nome do arquivo
+  String _getSignAssetName(String sign) {
+    switch (sign.toLowerCase()) {
+      case 'áries':
+        return 'aries';
+      case 'touro':
+        return 'touro';
+      case 'gêmeos':
+        return 'gemeos';
+      case 'câncer':
+        return 'cancer';
+      case 'leão':
+        return 'leao';
+      case 'virgem':
+        return 'virgem';
+      case 'libra':
+        return 'libra';
+      case 'escorpião':
+        return 'escorpiao';
+      case 'sagitário':
+        return 'sagitario';
+      case 'capricórnio':
+        return 'capricornio';
+      case 'aquário':
+        return 'aquario';
+      case 'peixes':
+        return 'peixes';
+      default:
+        return sign.toLowerCase()
+            .replaceAll('á', 'a')
+            .replaceAll('â', 'a')
+            .replaceAll('ã', 'a')
+            .replaceAll('à', 'a')
+            .replaceAll('é', 'e')
+            .replaceAll('ê', 'e')
+            .replaceAll('í', 'i')
+            .replaceAll('ó', 'o')
+            .replaceAll('ô', 'o')
+            .replaceAll('õ', 'o')
+            .replaceAll('ú', 'u')
+            .replaceAll('ç', 'c');
+    }
+  }
+
+  // Ícones de fallback caso a imagem não seja encontrada
+  IconData _getZodiacFallbackIcon(String sign) {
     switch (sign) {
       case 'Áries':
         return Icons.fitness_center;
@@ -801,6 +902,38 @@ class _HomeScreenState extends State<HomeScreen> {
         return Icons.water;
       default:
         return Icons.stars;
+    }
+  }
+
+  // Função para obter a cor associada a cada signo
+  Color _getSignColor(String sign) {
+    switch (sign) {
+      case 'Áries':
+        return Colors.red;
+      case 'Touro':
+        return Colors.green.shade700;
+      case 'Gêmeos':
+        return Colors.amberAccent.shade700;
+      case 'Câncer':
+        return Colors.blue.shade300;
+      case 'Leão':
+        return Colors.orange;
+      case 'Virgem':
+        return Colors.green.shade400;
+      case 'Libra':
+        return Colors.pink.shade300;
+      case 'Escorpião':
+        return Colors.red.shade900;
+      case 'Sagitário':
+        return Colors.purple.shade300;
+      case 'Capricórnio':
+        return Colors.brown.shade700;
+      case 'Aquário':
+        return Colors.blueAccent;
+      case 'Peixes':
+        return Colors.indigo.shade300;
+      default:
+        return Colors.deepPurple;
     }
   }
 }

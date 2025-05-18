@@ -194,7 +194,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      DateFormat.yMMMMd().format(_selectedDate),
+                      DateFormat.yMMMMd('pt_BR').format(_selectedDate),
                       style: TextStyle(
                         fontSize: contentTextSize,
                         fontWeight: FontWeight.bold,
@@ -293,7 +293,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       style: TextStyle(
                         fontSize: contentTextSize,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black,
+                        color: Colors.white,
                       ),
                     ),
                   ],
@@ -597,7 +597,7 @@ class _BookingScreenState extends State<BookingScreen> {
           children: [
             Text('Médium: ${_mediumController.selectedMedium.value!.name}'),
             const SizedBox(height: 8),
-            Text('Data: ${DateFormat.yMMMMd().format(_selectedDate)}'),
+            Text('Data: ${DateFormat.yMMMMd('pt-BR').format(_selectedDate)}'),
             const SizedBox(height: 4),
             Text('Horário: $_selectedTime'),
             const SizedBox(height: 4),

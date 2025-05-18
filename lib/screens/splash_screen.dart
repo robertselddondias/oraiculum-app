@@ -84,7 +84,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               const SizedBox(height: 40),
               // Nome do app
               Text(
-                'ASTRAL CONNECT',
+                'ORACULUM',
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
