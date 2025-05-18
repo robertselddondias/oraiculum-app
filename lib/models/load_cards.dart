@@ -395,7 +395,7 @@ class LoadCards {
       TarotCard(
         id: '35',
         name: 'Rei de Paus',
-        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_wands_queen.png?alt=media&token=673a8893-c80d-4bc2-9f7d-921ee63f91b3',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_wands_king.png?alt=media&token=673a8893-c80d-4bc2-9f7d-921ee63f91b3',
         description: 'Liderança, visão e autoridade.',
         uprightMeaning: 'Liderança, visão, autoridade, criatividade.',
         reversedMeaning: 'Dominância, teimosia, falta de visão.',
@@ -407,7 +407,7 @@ class LoadCards {
       TarotCard(
         id: '36',
         name: 'Ás de Copas',
-        imageUrl: 'https://example.com/images/as_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_ace.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Amor, emoção e novos relacionamentos.',
         uprightMeaning: 'Amor, emoção, novos relacionamentos, intuição.',
         reversedMeaning: 'Falta de amor, vazio emocional, oportunidades perdidas.',
@@ -418,7 +418,7 @@ class LoadCards {
       TarotCard(
         id: '37',
         name: 'Dois de Copas',
-        imageUrl: 'https://example.com/images/dois_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_2.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Parceria, união e equilíbrio emocional.',
         uprightMeaning: 'Parceria, união, amor, equilíbrio emocional.',
         reversedMeaning: 'Desarmonia, desequilíbrio, separação.',
@@ -429,7 +429,7 @@ class LoadCards {
       TarotCard(
         id: '38',
         name: 'Três de Copas',
-        imageUrl: 'https://example.com/images/tres_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_3.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Celebração, amizade e alegria.',
         uprightMeaning: 'Celebração, amizade, alegria, comunidade.',
         reversedMeaning: 'Excesso, superficialidade, falta de apoio.',
@@ -440,7 +440,7 @@ class LoadCards {
       TarotCard(
         id: '39',
         name: 'Quatro de Copas',
-        imageUrl: 'https://example.com/images/quatro_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_4.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Meditação, contemplação e oportunidades perdidas.',
         uprightMeaning: 'Meditação, contemplação, apatia, oportunidades ignoradas.',
         reversedMeaning: 'Aceitar ofertas, novas perspectivas, sair da apatia.',
@@ -451,7 +451,7 @@ class LoadCards {
       TarotCard(
         id: '40',
         name: 'Cinco de Copas',
-        imageUrl: 'https://example.com/images/cinco_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_5.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Perda, tristeza e luto.',
         uprightMeaning: 'Perda, tristeza, luto, arrependimento.',
         reversedMeaning: 'Aceitação, perdão, seguir em frente.',
@@ -462,7 +462,7 @@ class LoadCards {
       TarotCard(
         id: '41',
         name: 'Seis de Copas',
-        imageUrl: 'https://example.com/images/seis_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_6.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Nostalgia, memórias e generosidade.',
         uprightMeaning: 'Nostalgia, memórias, generosidade, compartilhar.',
         reversedMeaning: 'Prender-se ao passado, egoísmo, falta de generosidade.',
@@ -473,7 +473,7 @@ class LoadCards {
       TarotCard(
         id: '42',
         name: 'Sete de Copas',
-        imageUrl: 'https://example.com/images/sete_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_7.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Escolhas, ilusões e fantasia.',
         uprightMeaning: 'Escolhas, ilusões, fantasia, oportunidades.',
         reversedMeaning: 'Realidade, clareza, escolhas conscientes.',
@@ -484,7 +484,7 @@ class LoadCards {
       TarotCard(
         id: '43',
         name: 'Oito de Copas',
-        imageUrl: 'https://example.com/images/oito_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_8.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Afastamento, abandonar o que não serve e busca interior.',
         uprightMeaning: 'Afastamento, abandonar, busca interior, deixar ir.',
         reversedMeaning: 'Medo de mudar, apego, ficar em situações ruins.',
@@ -495,7 +495,7 @@ class LoadCards {
       TarotCard(
         id: '44',
         name: 'Nove de Copas',
-        imageUrl: 'https://example.com/images/nove_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_9.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Realização de desejos, contentamento e bem-estar.',
         uprightMeaning: 'Realização de desejos, contentamento, bem-estar, gratidão.',
         reversedMeaning: 'Insatisfação, falta de gratidão, desejos não realizados.',
@@ -506,7 +506,7 @@ class LoadCards {
       TarotCard(
         id: '45',
         name: 'Dez de Copas',
-        imageUrl: 'https://example.com/images/dez_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_10.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Felicidade familiar, harmonia e plenitude emocional.',
         uprightMeaning: 'Felicidade familiar, harmonia, plenitude emocional, alegria.',
         reversedMeaning: 'Desarmonia familiar, conflitos, falta de apoio.',
@@ -517,7 +517,7 @@ class LoadCards {
       TarotCard(
         id: '46',
         name: 'Valete de Copas',
-        imageUrl: 'https://example.com/images/valete_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_page.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Intuição, sensibilidade e novas oportunidades emocionais.',
         uprightMeaning: 'Intuição, sensibilidade, novas oportunidades emocionais, criatividade.',
         reversedMeaning: 'Bloqueio emocional, insegurança, imaturidade.',
@@ -528,7 +528,7 @@ class LoadCards {
       TarotCard(
         id: '47',
         name: 'Cavaleiro de Copas',
-        imageUrl: 'https://example.com/images/cavaleiro_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_knight.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Romance, charme e seguir o coração.',
         uprightMeaning: 'Romance, charme, seguir o coração, idealismo.',
         reversedMeaning: 'Instabilidade emocional, desilusão, promessas vazias.',
@@ -539,7 +539,7 @@ class LoadCards {
       TarotCard(
         id: '48',
         name: 'Rainha de Copas',
-        imageUrl: 'https://example.com/images/rainha_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_queen.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Empatia, compaixão e nutrição emocional.',
         uprightMeaning: 'Empatia, compaixão, nutrição emocional, intuição.',
         reversedMeaning: 'Instabilidade emocional, dependência, manipulação.',
@@ -550,7 +550,7 @@ class LoadCards {
       TarotCard(
         id: '49',
         name: 'Rei de Copas',
-        imageUrl: 'https://example.com/images/rei_de_copas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_cups_king.png?alt=media&token=ba9418df-48ad-4a68-ae0d-58e32dc0be0e',
         description: 'Equilíbrio emocional, diplomacia e sabedoria.',
         uprightMeaning: 'Equilíbrio emocional, diplomacia, sabedoria, compaixão.',
         reversedMeaning: 'Instabilidade emocional, manipulação, frieza.',
@@ -562,7 +562,7 @@ class LoadCards {
       TarotCard(
         id: '50',
         name: 'Ás de Espadas',
-        imageUrl: 'https://example.com/images/as_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_ace.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Verdade, clareza mental e novos começos intelectuais.',
         uprightMeaning: 'Verdade, clareza mental, novos começos, intelecto.',
         reversedMeaning: 'Confusão, brutalidade, falta de clareza.',
@@ -573,7 +573,7 @@ class LoadCards {
       TarotCard(
         id: '51',
         name: 'Dois de Espadas',
-        imageUrl: 'https://example.com/images/dois_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_2.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Indecisão, impasse e evitar a verdade.',
         uprightMeaning: 'Indecisão, impasse, evitar a verdade, equilíbrio.',
         reversedMeaning: 'Revelação da verdade, fim do impasse, conflito.',
@@ -584,7 +584,7 @@ class LoadCards {
       TarotCard(
         id: '52',
         name: 'Três de Espadas',
-        imageUrl: 'https://example.com/images/tres_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_3.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Dor, tristeza e coração partido.',
         uprightMeaning: 'Dor, tristeza, coração partido, perda.',
         reversedMeaning: 'Cura, perdão, superar a dor.',
@@ -595,7 +595,7 @@ class LoadCards {
       TarotCard(
         id: '53',
         name: 'Quatro de Espadas',
-        imageUrl: 'https://example.com/images/quatro_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_4.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Descanso, recuperação e introspecção.',
         uprightMeaning: 'Descanso, recuperação, introspecção, paz.',
         reversedMeaning: 'Agitação, exaustão, evitar o descanso.',
@@ -606,7 +606,7 @@ class LoadCards {
       TarotCard(
         id: '54',
         name: 'Cinco de Espadas',
-        imageUrl: 'https://example.com/images/cinco_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_5.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Conflito, derrota e desonestidade.',
         uprightMeaning: 'Conflito, derrota, desonestidade, vitória vazia.',
         reversedMeaning: 'Reconciliação, compromisso, evitar conflito.',
@@ -617,7 +617,7 @@ class LoadCards {
       TarotCard(
         id: '55',
         name: 'Seis de Espadas',
-        imageUrl: 'https://example.com/images/seis_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_6.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Transição, mudança e deixar para trás.',
         uprightMeaning: 'Transição, mudança, deixar para trás, jornada.',
         reversedMeaning: 'Resistência à mudança, ficar preso, bagagem emocional.',
@@ -628,7 +628,7 @@ class LoadCards {
       TarotCard(
         id: '56',
         name: 'Sete de Espadas',
-        imageUrl: 'https://example.com/images/sete_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_7.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Engano, trapaça e furtividade.',
         uprightMeaning: 'Engano, trapaça, furtividade, esperteza.',
         reversedMeaning: 'Confissão, remorso, honestidade.',
@@ -639,7 +639,7 @@ class LoadCards {
       TarotCard(
         id: '57',
         name: 'Oito de Espadas',
-        imageUrl: 'https://example.com/images/oito_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_8.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Restrição, aprisionamento e impotência.',
         uprightMeaning: 'Restrição, aprisionamento, impotência, vitimização.',
         reversedMeaning: 'Liberação, encontrar soluções, assumir o poder.',
@@ -650,7 +650,7 @@ class LoadCards {
       TarotCard(
         id: '58',
         name: 'Nove de Espadas',
-        imageUrl: 'https://example.com/images/nove_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_9.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Ansiedade, medo e culpa.',
         uprightMeaning: 'Ansiedade, medo, culpa, preocupação.',
         reversedMeaning: 'Esperança, alívio, superar a ansiedade.',
@@ -661,7 +661,7 @@ class LoadCards {
       TarotCard(
         id: '59',
         name: 'Dez de Espadas',
-        imageUrl: 'https://example.com/images/dez_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_10.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Fim, derrota e crise.',
         uprightMeaning: 'Fim, derrota, crise, ponto final.',
         reversedMeaning: 'Recuperação, renascimento, evitar o desastre.',
@@ -672,7 +672,7 @@ class LoadCards {
       TarotCard(
         id: '60',
         name: 'Valete de Espadas',
-        imageUrl: 'https://example.com/images/valete_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_page.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Curiosidade, comunicação e novas ideias.',
         uprightMeaning: 'Curiosidade, comunicação, novas ideias, assertividade.',
         reversedMeaning: 'Fofoca, manipulação, ideias imaturas.',
@@ -683,7 +683,7 @@ class LoadCards {
       TarotCard(
         id: '61',
         name: 'Cavaleiro de Espadas',
-        imageUrl: 'https://example.com/images/cavaleiro_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_knight.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Ação, ambição e assertividade.',
         uprightMeaning: 'Ação, ambição, assertividade, determinação.',
         reversedMeaning: 'Agressividade, imprudência, falta de direção.',
@@ -694,7 +694,7 @@ class LoadCards {
       TarotCard(
         id: '62',
         name: 'Rainha de Espadas',
-        imageUrl: 'https://example.com/images/rainha_de_espadas.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_queen.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3',
         description: 'Inteligência, independência e clareza.',
         uprightMeaning: 'Inteligência, independência, clareza, objetividade.',
         reversedMeaning: 'Crueldade, sarcasmo, falta de empatia.',
@@ -705,7 +705,7 @@ class LoadCards {
       TarotCard(
         id: '63',
         name: 'Rei de Espadas',
-        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fmajor_arcana_justice.png?alt=media&token=fd631106-c261-4f4a-8965-8d27d1f7021d',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_swords_king.png?alt=media&token=97dfdaae-ae36-4d51-a724-105248defdd3?alt=media&token=fd631106-c261-4f4a-8965-8d27d1f7021d',
         description: 'Autoridade, verdade e justiça.',
         uprightMeaning: 'Autoridade, verdade, justiça, intelecto.',
         reversedMeaning: 'Tirania, injustiça, manipulação.',
@@ -717,7 +717,7 @@ class LoadCards {
       TarotCard(
         id: '64',
         name: 'Ás de Ouros',
-        imageUrl: 'https://example.com/images/as_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_ace.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Novas oportunidades financeiras, abundância e prosperidade.',
         uprightMeaning: 'Novas oportunidades, abundância, prosperidade, potencial.',
         reversedMeaning: 'Falta de oportunidade, ganância, investimentos ruins.',
@@ -728,7 +728,7 @@ class LoadCards {
       TarotCard(
         id: '65',
         name: 'Dois de Ouros',
-        imageUrl: 'https://example.com/images/dois_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_2.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Equilíbrio, adaptação e gerenciamento de recursos.',
         uprightMeaning: 'Equilíbrio, adaptação, gerenciamento, flexibilidade.',
         reversedMeaning: 'Desequilíbrio, sobrecarga, dificuldade em adaptar.',
@@ -739,7 +739,7 @@ class LoadCards {
       TarotCard(
         id: '66',
         name: 'Três de Ouros',
-        imageUrl: 'https://example.com/images/tres_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_3.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Colaboração, aprendizado e desenvolvimento de habilidades.',
         uprightMeaning: 'Colaboração, aprendizado, desenvolvimento, reconhecimento.',
         reversedMeaning: 'Falta de colaboração, habilidades inadequadas, preguiça.',
@@ -750,7 +750,7 @@ class LoadCards {
       TarotCard(
         id: '67',
         name: 'Quatro de Ouros',
-        imageUrl: 'https://example.com/images/quatro_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_4.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Estabilidade, segurança e possessividade.',
         uprightMeaning: 'Estabilidade, segurança, possessividade, controle.',
         reversedMeaning: 'Insegurança financeira, generosidade excessiva, perda.',
@@ -761,7 +761,7 @@ class LoadCards {
       TarotCard(
         id: '68',
         name: 'Cinco de Ouros',
-        imageUrl: 'https://example.com/images/cinco_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_5.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Perda financeira, dificuldades e isolamento.',
         uprightMeaning: 'Perda financeira, dificuldades, isolamento, necessidade.',
         reversedMeaning: 'Recuperação financeira, apoio, superar dificuldades.',
@@ -772,7 +772,7 @@ class LoadCards {
       TarotCard(
         id: '69',
         name: 'Seis de Ouros',
-        imageUrl: 'https://example.com/images/seis_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_6.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Generosidade, compartilhar e dar e receber.',
         uprightMeaning: 'Generosidade, compartilhar, dar e receber, caridade.',
         reversedMeaning: 'Egoísmo, dívida, falta de generosidade.',
@@ -783,7 +783,7 @@ class LoadCards {
       TarotCard(
         id: '70',
         name: 'Sete de Ouros',
-        imageUrl: 'https://example.com/images/sete_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_7.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Paciência, investimento a longo prazo e avaliação.',
         uprightMeaning: 'Paciência, investimento, avaliação, crescimento.',
         reversedMeaning: 'Impaciência, resultados lentos, investimentos ruins.',
@@ -794,7 +794,7 @@ class LoadCards {
       TarotCard(
         id: '71',
         name: 'Oito de Ouros',
-        imageUrl: 'https://example.com/images/oito_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_8.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Trabalho árduo, dedicação e maestria.',
         uprightMeaning: 'Trabalho árduo, dedicação, maestria, atenção aos detalhes.',
         reversedMeaning: 'Falta de foco, trabalho de má qualidade, preguiça.',
@@ -805,7 +805,7 @@ class LoadCards {
       TarotCard(
         id: '72',
         name: 'Nove de Ouros',
-        imageUrl: 'https://example.com/images/nove_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_9.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Independência financeira, autossuficiência e luxo.',
         uprightMeaning: 'Independência financeira, autossuficiência, luxo, segurança.',
         reversedMeaning: 'Dependência financeira, insegurança, gastos excessivos.',
@@ -816,7 +816,7 @@ class LoadCards {
       TarotCard(
         id: '73',
         name: 'Dez de Ouros',
-        imageUrl: 'https://example.com/images/dez_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_10.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Riqueza familiar, legado e segurança a longo prazo.',
         uprightMeaning: 'Riqueza familiar, legado, segurança a longo prazo, estabilidade.',
         reversedMeaning: 'Problemas financeiros familiares, perda de herança, risco.',
@@ -827,7 +827,7 @@ class LoadCards {
       TarotCard(
         id: '74',
         name: 'Valete de Ouros',
-        imageUrl: 'https://example.com/images/valete_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_page.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Novas oportunidades financeiras, aprendizado prático e cautela.',
         uprightMeaning: 'Novas oportunidades financeiras, aprendizado prático, cautela, manifestação.',
         reversedMeaning: 'Má gestão financeira, falta de planejamento, oportunidades perdidas.',
@@ -838,7 +838,7 @@ class LoadCards {
       TarotCard(
         id: '75',
         name: 'Cavaleiro de Ouros',
-        imageUrl: 'https://example.com/images/cavaleiro_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_knight.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Responsabilidade, diligência e progresso constante.',
         uprightMeaning: 'Responsabilidade, diligência, progresso constante, persistência.',
         reversedMeaning: 'Preguiça, falta de foco, estagnação.',
@@ -849,7 +849,7 @@ class LoadCards {
       TarotCard(
         id: '76',
         name: 'Rainha de Ouros',
-        imageUrl: 'https://example.com/images/rainha_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_queen.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Praticidade, nutrição e segurança material.',
         uprightMeaning: 'Praticidade, nutrição, segurança material, conforto.',
         reversedMeaning: 'Negligência, insegurança, ganância.',
@@ -860,7 +860,7 @@ class LoadCards {
       TarotCard(
         id: '77',
         name: 'Rei de Ouros',
-        imageUrl: 'https://example.com/images/rei_de_ouros.png',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/oraculum-app-dcde3.firebasestorage.app/o/cards%2Fminor_arcana_pentacles_king.png?alt=media&token=5607832f-5f47-4558-94ff-550d30ecb668',
         description: 'Abundância, sucesso material e liderança prática.',
         uprightMeaning: 'Abundância, sucesso material, liderança prática, estabilidade.',
         reversedMeaning: 'Ganância, teimosia, falta de visão.',

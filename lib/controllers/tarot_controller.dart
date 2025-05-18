@@ -68,7 +68,42 @@ class TarotController extends GetxController {
     try {
       isLoading.value = true;
       final cardNames = selectedCards.map((card) => card.name).toList();
-      final readingResult = await _geminiService.getTarotInterpretation(cardNames);
+
+      // Modificar o prompt para obter JSON estruturado
+      final promptForJSON = '''
+      Gere uma interpretação de tarô para as seguintes cartas: ${cardNames.join(', ')}.
+      
+      A resposta deve estar em formato JSON com a seguinte estrutura:
+      
+      {
+        "geral": {
+          "title": "Interpretação Geral", 
+          "body": "Texto da interpretação geral das cartas..."
+        },
+        "amor": {
+          "title": "Amor e Relacionamentos", 
+          "body": "Texto sobre amor com base nas cartas..."
+        },
+        "trabalho": {
+          "title": "Carreira e Finanças", 
+          "body": "Texto sobre trabalho e finanças..."
+        },
+        "saude": {
+          "title": "Saúde e Bem-estar", 
+          "body": "Texto sobre saúde..."
+        },
+        "conselho": {
+          "title": "Conselho para Este Momento", 
+          "body": "Conselhos finais com base na leitura..."
+        }
+      }
+      
+      A resposta deve ser somente o JSON válido, sem explicações adicionais ou formatação extra.
+      Todas as interpretações devem ser construtivas, motivadoras e trazer orientação.
+    ''';
+
+      // Usar o método do serviço Gemini para obter JSON
+      final readingResult = await _geminiService.generateJsonInterpretation(promptForJSON);
       interpretation.value = readingResult;
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível realizar a leitura: $e');
