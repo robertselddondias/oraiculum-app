@@ -6,8 +6,10 @@ import 'package:get/get.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
+import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:oraculum/utils/zodiac_utils.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -16,16 +18,38 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final AuthController _authController = Get.find<AuthController>();
   final HoroscopeController _horoscopeController = Get.find<HoroscopeController>();
   final MediumController _mediumController = Get.find<MediumController>();
+  final PaymentController _paymentController = Get.find<PaymentController>();
 
   final RxMap<String, dynamic> _parsedHoroscope = <String, dynamic>{}.obs;
+  final RxBool _dataLoaded = false.obs;
+
+  // Controlador para animações
+  late AnimationController _animationController;
+  late Animation<double> _fadeInAnimation;
 
   @override
   void initState() {
     super.initState();
+    // Registrar o observer para o ciclo de vida do app
+    WidgetsBinding.instance.addObserver(this);
+
+    // Configurar animações
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+
+    _fadeInAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+
     // Carregar dados iniciais
     _loadInitialData();
 
@@ -35,6 +59,38 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
 
+    // Iniciar animações
+    _animationController.forward();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Recarregar dados quando as dependências mudarem
+    _loadInitialData();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Recarregar dados quando o widget for atualizado
+    _loadInitialData();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Recarregar dados quando o aplicativo voltar ao primeiro plano
+    if (state == AppLifecycleState.resumed) {
+      _dataLoaded.value = false;
+      _loadInitialData();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _animationController.dispose();
+    super.dispose();
   }
 
   void _parseHoroscopeData(String content) {
@@ -51,82 +107,86 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    if (_authController.userModel.value != null) {
-      // Determinar o signo do usuário com base na data de nascimento
-      final birthDate = _authController.userModel.value!.birthDate;
-      final sign = _getZodiacSign(birthDate);
+    // Evitar carregamento múltiplo desnecessário se os dados já estão carregados
+    if (_dataLoaded.value) return;
 
-      // Carregar horóscopo do usuário
-      _horoscopeController.getDailyHoroscope(sign);
-    } else {
-      // Carregar horóscopo padrão
-      _horoscopeController.getDailyHoroscope('Áries');
+    _dataLoaded.value = true;
+
+    try {
+      if (_authController.userModel.value != null) {
+        // Determinar o signo do usuário com base na data de nascimento
+        final birthDate = _authController.userModel.value!.birthDate;
+        final sign = ZodiacUtils.getZodiacSignFromDate(birthDate);
+
+        // Carregar horóscopo do usuário
+        await _horoscopeController.getDailyHoroscope(sign);
+
+        // Carregar créditos do usuário
+        await _paymentController.loadUserCredits();
+      } else {
+        // Carregar horóscopo padrão
+        await _horoscopeController.getDailyHoroscope('Áries');
+      }
+
+      // Carregar médiuns em destaque
+      await _mediumController.loadMediums();
+    } catch (e) {
+      // Em caso de erro, permitir tentar novamente
+      _dataLoaded.value = false;
+      debugPrint('Erro ao carregar dados: $e');
     }
-
-    // Carregar médiuns em destaque
-    _mediumController.loadMediums();
-  }
-
-  String _getZodiacSign(DateTime birthDate) {
-    final day = birthDate.day;
-    final month = birthDate.month;
-
-    if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 'Aquário';
-    if ((month == 2 && day >= 19) || (month == 3 && day <= 20)) return 'Peixes';
-    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return 'Áries';
-    if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return 'Touro';
-    if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return 'Gêmeos';
-    if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return 'Câncer';
-    if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return 'Leão';
-    if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return 'Virgem';
-    if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return 'Libra';
-    if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return 'Escorpião';
-    if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return 'Sagitário';
-
-    return 'Capricórnio';
   }
 
   @override
   Widget build(BuildContext context) {
     // Obter dimensões da tela para layout responsivo
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final padding = MediaQuery.of(context).padding;
     final isSmallScreen = screenWidth < 360;
 
     // Ajustar padding baseado no tamanho da tela
-    final horizontalPadding = isSmallScreen ? 8.0 : 16.0;
+    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _loadInitialData,
+        onRefresh: () async {
+          // Reset o status para forçar recarga de dados
+          _dataLoaded.value = false;
+          await _loadInitialData();
+        },
         child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
           slivers: [
-            _buildAppBar(),
+            _buildSliverAppBar(isSmallScreen),
             SliverToBoxAdapter(
-              child: SingleChildScrollView(
+              child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: horizontalPadding,
                   vertical: 16.0,
                 ),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: screenHeight - padding.top - padding.bottom - 80,  // Considerando bottom nav bar height
-                  ),
+                child: AnimatedBuilder(
+                  animation: _fadeInAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeInAnimation.value,
+                      child: child,
+                    );
+                  },
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildWelcomeCard(),
-                      const SizedBox(height: 16),
+                      _buildUserProfileCard(isSmallScreen),
+                      const SizedBox(height: 24),
+                      _buildCreditDisplay(isSmallScreen),
+                      const SizedBox(height: 24),
                       _buildMainServices(context),
-                      const SizedBox(height: 16),
-                      _buildDailyHoroscope(),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
+                      _buildDailyHoroscope(isSmallScreen),
+                      const SizedBox(height: 24),
                       _buildFeaturedMediums(isSmallScreen),
-                      const SizedBox(height: 16),
-                      _buildPromotionalBanner(),
+                      const SizedBox(height: 24),
+                      _buildPromotionalBanner(isSmallScreen),
                       // Garantir espaço no final da página
-                      SizedBox(height: padding.bottom + 16),
+                      const SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -138,37 +198,83 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildSliverAppBar(bool isSmallScreen) {
+    final userSign = _authController.userModel.value != null
+        ? ZodiacUtils.getZodiacSignFromDate(_authController.userModel.value!.birthDate)
+        : 'Áries';
+    final signColor = ZodiacUtils.getSignColor(userSign);
+
     return SliverAppBar(
-      expandedHeight: 100,
+      expandedHeight: 120,
       pinned: true,
+      stretch: true,
       flexibleSpace: FlexibleSpaceBar(
-        title: const Text(
-          'Oraculum',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.nights_stay_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Oraculum',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
         ),
         titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
         background: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF392F5A), Color(0xFF8C6BAE)],
+              colors: [
+                const Color(0xFF392F5A),
+                signColor.withOpacity(0.8),
+              ],
             ),
           ),
-          child: const Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              padding: EdgeInsets.only(left: 52, bottom: 16),
-              child: Icon(
-                Icons.nights_stay_rounded,
-                color: Colors.white70,
-                size: 24,
+          child: Stack(
+            children: [
+              // Partículas para o efeito de estrelas
+              ...ZodiacUtils.buildStarParticles(context, 30),
+
+              // Ícone do signo do usuário com baixa opacidade
+              Positioned(
+                right: -30,
+                bottom: -30,
+                child: Opacity(
+                  opacity: 0.12,
+                  child: Icon(
+                    ZodiacUtils.getZodiacFallbackIcon(userSign),
+                    size: 120,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
+
+              // Gradiente de sobreposição para melhorar a legibilidade do texto
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.4),
+                      ],
+                      stops: const [0.6, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -177,78 +283,232 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: const Icon(Icons.notifications_outlined),
           onPressed: () {
             // Implementar notificações
+            Get.snackbar(
+              'Notificações',
+              'Função em desenvolvimento',
+              snackPosition: SnackPosition.BOTTOM,
+            );
           },
+          tooltip: 'Notificações',
         ),
         const SizedBox(width: 8),
       ],
     );
   }
 
-  Widget _buildWelcomeCard() {
+  Widget _buildUserProfileCard(bool isSmallScreen) {
     return Obx(() {
       final user = _authController.userModel.value;
       final greeting = _getGreeting();
       final userName = user != null ? user.name.split(' ')[0] : 'Visitante';
 
+      // Determinar o signo do usuário
+      final userSign = user != null
+          ? ZodiacUtils.getZodiacSignFromDate(user.birthDate)
+          : 'Áries';
+
+      final signColor = ZodiacUtils.getSignColor(userSign);
+
       return Card(
-        elevation: 2,
-        clipBehavior: Clip.antiAlias,
+        elevation: 3,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).cardColor,
+                Theme.of(context).cardColor.withOpacity(0.9),
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Avatar do usuário
+                Stack(
+                  alignment: Alignment.bottomRight,
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: signColor.withOpacity(0.1),
+                      backgroundImage: user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty
+                          ? NetworkImage(user.profileImageUrl!)
+                          : null,
+                      child: user?.profileImageUrl == null || user!.profileImageUrl!.isEmpty
+                          ? Icon(
+                        Icons.person,
+                        size: 28,
+                        color: signColor,
+                      )
+                          : null,
+                    ),
+                    // Indicador de signo
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: signColor,
+                      child: ZodiacUtils.buildZodiacImage(
+                        userSign,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$greeting, $userName!',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            ZodiacUtils.getZodiacFallbackIcon(userSign),
+                            size: 14,
+                            color: signColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            userSign,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: signColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            ZodiacUtils.getElement(userSign),
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.keyboard_arrow_right),
+                  onPressed: () => Get.toNamed(AppRoutes.profile),
+                  tooltip: 'Ver perfil',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ).animate()
+          .fadeIn(duration: 500.ms)
+          .slideY(begin: 0.2, end: 0, curve: Curves.easeOutQuad, duration: 500.ms);
+    });
+  }
+
+  // Novo widget para exibir os créditos do usuário
+  Widget _buildCreditDisplay(bool isSmallScreen) {
+    return Obx(() {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFF392F5A).withOpacity(0.9),
+                const Color(0xFF8C6BAE).withOpacity(0.9),
+              ],
+            ),
+          ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                backgroundImage: user?.profileImageUrl != null && user!.profileImageUrl!.isNotEmpty
-                    ? NetworkImage(user.profileImageUrl!)
-                    : null,
-                child: user?.profileImageUrl == null || user!.profileImageUrl!.isEmpty
-                    ? Icon(
-                  Icons.person,
+              // Ícone de carteira
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.account_balance_wallet,
+                  color: Colors.white,
                   size: 24,
-                  color: Theme.of(context).colorScheme.primary,
-                )
-                    : null,
+                ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
+              // Informações de crédito
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '$greeting, $userName!',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'O que o universo tem para você hoje?',
+                    const Text(
+                      'Seus Créditos',
                       style: TextStyle(
+                        color: Colors.white,
                         fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'R\$ ${_paymentController.userCredits.value.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
+              // Botão para adicionar créditos
+              ElevatedButton(
+                onPressed: () => Get.toNamed(AppRoutes.paymentMethods),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF6C63FF),
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  'Adicionar',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ).animate().fadeIn().slideY(
-        begin: 0.2,
-        end: 0,
-        curve: Curves.easeOutQuad,
-        duration: const Duration(milliseconds: 500),
-      );
+      ).animate().fadeIn(delay: 200.ms, duration: 500.ms);
     });
   }
 
@@ -263,24 +523,28 @@ class _HomeScreenState extends State<HomeScreen> {
     final services = [
       {
         'title': 'Horóscopo',
+        'subtitle': 'Seu guia diário',
         'icon': Icons.auto_graph,
         'color': const Color(0xFF6C63FF),
         'route': AppRoutes.horoscope,
       },
       {
         'title': 'Tarô',
+        'subtitle': 'Orientação das cartas',
         'icon': Icons.grid_view,
         'color': const Color(0xFFFF9D8A),
         'route': AppRoutes.tarotReading,
       },
       {
         'title': 'Médiuns',
+        'subtitle': 'Consultas ao vivo',
         'icon': Icons.people,
         'color': const Color(0xFF8E78FF),
         'route': AppRoutes.mediumsList,
       },
       {
         'title': 'Mapa Astral',
+        'subtitle': 'Análise completa',
         'icon': Icons.public,
         'color': const Color(0xFF392F5A),
         'route': AppRoutes.birthChart,
@@ -291,7 +555,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
-    // Calculando se é uma tela pequena (pode ajustar os valores conforme necessário)
+    // Calculando se é uma tela pequena
     final isSmallScreen = screenWidth < 360 || screenHeight < 600;
 
     // Ajustes responsivos
@@ -310,6 +574,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Tamanho de fonte responsivo
     final titleFontSize = isSmallScreen ? 16.0 : 18.0;
     final cardTitleFontSize = isSmallScreen ? 13.0 : 14.0;
+    final subtitleFontSize = isSmallScreen ? 11.0 : 12.0;
 
     // Tamanho do ícone responsivo
     final iconSize = isSmallScreen ? 40.0 : 50.0;
@@ -318,14 +583,30 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Serviços',
-          style: TextStyle(
-            fontSize: titleFontSize,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Serviços',
+              style: TextStyle(
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                // Navegar para tela de todos os serviços
+              },
+              icon: const Icon(Icons.explore, size: 16),
+              label: const Text('Explorar'),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.primary,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
         ),
-        SizedBox(height: spacing * 0.75),
+        SizedBox(height: spacing * 0.5),
         LayoutBuilder(
             builder: (context, constraints) {
               return GridView.builder(
@@ -343,15 +624,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   return _buildServiceCard(
                     context: context,
                     title: service['title'] as String,
+                    subtitle: service['subtitle'] as String,
                     icon: service['icon'] as IconData,
                     color: service['color'] as Color,
                     onTap: () => Get.toNamed(service['route'] as String),
                     iconSize: iconSize,
                     iconInnerSize: iconInnerSize,
                     titleFontSize: cardTitleFontSize,
+                    subtitleFontSize: subtitleFontSize,
                   ).animate().fadeIn(
                     delay: Duration(milliseconds: 100 * index),
+                    duration: const Duration(milliseconds: 400),
+                  ).scale(
+                    begin: const Offset(0.9, 0.9),
+                    end: const Offset(1.0, 1.0),
                     duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutBack,
                   );
                 },
               );
@@ -364,67 +652,100 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildServiceCard({
     required BuildContext context,
     required String title,
+    required String subtitle,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
     required double iconSize,
     required double iconInnerSize,
     required double titleFontSize,
+    required double subtitleFontSize,
   }) {
     // Obter o brilho atual do tema para determinar sombras e contrastes
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
-      elevation: 2,
+      elevation: 3,
+      shadowColor: color.withOpacity(0.3),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: iconSize,
-                  height: iconSize,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(isDarkMode ? 0.2 : 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: iconInnerSize,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: titleFontSize,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color.withOpacity(0.08),
+                color.withOpacity(0.03),
               ],
             ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: iconSize,
+                height: iconSize,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(isDarkMode ? 0.2 : 0.1),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.1),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: iconInnerSize,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: titleFontSize,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: subtitleFontSize,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildDailyHoroscope() {
+  Widget _buildDailyHoroscope(bool isSmallScreen) {
     return Obx(() {
       final horoscope = _horoscopeController.dailyHoroscope.value;
       final isLoading = _horoscopeController.isLoading.value;
+
+      // Detectar o signo atual
+      final currentSign = horoscope?.sign ?? 'Áries';
+      final signColor = ZodiacUtils.getSignColor(currentSign);
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,20 +760,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              TextButton(
+              TextButton.icon(
                 onPressed: () => Get.toNamed(AppRoutes.horoscope),
-                child: const Text('Ver Mais'),
+                icon: const Icon(Icons.arrow_forward, size: 16),
+                label: const Text('Ver Mais'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Card(
-            elevation: 2,
-            clipBehavior: Clip.antiAlias,
+            elevation: 3,
+            shadowColor: signColor.withOpacity(0.3),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Padding(
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Theme.of(context).cardColor,
+                    Theme.of(context).cardColor.withOpacity(0.9),
+                  ],
+                ),
+              ),
               padding: const EdgeInsets.all(16),
               child: isLoading
                   ? const Center(
@@ -477,62 +814,145 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Positioned(
-                          right: -50,
-                          bottom: -20,
-                          child: Opacity(
-                            opacity: 0.2,
-                            child: _buildZodiacImage(horoscope.sign, size: 200),
-                          ),
-                        ),
+                      ZodiacUtils.buildSignAvatar(
+                        context: context,
+                        sign: currentSign,
+                        size: 50,
+                        highlight: true,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              horoscope.sign,
-                              style: const TextStyle(
+                              currentSign,
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                fontSize: 18,
+                                color: signColor,
                               ),
                             ),
                             Text(
                               DateFormat.MMMMEEEEd('pt_BR').format(horoscope.date),
                               style: TextStyle(
                                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                fontSize: 12,
+                                fontSize: 13,
                               ),
+                            ),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 8,
+                              children: [
+                                _buildHoroscopeTag(
+                                  ZodiacUtils.getElement(currentSign),
+                                  signColor,
+                                ),
+                                _buildHoroscopeTag(
+                                  ZodiacUtils.getModality(currentSign),
+                                  signColor,
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _parsedHoroscope['geral']['body'].length > 150
-                        ? '${_parsedHoroscope['geral']['body'].substring(0, 150)}...'
-                        : _parsedHoroscope['geral']['body'],
-                    style: const TextStyle(height: 1.4, fontSize: 14),
+                  const SizedBox(height: 16),
+                  // Linha com ícone de destaque
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.auto_awesome,
+                        color: signColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _parsedHoroscope['geral'] != null && _parsedHoroscope['geral']['body'] != null
+                              ? (_parsedHoroscope['geral']['body'].length > 180
+                              ? '${_parsedHoroscope['geral']['body'].substring(0, 180)}...'
+                              : _parsedHoroscope['geral']['body'])
+                              : 'Carregando...',
+                          style: const TextStyle(
+                            height: 1.4,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  // Números da sorte se disponíveis
+                  if (_parsedHoroscope.containsKey('numeros_sorte') &&
+                      _parsedHoroscope['numeros_sorte'] is List &&
+                      _parsedHoroscope['numeros_sorte'].isNotEmpty)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Números da Sorte:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 40,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _parsedHoroscope['numeros_sorte'].length,
+                            itemBuilder: (context, index) {
+                              final number = _parsedHoroscope['numeros_sorte'][index].toString();
+                              return Container(
+                                width: 36,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: signColor.withOpacity(0.15),
+                                  border: Border.all(
+                                    color: signColor,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    number,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: signColor,
+                                    ),
+                                  ),
+                                ),
+                              ).animate(delay: Duration(milliseconds: index * 100))
+                                  .scale(
+                                begin: const Offset(0.5, 0.5),
+                                end: const Offset(1.0, 1.0),
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.elasticOut,
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 16),
+                  // Botão para ler mais
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () => Get.toNamed(AppRoutes.horoscope),
                       style: ElevatedButton.styleFrom(
+                        backgroundColor: signColor,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: const Text('Ler Horóscopo Completo'),
@@ -550,13 +970,35 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Widget _buildHoroscopeTag(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
+      ),
+    );
+  }
+
   Widget _buildFeaturedMediums(bool isSmallScreen) {
     return Obx(() {
       final mediums = _mediumController.allMediums;
       final isLoading = _mediumController.isLoading.value;
 
       // Ajuste de altura baseado no tamanho da tela
-      final cardHeight = isSmallScreen ? 180.0 : 200.0;
+      final cardHeight = isSmallScreen ? 220.0 : 240.0;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -571,13 +1013,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              TextButton(
+              TextButton.icon(
                 onPressed: () => Get.toNamed(AppRoutes.mediumsList),
-                child: const Text('Ver Todos'),
+                icon: const Icon(Icons.arrow_forward, size: 16),
+                label: const Text('Ver Todos'),
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SizedBox(
             height: cardHeight,
             child: isLoading
@@ -594,7 +1040,7 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 final medium = mediums[index];
                 // Ajuste de largura baseado no tamanho da tela
-                final cardWidth = isSmallScreen ? 140.0 : 160.0;
+                final cardWidth = isSmallScreen ? 150.0 : 170.0;
 
                 return GestureDetector(
                   onTap: () {
@@ -605,88 +1051,177 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: cardWidth,
                     margin: const EdgeInsets.only(right: 12),
                     child: Card(
-                      elevation: 2,
+                      elevation: 3,
+                      shadowColor: Colors.black.withOpacity(0.1),
                       clipBehavior: Clip.antiAlias,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            CircleAvatar(
-                              radius: isSmallScreen ? 35 : 40,
-                              backgroundImage: NetworkImage(medium.imageUrl),
-                              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                              onBackgroundImageError: (_, __) {},
-                              child: medium.imageUrl.isEmpty
-                                  ? Icon(
-                                Icons.person,
-                                size: isSmallScreen ? 35 : 40,
-                                color: Theme.of(context).colorScheme.primary,
-                              )
-                                  : null,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              medium.name,
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: isSmallScreen ? 14 : 15,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Colors.amber,
-                                  size: 14,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Área superior com imagem e disponibilidade
+                          Stack(
+                            alignment: Alignment.topRight,
+                            children: [
+                              SizedBox(
+                                height: 100,
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(16),
+                                  ),
+                                  child: medium.imageUrl.isNotEmpty
+                                      ? Image.network(
+                                    medium.imageUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 100,
+                                    errorBuilder: (context, error, stack) {
+                                      return Container(
+                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                        child: const Icon(
+                                          Icons.person,
+                                          size: 40,
+                                          color: Colors.white54,
+                                        ),
+                                      );
+                                    },
+                                  )
+                                      : Container(
+                                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                    child: const Icon(
+                                      Icons.person,
+                                      size: 40,
+                                      color: Colors.white54,
+                                    ),
+                                  ),
                                 ),
-                                const SizedBox(width: 4),
+                              ),
+                              // Indicador de disponibilidade
+                              if (medium.isAvailable)
+                                Container(
+                                  margin: const EdgeInsets.all(8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Text(
+                                    'Online',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          // Detalhes do médium
+                          Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 Text(
-                                  medium.rating.toStringAsFixed(1),
+                                  medium.name,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
+                                    fontSize: 14,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                Flexible(
-                                  child: Text(
-                                    ' (${medium.reviewsCount})',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.star,
+                                      color: Colors.amber,
+                                      size: 14,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      medium.rating.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      ' (${medium.reviewsCount})',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                // Especialidades do médium
+                                Wrap(
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  children: medium.specialties
+                                      .take(2)
+                                      .map((specialty) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      specialty,
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ))
+                                      .toList(),
+                                ),
+                                const SizedBox(height: 12),
+                                // Preço
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}/min',
+                                      style: TextStyle(
+                                        color: Theme.of(context).colorScheme.primary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 12,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              medium.specialties.take(1).join(', '),
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ).animate().fadeIn(
                   delay: Duration(milliseconds: 100 * index),
+                  duration: const Duration(milliseconds: 400),
+                ).slideX(
+                  begin: 0.1,
+                  end: 0,
                   duration: const Duration(milliseconds: 300),
                 );
               },
@@ -697,243 +1232,152 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Widget _buildPromotionalBanner() {
+  Widget _buildPromotionalBanner(bool isSmallScreen) {
     return GestureDetector(
       onTap: () {
         // Implementar navegação para promoção
         Get.toNamed(AppRoutes.paymentMethods);
       },
       child: Container(
-        height: 120,
+        width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF392F5A), Color(0xFF8C6BAE)],
-          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              spreadRadius: 1,
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              spreadRadius: 0,
+              offset: const Offset(0, 5),
             ),
           ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.none,
-          children: [
-            // Efeito de fundo
-            Positioned(
-              right: -20,
-              bottom: -20,
-              child: Icon(
-                Icons.nights_stay_rounded,
-                size: 120,
-                color: Colors.white.withOpacity(0.1),
-              ),
-            ),
-            // Conteúdo
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Oferta Especial',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Ganhe 20% de desconto em créditos',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Aproveitar',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          clipBehavior: Clip.antiAlias,
+          margin: EdgeInsets.zero,
+          child: Container(
+            height: 220,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFF392F5A),
+                  const Color(0xFF8C6BAE),
                 ],
               ),
             ),
-          ],
+            child: Stack(
+              children: [
+                // Elementos de design de fundo
+                ...ZodiacUtils.buildStarParticles(context, 20, maxHeight: 140),
+
+                // Ícone decorativo
+                Positioned(
+                  right: -30,
+                  bottom: -30,
+                  child: Icon(
+                    Icons.nights_stay_rounded,
+                    size: 120,
+                    color: Colors.white.withOpacity(0.1),
+                  ),
+                ),
+
+                // Conteúdo do banner
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'OFERTA ESPECIAL',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Ganhe 20% de desconto em créditos',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Oferta válida por tempo limitado',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => Get.toNamed(AppRoutes.paymentMethods),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF392F5A),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Aproveitar',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        TextButton(
+                          onPressed: () {},
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.white,
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('Saiba mais'),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_forward,
+                                size: 16,
+                                color: Colors.white.withOpacity(0.8),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     ).animate().fadeIn(
       delay: const Duration(milliseconds: 500),
       duration: const Duration(milliseconds: 500),
     );
-  }
-
-  // Widget para exibir a imagem do signo
-  Widget _buildZodiacImage(String sign, {double? size, Color? color}) {
-    // Normaliza o nome do signo para corresponder ao nome do arquivo
-    final signAssetName = _getSignAssetName(sign);
-
-    try {
-      return Image.asset(
-        'assets/images/zodiac/$signAssetName.png',
-        width: size,
-        height: size,
-        color: color, // Aplicar uma cor de filtro, se fornecida
-        errorBuilder: (context, error, stackTrace) {
-          // Fallback para ícone em caso de erro no carregamento da imagem
-          return Icon(
-            _getZodiacFallbackIcon(sign),
-            size: size,
-            color: color ?? _getSignColor(sign),
-          );
-        },
-      );
-    } catch (e) {
-      // Fallback para ícone em caso de exceção
-      return Icon(
-        _getZodiacFallbackIcon(sign),
-        size: size,
-        color: color ?? _getSignColor(sign),
-      );
-    }
-  }
-
-  // Função para normalizar o nome do signo para o nome do arquivo
-  String _getSignAssetName(String sign) {
-    switch (sign.toLowerCase()) {
-      case 'áries':
-        return 'aries';
-      case 'touro':
-        return 'touro';
-      case 'gêmeos':
-        return 'gemeos';
-      case 'câncer':
-        return 'cancer';
-      case 'leão':
-        return 'leao';
-      case 'virgem':
-        return 'virgem';
-      case 'libra':
-        return 'libra';
-      case 'escorpião':
-        return 'escorpiao';
-      case 'sagitário':
-        return 'sagitario';
-      case 'capricórnio':
-        return 'capricornio';
-      case 'aquário':
-        return 'aquario';
-      case 'peixes':
-        return 'peixes';
-      default:
-        return sign.toLowerCase()
-            .replaceAll('á', 'a')
-            .replaceAll('â', 'a')
-            .replaceAll('ã', 'a')
-            .replaceAll('à', 'a')
-            .replaceAll('é', 'e')
-            .replaceAll('ê', 'e')
-            .replaceAll('í', 'i')
-            .replaceAll('ó', 'o')
-            .replaceAll('ô', 'o')
-            .replaceAll('õ', 'o')
-            .replaceAll('ú', 'u')
-            .replaceAll('ç', 'c');
-    }
-  }
-
-  // Ícones de fallback caso a imagem não seja encontrada
-  IconData _getZodiacFallbackIcon(String sign) {
-    switch (sign) {
-      case 'Áries':
-        return Icons.fitness_center;
-      case 'Touro':
-        return Icons.spa;
-      case 'Gêmeos':
-        return Icons.people;
-      case 'Câncer':
-        return Icons.home;
-      case 'Leão':
-        return Icons.star;
-      case 'Virgem':
-        return Icons.healing;
-      case 'Libra':
-        return Icons.balance;
-      case 'Escorpião':
-        return Icons.psychology;
-      case 'Sagitário':
-        return Icons.explore;
-      case 'Capricórnio':
-        return Icons.landscape;
-      case 'Aquário':
-        return Icons.waves;
-      case 'Peixes':
-        return Icons.water;
-      default:
-        return Icons.stars;
-    }
-  }
-
-  // Função para obter a cor associada a cada signo
-  Color _getSignColor(String sign) {
-    switch (sign) {
-      case 'Áries':
-        return Colors.red;
-      case 'Touro':
-        return Colors.green.shade700;
-      case 'Gêmeos':
-        return Colors.amberAccent.shade700;
-      case 'Câncer':
-        return Colors.blue.shade300;
-      case 'Leão':
-        return Colors.orange;
-      case 'Virgem':
-        return Colors.green.shade400;
-      case 'Libra':
-        return Colors.pink.shade300;
-      case 'Escorpião':
-        return Colors.red.shade900;
-      case 'Sagitário':
-        return Colors.purple.shade300;
-      case 'Capricórnio':
-        return Colors.brown.shade700;
-      case 'Aquário':
-        return Colors.blueAccent;
-      case 'Peixes':
-        return Colors.indigo.shade300;
-      default:
-        return Colors.deepPurple;
-    }
   }
 }

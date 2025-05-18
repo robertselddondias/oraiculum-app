@@ -548,10 +548,11 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> with SingleTi
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.white24,
-                      radius: isSmallScreen ? 20 : 24,
-                      child: ZodiacUtils.buildZodiacImage(_sign1, size: isSmallScreen ? 24 : 28, color: Colors.white),
+                    ZodiacUtils.buildSignAvatar(
+                      context: context,
+                      sign: _sign1,
+                      size: isSmallScreen ? 40.0 : 60.0,
+                      highlight: true,
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -567,10 +568,11 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> with SingleTi
                         ),
                       ),
                     ),
-                    CircleAvatar(
-                      backgroundColor: Colors.white24,
-                      radius: isSmallScreen ? 20 : 24,
-                      child: ZodiacUtils.buildZodiacImage(_sign2, size: isSmallScreen ? 24 : 28, color: Colors.white),
+                    ZodiacUtils.buildSignAvatar(
+                      context: context,
+                      sign: _sign2,
+                      size: isSmallScreen ? 40.0 : 60.0,
+                      highlight: true,
                     ),
                   ],
                 ),
