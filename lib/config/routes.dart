@@ -1,4 +1,6 @@
+import 'package:oraculum/screens/astrology/birth_chart_screen.dart';
 import 'package:oraculum/screens/onboarding_screen.dart';
+import 'package:oraculum/screens/payment/payment_history_screen.dart';
 import 'package:oraculum/screens/splash_screen.dart';
 import 'package:oraculum/screens/tarot/card_details_screen.dart';
 import 'package:get/get.dart';
@@ -9,7 +11,6 @@ import 'package:oraculum/screens/home/home_screen.dart';
 import 'package:oraculum/screens/home/navigation_screen.dart';
 import 'package:oraculum/screens/astrology/horoscope_screen.dart';
 import 'package:oraculum/screens/astrology/compatibility_screen.dart';
-import 'package:oraculum/screens/astrology/birth_chart_screen.dart';
 import 'package:oraculum/screens/tarot/tarot_reading_screen.dart';
 import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
 import 'package:oraculum/screens/mediums/medium_profile_screen.dart';
@@ -17,7 +18,6 @@ import 'package:oraculum/screens/mediums/booking_screen.dart';
 import 'package:oraculum/screens/profile/profile_screen.dart';
 import 'package:oraculum/screens/profile/settings_screen.dart';
 import 'package:oraculum/screens/payment/payment_methods_screen.dart';
-import 'package:oraculum/screens/payment/payment_history_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserModel {
   final String id;
   final String name;
@@ -44,13 +46,13 @@ class UserModel {
     return {
       'name': name,
       'email': email,
-      'birthDate': birthDate,
+      'birthDate': Timestamp.fromDate(birthDate),
       'profileImageUrl': profileImageUrl,
       'favoriteReadings': favoriteReadings,
       'favoriteReaders': favoriteReaders,
       'credits': credits,
-      'createdAt': createdAt,
-      'lastLogin': lastLogin,
+      'createdAt': Timestamp.fromDate(createdAt),
+      'lastLogin': lastLogin != null ? Timestamp.fromDate(lastLogin!) : null,
     };
   }
 
@@ -77,12 +79,4 @@ class UserModel {
       lastLogin: lastLogin ?? this.lastLogin,
     );
   }
-}
-
-class Timestamp {
-  Timestamp();
-
-  static Timestamp fromDate(DateTime date) => Timestamp();
-
-  DateTime toDate() => DateTime.now();
 }

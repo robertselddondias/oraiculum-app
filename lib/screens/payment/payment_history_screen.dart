@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:oraculum/config/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
@@ -203,12 +205,45 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                 ],
               ),
             )),
+
+            if (_hasBirthChartPayments())
+              Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.public,
+                      size: 16,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Mapas Astrais: ${_countBirthCharts()}',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     ).animate().fadeIn(
       duration: const Duration(milliseconds: 500),
     );
+  }
+
+  bool _hasBirthChartPayments() {
+    return _controller.paymentHistory.any((payment) =>
+    (payment['serviceType'] as String? ?? '') == 'birthchart');
+  }
+
+  int _countBirthCharts() {
+    return _controller.paymentHistory
+        .where((payment) => (payment['serviceType'] as String? ?? '') == 'birthchart')
+        .length;
   }
 
   Widget _buildPaymentCard(Map<String, dynamic> payment, int index) {
@@ -369,6 +404,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     final description = payment['description'] as String? ?? 'Sem descrição';
     final paymentId = payment['paymentId'] as String? ?? '';
 
+    // Para mapas astrais, adicionar um botão para ver o mapa
+    final isBirthChart = type == 'birthchart';
+
     Get.dialog(
       AlertDialog(
         title: const Text('Detalhes do Pagamento'),
@@ -384,6 +422,26 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
               _buildDetailRow('Tipo de Serviço', _formatCategoryName(type)),
               _buildDetailRow('Status', _getStatusText(status)),
               _buildDetailRow('ID do Pagamento', paymentId),
+
+              if (isBirthChart) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  'Mapa Astral',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Este pagamento foi para a geração de um mapa astral completo.',
+                  style: TextStyle(
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -392,6 +450,15 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
             onPressed: () => Get.back(),
             child: const Text('Fechar'),
           ),
+          if (isBirthChart)
+            ElevatedButton(
+              onPressed: () {
+                Get.back();
+                // Navegar para a tela de mapas astrais
+                Get.toNamed(AppRoutes.birthChart);
+              },
+              child: const Text('Ver Mapas Astrais'),
+            ),
           if (status.toLowerCase() == 'approved')
             ElevatedButton(
               onPressed: () {

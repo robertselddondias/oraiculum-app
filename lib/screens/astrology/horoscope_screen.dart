@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 class HoroscopeScreen extends StatefulWidget {
   const HoroscopeScreen({Key? key}) : super(key: key);
@@ -17,6 +18,9 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
   @override
   void initState() {
     super.initState();
+    // Inicializar formatação de data em português
+    initializeDateFormatting('pt_BR', null);
+
     // Carregar horóscopo padrão se não tiver nenhum selecionado
     if (_controller.currentSign.isEmpty) {
       _controller.getDailyHoroscope('Áries');
@@ -125,12 +129,12 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                         ],
                       ),
                       child: Center(
-                        child: Icon(
-                          _getZodiacIcon(sign),
+                        child: _buildSignImage(
+                          sign: sign,
+                          size: isSmallScreen ? 24 : 28,
                           color: isSelected
                               ? Colors.white
                               : Theme.of(context).colorScheme.primary,
-                          size: isSmallScreen ? 24 : 28,
                         ),
                       ),
                     ),
@@ -184,10 +188,12 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                     color: Theme.of(context).colorScheme.primary,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(
-                    _getZodiacIcon(_controller.currentSign.value),
-                    color: Colors.white,
-                    size: iconSize * 0.6,
+                  child: Center(
+                    child: _buildSignImage(
+                      sign: _controller.currentSign.value,
+                      size: iconSize * 0.6,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -203,7 +209,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                         ),
                       ),
                       Text(
-                        DateFormat.yMMMMd().format(horoscope.date),
+                        DateFormat.MMMMEEEEd('pt_BR').format(horoscope.date),
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                           fontSize: dateSize,
@@ -332,7 +338,87 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
     );
   }
 
-  IconData _getZodiacIcon(String sign) {
+  // Função que retorna a imagem do signo (com tratamento para caso a imagem não seja encontrada)
+  Widget _buildSignImage({required String sign, required double size, required Color color}) {
+    return Image.asset(
+      _getSignAssetPath(sign),
+      width: size,
+      height: size,
+      color: color,
+      errorBuilder: (context, error, stackTrace) {
+        // Fallback para ícone caso a imagem não seja encontrada
+        return Icon(
+          _getSignIcon(sign),
+          color: color,
+          size: size,
+        );
+      },
+    );
+  }
+
+  // Função que retorna o caminho para a imagem do signo
+  String _getSignAssetPath(String sign) {
+    // Normaliza o nome do signo para corresponder ao nome do arquivo
+    // Converte para minúsculas e remove acentos
+    String normalizedSign = sign.toLowerCase()
+        .replaceAll('á', 'a')
+        .replaceAll('â', 'a')
+        .replaceAll('ã', 'a')
+        .replaceAll('à', 'a')
+        .replaceAll('é', 'e')
+        .replaceAll('ê', 'e')
+        .replaceAll('í', 'i')
+        .replaceAll('ó', 'o')
+        .replaceAll('ô', 'o')
+        .replaceAll('õ', 'o')
+        .replaceAll('ú', 'u')
+        .replaceAll('ç', 'c');
+
+
+    switch (sign) {
+      case 'Áries':
+        normalizedSign = 'aries';
+        break;
+      case 'Touro':
+        normalizedSign = 'touro';
+        break;
+      case 'Gêmeos':
+        normalizedSign = 'gemeos';
+        break;
+      case 'Câncer':
+        normalizedSign = 'cancer';
+        break;
+      case 'Leão':
+        normalizedSign = 'leao';
+        break;
+      case 'Virgem':
+        normalizedSign = 'virgem';
+        break;
+      case 'Libra':
+        normalizedSign = 'libra';
+        break;
+      case 'Escorpião':
+        normalizedSign = 'escorpiao';
+        break;
+      case 'Sagitário':
+        normalizedSign = 'sargitario';
+        break;
+      case 'Capricórnio':
+        normalizedSign = 'capricornio';
+        break;
+      case 'Aquário':
+        normalizedSign = 'aquario';
+        break;
+      case 'Peixes':
+        normalizedSign = 'peixes';
+        break;
+    }
+
+    return 'assets/icons/$normalizedSign.png';
+  }
+
+  // Ícones para usar como fallback caso as imagens não sejam encontradas
+  IconData _getSignIcon(String sign) {
     switch (sign) {
       case 'Áries':
         return Icons.fitness_center;

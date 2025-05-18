@@ -1,21 +1,22 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class GeminiService {
-  late final GenerativeModel _model;
+  final String apiKey;
 
-  GeminiService() {
-    const apiKey = 'AIzaSyD2aGQjaAvnlm75UwuEsT6QR0R9jZ1bKW0';
-    _model = GenerativeModel(
-      model: 'gemini-pro',
-      apiKey: apiKey,
-    );
-  }
+  GeminiService({required this.apiKey});
+
+  // URL base para a API do Gemini
+  final String baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/';
+  final String defaultModel = 'gemini-2.0-flash'; // Usando a versão correta do modelo
 
   // Método para obter a previsão do horóscopo diário
   Future<String> getDailyHoroscope(String sign) async {
     try {
       final prompt = '''
-        Por favor, forneça uma previsão de horóscopo diária para o signo de $sign.
+        Por favor, forneça uma previsão de horóscopo diária para o signo de $sign. 
+        Coloque uma formatação  moderna separada, bem elegante e estruturada. Sem asterisco e coloque quebra de linhas e emoctions
         A previsão deve incluir:
         - Uma visão geral do dia
         - Perspectivas para amor e relacionamentos
@@ -23,13 +24,13 @@ class GeminiService {
         - Conselhos gerais para o dia
         - Um número da sorte
         
-        A resposta deve ser detalhada, inspiradora e positiva, oferecendo orientação útil.
+        . A resposta deve ser detalhada, inspiradora e positiva, oferecendo orientação útil. E resumida.
       ''';
 
-      final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
-      return response.text ?? 'Não foi possível gerar o horóscopo neste momento.';
+      final response = await _generateContent(prompt);
+      return response;
     } catch (e) {
+      debugPrint('Erro ao gerar horóscopo: $e');
       return 'Não foi possível gerar o horóscopo neste momento. Erro: $e';
     }
   }
@@ -40,6 +41,7 @@ class GeminiService {
       final cardsStr = cards.join(', ');
       final prompt = '''
         Por favor, forneça uma interpretação detalhada para a seguinte leitura de tarot: $cardsStr.
+        Coloque uma formatação  moderna separada, bem elegante e estruturada. Sem asterisco e coloque quebra de linhas e emoctions
         A interpretação deve incluir:
         - O significado individual de cada carta
         - Como as cartas interagem entre si
@@ -49,10 +51,10 @@ class GeminiService {
         A resposta deve ser detalhada, perspicaz e oferecer orientação útil.
       ''';
 
-      final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
-      return response.text ?? 'Não foi possível interpretar as cartas neste momento.';
+      final response = await _generateContent(prompt);
+      return response;
     } catch (e) {
+      debugPrint('Erro ao interpretar cartas: $e');
       return 'Não foi possível interpretar as cartas neste momento. Erro: $e';
     }
   }
@@ -62,6 +64,7 @@ class GeminiService {
     try {
       final prompt = '''
         Por favor, forneça uma análise de compatibilidade detalhada entre $sign1 e $sign2.
+       Coloque uma formatação  moderna separada, bem elegante e estruturada. Sem asterisco e coloque quebra de linhas e emoctions
         A análise deve incluir:
         - Compatibilidade geral
         - Compatibilidade emocional
@@ -74,10 +77,10 @@ class GeminiService {
         A resposta deve ser detalhada, equilibrada e oferecer insights úteis.
       ''';
 
-      final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
-      return response.text ?? 'Não foi possível gerar a análise de compatibilidade neste momento.';
+      final response = await _generateContent(prompt);
+      return response;
     } catch (e) {
+      debugPrint('Erro ao analisar compatibilidade: $e');
       return 'Não foi possível gerar a análise de compatibilidade neste momento. Erro: $e';
     }
   }
@@ -96,6 +99,8 @@ class GeminiService {
         - Hora: $birthTime
         - Local: $birthPlace
         
+        Coloque uma formatação  moderna separada, bem elegante e estruturada. Sem asterisco e coloque quebra de linhas e emoctions
+        
         A interpretação deve incluir:
         - Signo solar, lunar e ascendente
         - Posições dos planetas nas casas
@@ -108,11 +113,55 @@ class GeminiService {
         A resposta deve ser detalhada, perspicaz e oferecer orientação útil.
       ''';
 
-      final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
-      return response.text ?? 'Não foi possível interpretar o mapa astral neste momento.';
+      final response = await _generateContent(prompt);
+      return response;
     } catch (e) {
+      debugPrint('Erro ao interpretar mapa astral: $e');
       return 'Não foi possível interpretar o mapa astral neste momento. Erro: $e';
+    }
+  }
+
+  // Método principal para fazer requisições à API do Gemini
+  Future<String> _generateContent(String prompt) async {
+    final url = '$baseUrl$defaultModel:generateContent?key=$apiKey';
+
+    final requestBody = jsonEncode({
+      "contents": [
+        {
+          "parts": [
+            {
+              "text": prompt
+            }
+          ]
+        }
+      ],
+      "generationConfig": {
+        "temperature": 0.7,
+        "topK": 40,
+        "topP": 0.95,
+        "maxOutputTokens": 1024,
+      }
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: requestBody,
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        final generatedText = jsonResponse['candidates'][0]['content']['parts'][0]['text'];
+        return generatedText;
+      } else {
+        throw Exception('Falha ao gerar conteúdo: ${response.statusCode}, ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('Erro na requisição: $e');
+      rethrow;
     }
   }
 }

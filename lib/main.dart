@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:oraculum/bindings/initial_bindings.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/screens/splash_screen.dart';
@@ -16,6 +17,8 @@ Future<void> main() async {
 
   runApp(const AstralConnectApp());
 }
+
+
 
 class AstralConnectApp extends StatelessWidget {
   const AstralConnectApp({Key? key}) : super(key: key);

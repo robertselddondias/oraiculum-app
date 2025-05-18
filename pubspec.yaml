@@ -28,6 +28,7 @@ dependencies:
   fluttertoast: ^8.2.2
   smooth_page_indicator: ^1.1.0
   lottie: ^2.6.0
+  fui_kit: ^2.0.0
 
   # Estado e navegação
   get: ^4.6.5
@@ -43,6 +44,8 @@ dependencies:
   # IA
   google_generative_ai: ^0.2.0
 
+
+
   uuid: any
 dev_dependencies:
   flutter_test:
@@ -55,3 +58,4 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/images/zodiac/

@@ -94,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       _buildWelcomeCard(),
                       const SizedBox(height: 16),
-                      _buildMainServices(isSmallScreen),
+                      _buildMainServices(context),
                       const SizedBox(height: 16),
                       _buildDailyHoroscope(),
                       const SizedBox(height: 16),
@@ -236,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Boa noite';
   }
 
-  Widget _buildMainServices(bool isSmallScreen) {
+  Widget _buildMainServices(BuildContext context) {
     final services = [
       {
         'title': 'Horóscopo',
@@ -264,100 +264,134 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     ];
 
-    // Ajuste aspectRatio baseado no tamanho da tela
-    final aspectRatio = isSmallScreen ? 1.5 : 1.8;
+    // Obtendo o tamanho da tela
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Calculando se é uma tela pequena (pode ajustar os valores conforme necessário)
+    final isSmallScreen = screenWidth < 360 || screenHeight < 600;
+
+    // Ajustes responsivos
+    final crossAxisCount = screenWidth < 300 ? 1 : 2;
+    final aspectRatio = screenWidth / screenHeight < 0.5
+        ? 1.2  // Telas muito altas e estreitas
+        : isSmallScreen
+        ? 1.5
+        : screenWidth > 500
+        ? 2.0  // Tablets e telas maiores
+        : 1.8; // Telas médias
+
+    // Espaçamento responsivo
+    final spacing = isSmallScreen ? 8.0 : 16.0;
+
+    // Tamanho de fonte responsivo
+    final titleFontSize = isSmallScreen ? 16.0 : 18.0;
+    final cardTitleFontSize = isSmallScreen ? 13.0 : 14.0;
+
+    // Tamanho do ícone responsivo
+    final iconSize = isSmallScreen ? 40.0 : 50.0;
+    final iconInnerSize = isSmallScreen ? 20.0 : 24.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Serviços',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: titleFontSize,
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: aspectRatio,
-            crossAxisSpacing: isSmallScreen ? 8 : 16,
-            mainAxisSpacing: isSmallScreen ? 8 : 16,
-          ),
-          itemCount: services.length,
-          itemBuilder: (context, index) {
-            final service = services[index];
-            return _buildServiceCard(
-              title: service['title'] as String,
-              icon: service['icon'] as IconData,
-              color: service['color'] as Color,
-              onTap: () => Get.toNamed(service['route'] as String),
-              isSmallScreen: isSmallScreen,
-            ).animate().fadeIn(
-              delay: Duration(milliseconds: 100 * index),
-              duration: const Duration(milliseconds: 300),
-            );
-          },
+        SizedBox(height: spacing * 0.75),
+        LayoutBuilder(
+            builder: (context, constraints) {
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: aspectRatio,
+                  crossAxisSpacing: spacing,
+                  mainAxisSpacing: spacing,
+                ),
+                itemCount: services.length,
+                itemBuilder: (context, index) {
+                  final service = services[index];
+                  return _buildServiceCard(
+                    context: context,
+                    title: service['title'] as String,
+                    icon: service['icon'] as IconData,
+                    color: service['color'] as Color,
+                    onTap: () => Get.toNamed(service['route'] as String),
+                    iconSize: iconSize,
+                    iconInnerSize: iconInnerSize,
+                    titleFontSize: cardTitleFontSize,
+                  ).animate().fadeIn(
+                    delay: Duration(milliseconds: 100 * index),
+                    duration: const Duration(milliseconds: 300),
+                  );
+                },
+              );
+            }
         ),
       ],
     );
   }
 
   Widget _buildServiceCard({
+    required BuildContext context,
     required String title,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
-    required bool isSmallScreen,
+    required double iconSize,
+    required double iconInnerSize,
+    required double titleFontSize,
   }) {
-    // Ajustar tamanhos baseado no tamanho da tela
-    final iconSize = isSmallScreen ? 36.0 : 40.0;
-    final fontSize = isSmallScreen ? 12.0 : 13.0;
-    final padding = isSmallScreen ?
-    const EdgeInsets.symmetric(horizontal: 8, vertical: 12) :
-    const EdgeInsets.symmetric(horizontal: 12, vertical: 12);
+    // Obter o brilho atual do tema para determinar sombras e contrastes
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
       elevation: 2,
-      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: padding,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: iconSize,
-                height: iconSize,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
+          padding: const EdgeInsets.all(8),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: iconSize,
+                  height: iconSize,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(isDarkMode ? 0.2 : 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: iconInnerSize,
+                  ),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: iconSize * 0.5,
+                const SizedBox(height: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: titleFontSize,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: fontSize,
-                ),
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -681,13 +715,13 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(
+                  const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
+                        Text(
                           'Oferta Especial',
                           style: TextStyle(
                             color: Colors.white,
@@ -695,8 +729,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
+                        SizedBox(height: 4),
+                        Text(
                           'Ganhe 20% de desconto em créditos',
                           style: TextStyle(
                             color: Colors.white,

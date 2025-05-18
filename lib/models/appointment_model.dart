@@ -1,4 +1,4 @@
-import 'package:oraculum/models/horoscope_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AppointmentModel {
   final String id;
@@ -50,12 +50,12 @@ class AppointmentModel {
     return {
       'userId': userId,
       'mediumId': mediumId,
-      'dateTime': dateTime,
+      'dateTime': Timestamp.fromDate(dateTime),
       'durationMinutes': durationMinutes,
       'status': status,
       'paymentId': paymentId,
       'amount': amount,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
       'notes': notes,
       'feedback': feedback,
       'rating': rating,

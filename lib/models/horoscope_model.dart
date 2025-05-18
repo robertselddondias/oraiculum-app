@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class HoroscopeModel {
   final String id;
   final String sign;
@@ -26,17 +28,9 @@ class HoroscopeModel {
   Map<String, dynamic> toMap() {
     return {
       'sign': sign,
-      'date': date,
+      'date': Timestamp.fromDate(date),
       'content': content,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
     };
   }
-}
-
-class Timestamp {
-  Timestamp();
-
-  static Timestamp fromDate(DateTime date) => Timestamp();
-
-  DateTime toDate() => DateTime.now();
 }

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class TarotCard {
   final String id;
   final String name;
@@ -82,16 +84,8 @@ class TarotReading {
       'userId': userId,
       'cardIds': cardIds,
       'interpretation': interpretation,
-      'createdAt': createdAt,
+      'createdAt': Timestamp.fromDate(createdAt),
       'isFavorite': isFavorite,
     };
   }
-}
-
-class Timestamp {
-  Timestamp();
-
-  static Timestamp fromDate(DateTime date) => Timestamp();
-
-  DateTime toDate() => DateTime.now();
 }
