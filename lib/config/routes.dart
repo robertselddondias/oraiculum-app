@@ -11,6 +11,7 @@ import 'package:oraculum/screens/home/home_screen.dart';
 import 'package:oraculum/screens/home/navigation_screen.dart';
 import 'package:oraculum/screens/astrology/horoscope_screen.dart';
 import 'package:oraculum/screens/astrology/compatibility_screen.dart';
+import 'package:oraculum/screens/tarot/saved_readings_list_screen.dart';
 import 'package:oraculum/screens/tarot/tarot_reading_screen.dart';
 import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
 import 'package:oraculum/screens/mediums/medium_profile_screen.dart';
@@ -31,6 +32,9 @@ class AppRoutes {
   static const String compatibility = '/compatibility';
   static const String birthChart = '/birth-chart';
   static const String tarotReading = '/tarot-reading';
+  static const String tarotCardDetails = '/tarot-card-details';
+  static const String tarotReadingsList = '/tarot-readings-list';
+  static const String savedReading = '/saved-reading';
   static const String cardDetails = '/card-details';
   static const String mediumsList = '/mediums-list';
   static const String mediumProfile = '/medium-profile';
@@ -52,6 +56,7 @@ class AppRoutes {
     GetPage(name: compatibility, page: () => const CompatibilityScreen()),
     GetPage(name: birthChart, page: () => const BirthChartScreen()),
     GetPage(name: tarotReading, page: () => const TarotReadingScreen()),
+    GetPage(name: savedReading, page: () => const SavedReadingsListScreen()),
     GetPage(name: cardDetails, page: () => const CardDetailsScreen()),
     GetPage(name: mediumsList, page: () => const MediumsListScreen()),
     GetPage(name: mediumProfile, page: () => const MediumProfileScreen()),

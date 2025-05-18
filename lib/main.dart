@@ -17,9 +17,6 @@ Future<void> main() async {
   // Inicializa os controladores principais
   InitialBinding().dependencies();
 
-  var firebase = FirebaseService();
-  firebase.persistAllCards(LoadCards.getCards());
-
   runApp(const AstralConnectApp());
 }
 
@@ -31,7 +28,7 @@ class AstralConnectApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'Astral Connect',
+      title: 'Oraculum',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

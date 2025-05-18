@@ -33,6 +33,8 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
   final RxBool _allCardsRevealed = false.obs;
   final RxBool _readingPerformed = false.obs;
   final RxMap<String, dynamic> _parsedInterpretation = <String, dynamic>{}.obs;
+  final RxBool _isCardDetailsVisible = false.obs;
+  final Rx<TarotCard?> _selectedCardForDetails = Rx<TarotCard?>(null);
 
   @override
   void initState() {
@@ -126,6 +128,8 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     _cardRevealed.value = [false, false, false];
     _readingPerformed.value = false;
     _allCardsRevealed.value = false;
+    _isCardDetailsVisible.value = false;
+    _selectedCardForDetails.value = null;
   }
 
   void _flipCard(int index) {
@@ -136,7 +140,23 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
       HapticFeedback.mediumImpact();
 
       _cardRevealed[index] = true;
+    } else {
+      // Se a carta já foi revelada, mostrar detalhes ao clicar novamente
+      _showCardDetails(_controller.selectedCards[index]);
     }
+  }
+
+  void _showCardDetails(TarotCard card) {
+    _selectedCardForDetails.value = card;
+    _isCardDetailsVisible.value = true;
+
+    // Feedback tátil ao abrir detalhes
+    HapticFeedback.selectionClick();
+  }
+
+  void _hideCardDetails() {
+    _isCardDetailsVisible.value = false;
+    _selectedCardForDetails.value = null;
   }
 
   void _performReading() async {
@@ -224,6 +244,11 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
 
             if (_controller.selectedCards.isEmpty) {
               return _buildEmptyState();
+            }
+
+            // Mostrar detalhes da carta, quando selecionada
+            if (_isCardDetailsVisible.value && _selectedCardForDetails.value != null) {
+              return _buildCardDetailsView(isSmallScreen, padding);
             }
 
             return Column(
@@ -360,7 +385,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                 ),
                 child: Text(
                   _allCardsRevealed.value
-                      ? 'Todas as cartas foram reveladas'
+                      ? 'Toque nas cartas para ver detalhes'
                       : 'Toque nas cartas para revelá-las',
                   style: TextStyle(
                     fontSize: instructionFontSize,
@@ -386,7 +411,6 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   }),
                 ),
               ),
-
 
               // Texto de instrução adicional
               Text(
@@ -464,46 +488,77 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
       transform: Matrix4.rotationY(pi),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: NetworkImage(card.imageUrl),
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.transparent,
-                  Colors.black.withOpacity(0.6),
-                ],
-                stops: const [0.7, 1.0],
+        child: Stack(
+          children: [
+            // Imagem da carta
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                image: DecorationImage(
+                  image: NetworkImage(card.imageUrl),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-            alignment: Alignment.bottomCenter,
-            padding: const EdgeInsets.all(12),
-            child: Text(
-              card.name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                shadows: [
-                  Shadow(
-                    color: Colors.black,
-                    blurRadius: 5,
-                    offset: Offset(0, 1),
+
+            // Gradiente para melhorar a legibilidade do texto
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.6),
+                  ],
+                  stops: const [0.7, 1.0],
+                ),
+              ),
+            ),
+
+            // Nome da carta
+            Positioned(
+              bottom: 12,
+              left: 12,
+              right: 12,
+              child: Text(
+                card.name,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black,
+                      blurRadius: 5,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+
+            // Indicador para informar que o usuário pode clicar para ver detalhes
+            if (_cardRevealed[index])
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ],
+                  child: const Icon(
+                    Icons.info_outline,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ),
+          ],
         ),
       ),
     );
@@ -575,6 +630,330 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCardDetailsView(bool isSmallScreen, double padding) {
+    final card = _selectedCardForDetails.value!;
+
+    return Stack(
+      children: [
+        // Partículas/estrelas para o fundo
+        ...ZodiacUtils.buildStarParticles(context, 30),
+
+        // Content
+        SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.all(padding),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // App bar
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 16),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: _hideCardDetails,
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: Colors.white,
+                      ),
+                      splashRadius: 24,
+                    ),
+                    Expanded(
+                      child: Text(
+                        card.name,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _hideCardDetails,
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                      ),
+                      splashRadius: 24,
+                    ),
+                  ],
+                ),
+              ),
+
+              // Card image
+              Center(
+                child: Container(
+                  height: isSmallScreen ? 280 : 320,
+                  width: isSmallScreen ? 170 : 200,
+                  margin: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      card.imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          color: Colors.black26,
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                  : null,
+                              color: Colors.white,
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stack) {
+                        return Container(
+                          color: Colors.black26,
+                          child: const Center(
+                            child: Icon(
+                              Icons.error_outline,
+                              color: Colors.white,
+                              size: 50,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ).animate().fadeIn(duration: 300.ms).scale(
+                begin: const Offset(0.9, 0.9),
+                end: const Offset(1.0, 1.0),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutBack,
+              ),
+
+              // Info card
+              Card(
+                elevation: 4,
+                color: Colors.black.withOpacity(0.3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Informações básicas
+                      _buildInfoRow(
+                        icon: Icons.style,
+                        title: 'Arcano',
+                        value: card.suit,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildInfoRow(
+                        icon: Icons.format_list_numbered,
+                        title: 'Número',
+                        value: card.number.toString(),
+                      ),
+
+                      const Divider(
+                        height: 32,
+                        color: Colors.white24,
+                      ),
+
+                      // Significado Upright
+                      _buildMeaningSection(
+                        title: 'Significado',
+                        content: card.uprightMeaning,
+                        icon: Icons.arrow_upward,
+                        color: Colors.green,
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Significado Reversed
+                      _buildMeaningSection(
+                        title: 'Significado Invertido',
+                        content: card.reversedMeaning,
+                        icon: Icons.arrow_downward,
+                        color: Colors.redAccent,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Palavras-chave
+                      const Text(
+                        'Palavras-chave:',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: card.keywords.map((keyword) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white24,
+                                width: 1,
+                              ),
+                            ),
+                            child: Text(
+                              keyword,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(
+                delay: const Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 500),
+              ),
+
+              const SizedBox(height: 24),
+
+              // Botão para voltar
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _hideCardDetails,
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Voltar para a Leitura'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C63FF),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ).animate().fadeIn(
+                delay: const Duration(milliseconds: 400),
+                duration: const Duration(milliseconds: 300),
+              ),
+
+              const SizedBox(height: 32),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white70,
+            size: 18,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 12,
+                ),
+              ),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMeaningSection({
+    required String title,
+    required String content,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                color: color,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          content,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
+      ],
     );
   }
 
@@ -774,57 +1153,82 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
         itemCount: _controller.selectedCards.length,
         itemBuilder: (context, index) {
           final card = _controller.selectedCards[index];
-          return Container(
-            width: 80,
-            margin: const EdgeInsets.only(right: 16),
-            child: Column(
-              children: [
-                Container(
-                  height: 90,
-                  width: 60,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 8,
-                        spreadRadius: 1,
+          return GestureDetector(
+            onTap: () => _showCardDetails(card),
+            child: Container(
+              width: 80,
+              margin: const EdgeInsets.only(right: 16),
+              child: Column(
+                children: [
+                  Stack(
+                    children: [
+                      Container(
+                        height: 90,
+                        width: 60,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            card.imageUrl,
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                color: Colors.grey.shade700,
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+
+                      // Indicador para informar que o usuário pode clicar para ver detalhes
+                      Positioned(
+                        top: 5,
+                        right: 5,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.info_outline,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      card.imageUrl,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Colors.grey.shade700,
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        );
-                      },
+                  const SizedBox(height: 6),
+                  Text(
+                    card.name,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  card.name,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  maxLines: 2,
-                  textAlign: TextAlign.center,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
           ).animate().fadeIn(
             delay: Duration(milliseconds: 200 * index),

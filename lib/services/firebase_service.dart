@@ -40,6 +40,7 @@ class FirebaseService {
     return usersCollection.doc(userId).set(data);
   }
 
+  // Métodos de tarô
   Future<void> persistAllCards(List<TarotCard> cards) async {
     try {
       WriteBatch batch = FirebaseFirestore.instance.batch();
@@ -53,6 +54,45 @@ class FirebaseService {
       print('Erro ao persistir as cartas no Firestore: $e');
       rethrow;
     }
+  }
+
+  Future<QuerySnapshot> getTarotCards() {
+    return tarotCardsCollection.get();
+  }
+
+  Future<DocumentSnapshot> getTarotCard(String cardId) {
+    return tarotCardsCollection.doc(cardId).get();
+  }
+
+  // Método melhorado para salvar leituras de tarô, retornando o ID do documento
+  Future<String> saveTarotReading(Map<String, dynamic> readingData) async {
+    final docRef = await tarotReadingsCollection.add(readingData);
+    return docRef.id;
+  }
+
+  Future<QuerySnapshot> getUserTarotReadings(String userId) {
+    return tarotReadingsCollection
+        .where('userId', isEqualTo: userId)
+        .orderBy('createdAt', descending: true)
+        .get();
+  }
+
+  // Método para alternar favoritos em leituras de tarô
+  Future<void> toggleFavoriteTarotReading(String readingId, bool isFavorite) {
+    return tarotReadingsCollection.doc(readingId).update({'isFavorite': isFavorite});
+  }
+
+  // Métodos para análise de compatibilidade
+  Future<DocumentSnapshot> getCompatibilityAnalysis(String compatibilityId) {
+    return _firestore.collection('compatibility_analyses').doc(compatibilityId).get();
+  }
+
+  Future<void> saveCompatibilityAnalysis(
+      String compatibilityId, Map<String, dynamic> analysisData) {
+    return _firestore
+        .collection('compatibility_analyses')
+        .doc(compatibilityId)
+        .set(analysisData);
   }
 
   // Métodos de médiuns
@@ -107,30 +147,6 @@ class FirebaseService {
     return horoscopesCollection.doc(documentId).set(horoscopeData);
   }
 
-  // Métodos de cartas de tarot
-  Future<QuerySnapshot> getTarotCards() {
-    return tarotCardsCollection.get();
-  }
-
-  Future<DocumentSnapshot> getTarotCard(String cardId) {
-    return tarotCardsCollection.doc(cardId).get();
-  }
-
-  Future<void> saveTarotReading(Map<String, dynamic> readingData) {
-    return tarotReadingsCollection.add(readingData);
-  }
-
-  Future<QuerySnapshot> getUserTarotReadings(String userId) {
-    return tarotReadingsCollection
-        .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
-        .get();
-  }
-
-  Future<void> toggleFavoriteTarotReading(String readingId, bool isFavorite) {
-    return tarotReadingsCollection.doc(readingId).update({'isFavorite': isFavorite});
-  }
-
   // Métodos de pagamentos
   Future<String> savePaymentRecord(Map<String, dynamic> paymentData) async {
     final docRef = await paymentsCollection.add(paymentData);
@@ -153,6 +169,13 @@ class FirebaseService {
 
   Future<String> uploadMediumImage(String mediumId, String filePath) async {
     final ref = _storage.ref().child('medium_images/$mediumId.jpg');
+    await ref.putFile(File(filePath));
+    return await ref.getDownloadURL();
+  }
+
+  // Métodos para upload de imagens de tarô
+  Future<String> uploadTarotImage(String cardId, String filePath) async {
+    final ref = _storage.ref().child('tarot_cards/$cardId.jpg');
     await ref.putFile(File(filePath));
     return await ref.getDownloadURL();
   }
@@ -181,6 +204,35 @@ class FirebaseService {
 
     if (userData != null) {
       return List<String>.from(userData['favoriteReaders'] ?? []);
+    }
+
+    return [];
+  }
+
+  // Métodos para favoritos de tarô
+  Future<void> toggleFavoriteTarotCard(String userId, String cardId) async {
+    final userDoc = await getUserData(userId);
+    final userData = userDoc.data() as Map<String, dynamic>?;
+
+    if (userData != null) {
+      final favoriteCards = List<String>.from(userData['favoriteCards'] ?? []);
+
+      if (favoriteCards.contains(cardId)) {
+        favoriteCards.remove(cardId);
+      } else {
+        favoriteCards.add(cardId);
+      }
+
+      await updateUserData(userId, {'favoriteCards': favoriteCards});
+    }
+  }
+
+  Future<List<String>> getUserFavoriteTarotCards(String userId) async {
+    final userDoc = await getUserData(userId);
+    final userData = userDoc.data() as Map<String, dynamic>?;
+
+    if (userData != null) {
+      return List<String>.from(userData['favoriteCards'] ?? []);
     }
 
     return [];
