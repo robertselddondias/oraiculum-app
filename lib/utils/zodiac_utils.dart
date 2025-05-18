@@ -604,11 +604,30 @@ class ZodiacUtils {
                       ],
                     ),
                   ).animate(controller: animationController)
-                      .width(
-                    begin: 0,
-                    end: constraints.maxWidth * score,
+                      .custom(
                     duration: const Duration(milliseconds: 1000),
                     curve: Curves.easeOutQuart,
+                    builder: (context, value, child) {
+                      return Container(
+                        width: constraints.maxWidth * score * value,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [barColor.withOpacity(0.7), barColor],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          borderRadius: BorderRadius.circular(5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: barColor.withOpacity(0.5),
+                              blurRadius: 8,
+                              spreadRadius: 0,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ],
               );
