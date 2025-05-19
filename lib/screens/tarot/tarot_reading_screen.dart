@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -299,15 +300,30 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             ),
           ),
 
-          // Botão de atualizar/nova leitura
-          IconButton(
-            onPressed: _loadRandomCards,
-            icon: const Icon(
-              Icons.refresh,
-              color: Colors.white,
-            ),
-            splashRadius: 24,
-            tooltip: 'Nova leitura',
+          // Linha de ações (botões)
+          Row(
+            children: [
+              // Botão para Minhas Leituras
+              IconButton(
+                onPressed: () => Get.toNamed(AppRoutes.savedReadingsList),
+                icon: const Icon(
+                  Icons.history,
+                  color: Colors.white,
+                ),
+                splashRadius: 24,
+                tooltip: 'Minhas Leituras',
+              ),
+              // Botão de atualizar/nova leitura
+              IconButton(
+                onPressed: _loadRandomCards,
+                icon: const Icon(
+                  Icons.refresh,
+                  color: Colors.white,
+                ),
+                splashRadius: 24,
+                tooltip: 'Nova leitura',
+              ),
+            ],
           ),
         ],
       ),
@@ -411,18 +427,6 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   }),
                 ),
               ),
-
-              // Texto de instrução adicional
-              Text(
-                _allCardsRevealed.value
-                    ? 'Pressione "Interpretar" para receber sua leitura'
-                    : 'Revele todas as cartas para prosseguir',
-                style: TextStyle(
-                  fontSize: subtitleFontSize,
-                  color: Colors.white.withOpacity(0.8),
-                  fontStyle: FontStyle.italic,
-                ),
-              ).animate().fadeIn(delay: 900.ms),
             ],
           ),
         ),

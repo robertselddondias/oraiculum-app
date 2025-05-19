@@ -11,6 +11,7 @@ import 'package:oraculum/screens/home/home_screen.dart';
 import 'package:oraculum/screens/home/navigation_screen.dart';
 import 'package:oraculum/screens/astrology/horoscope_screen.dart';
 import 'package:oraculum/screens/astrology/compatibility_screen.dart';
+import 'package:oraculum/screens/tarot/saved_reading_detail_screen.dart';
 import 'package:oraculum/screens/tarot/saved_readings_list_screen.dart';
 import 'package:oraculum/screens/tarot/tarot_reading_screen.dart';
 import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
@@ -33,8 +34,7 @@ class AppRoutes {
   static const String birthChart = '/birth-chart';
   static const String tarotReading = '/tarot-reading';
   static const String tarotCardDetails = '/tarot-card-details';
-  static const String tarotReadingsList = '/tarot-readings-list';
-  static const String savedReading = '/saved-reading';
+  static const String savedReadingsList = '/saved-readings-list';
   static const String cardDetails = '/card-details';
   static const String mediumsList = '/mediums-list';
   static const String mediumProfile = '/medium-profile';
@@ -43,6 +43,7 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String paymentMethods = '/payment-methods';
   static const String paymentHistory = '/payment-history';
+  static const String savedReading = '/saved-reading-detail';  // Nome ajustado para evitar conflito
 
   static final routes = [
     GetPage(name: splash, page: () => const SplashScreen()),
@@ -56,7 +57,7 @@ class AppRoutes {
     GetPage(name: compatibility, page: () => const CompatibilityScreen()),
     GetPage(name: birthChart, page: () => const BirthChartScreen()),
     GetPage(name: tarotReading, page: () => const TarotReadingScreen()),
-    GetPage(name: savedReading, page: () => const SavedReadingsListScreen()),
+    GetPage(name: savedReadingsList, page: () => const SavedReadingsListScreen()),
     GetPage(name: cardDetails, page: () => const CardDetailsScreen()),
     GetPage(name: mediumsList, page: () => const MediumsListScreen()),
     GetPage(name: mediumProfile, page: () => const MediumProfileScreen()),
@@ -65,5 +66,11 @@ class AppRoutes {
     GetPage(name: settings, page: () => const SettingsScreen()),
     GetPage(name: paymentMethods, page: () => const PaymentMethodsScreen()),
     GetPage(name: paymentHistory, page: () => const PaymentHistoryScreen()),
+    GetPage(
+      name: savedReading,
+      page: () => const SavedReadingDetailScreen(),
+      transition: Transition.rightToLeft,  // Adicionando transição suave
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
   ];
 }

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
@@ -157,9 +160,16 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+    // Obter informações sobre o tamanho da tela e densidade de pixels
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final screenHeight = mediaQuery.size.height;
     final isSmallScreen = screenWidth < 360;
-    final padding = isSmallScreen ? 12.0 : 16.0;
+    final isTablet = screenWidth >= 600;
+    final padding = isSmallScreen ? 12.0 : isTablet ? 24.0 : 16.0;
+
+    // Calcular o número de cartões por linha com base na largura da tela
+    final cardsPerRow = isTablet ? 2 : 1;
 
     return Scaffold(
       body: AnimatedBuilder(
@@ -183,11 +193,11 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
         child: SafeArea(
           child: Column(
             children: [
-              _buildAppBar(isSmallScreen),
-              _buildSearchBar(padding),
+              _buildAppBar(isSmallScreen, isTablet),
+              _buildSearchBar(padding, isTablet),
               _buildFilterToggle(padding),
               Expanded(
-                child: _buildReadingsList(isSmallScreen, padding),
+                child: _buildReadingsList(isSmallScreen, isTablet, padding, cardsPerRow),
               ),
             ],
           ),
@@ -202,10 +212,12 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
     );
   }
 
-  Widget _buildAppBar(bool isSmallScreen) {
+  Widget _buildAppBar(bool isSmallScreen, bool isTablet) {
+    final titleSize = isSmallScreen ? 20.0 : isTablet ? 24.0 : 22.0;
+
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 16.0 : 20.0,
+        horizontal: isSmallScreen ? 16.0 : isTablet ? 24.0 : 20.0,
         vertical: 8.0,
       ),
       child: Row(
@@ -222,13 +234,17 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
           ),
 
           // Título centralizado
-          Text(
-            'Minhas Leituras de Tarô',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isSmallScreen ? 20.0 : 22.0,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+          Expanded(
+            child: Text(
+              'Leituras de Tarô',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: titleSize,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
 
@@ -267,7 +283,7 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
     ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1, end: 0);
   }
 
-  Widget _buildSearchBar(double padding) {
+  Widget _buildSearchBar(double padding, bool isTablet) {
     return Padding(
       padding: EdgeInsets.all(padding),
       child: TextField(
@@ -279,10 +295,13 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
           filled: true,
           fillColor: Colors.white.withOpacity(0.1),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
             borderSide: BorderSide.none,
           ),
-          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+          contentPadding: EdgeInsets.symmetric(
+              vertical: isTablet ? 16.0 : 0.0,
+              horizontal: 16.0
+          ),
           suffixIcon: Obx(() => _searchQuery.value.isNotEmpty
               ? IconButton(
             icon: const Icon(Icons.clear, color: Colors.white),
@@ -291,9 +310,12 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
               _searchQuery.value = '';
             },
           )
-              : null),
+              : const SizedBox.shrink()),
         ),
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: isTablet ? 16.0 : 14.0,
+        ),
         onChanged: (value) {
           _searchQuery.value = value;
         },
@@ -326,7 +348,7 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
     ).animate().fadeIn(delay: 300.ms, duration: 500.ms);
   }
 
-  Widget _buildReadingsList(bool isSmallScreen, double padding) {
+  Widget _buildReadingsList(bool isSmallScreen, bool isTablet, double padding, int cardsPerRow) {
     return Obx(() {
       if (_controller.isLoading.value) {
         return const Center(
@@ -339,97 +361,158 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
       final readings = _getFilteredReadings();
 
       if (readings.isEmpty) {
-        return _buildEmptyState();
+        return _buildEmptyState(isTablet);
       }
 
-      return ListView.builder(
-        padding: EdgeInsets.all(padding),
-        itemCount: readings.length,
-        itemBuilder: (context, index) {
-          final reading = readings[index];
-          return _buildReadingCard(reading, isSmallScreen, index);
-        },
-      );
+      if (cardsPerRow > 1) {
+        // Layout em grade para tablets
+        return GridView.builder(
+          padding: EdgeInsets.all(padding),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: cardsPerRow,
+            childAspectRatio: 1.0,
+            crossAxisSpacing: padding,
+            mainAxisSpacing: padding,
+            mainAxisExtent: 350, // Altura fixa para cada item
+          ),
+          itemCount: readings.length,
+          itemBuilder: (context, index) {
+            final reading = readings[index];
+            return _buildReadingCard(reading, isSmallScreen, isTablet, index);
+          },
+        );
+      } else {
+        // Layout de lista para smartphones
+        return ListView.builder(
+          padding: EdgeInsets.all(padding),
+          itemCount: readings.length,
+          itemBuilder: (context, index) {
+            final reading = readings[index];
+            return _buildReadingCard(reading, isSmallScreen, isTablet, index);
+          },
+        );
+      }
     });
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isTablet) {
+    final iconSize = isTablet ? 100.0 : 80.0;
+    final textSize = isTablet ? 18.0 : 16.0;
+    final buttonTextSize = isTablet ? 16.0 : 14.0;
+    final buttonPadding = isTablet ? 16.0 : 12.0;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            _showOnlyFavorites.value ? Icons.favorite_border : Icons.menu_book,
-            size: 80,
-            color: Colors.white.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _showOnlyFavorites.value
-                ? 'Nenhuma leitura favorita encontrada'
-                : _searchQuery.value.isNotEmpty
-                ? 'Nenhuma leitura encontrada para "${_searchQuery.value}"'
-                : 'Você ainda não tem leituras salvas',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _showOnlyFavorites.value ? Icons.favorite_border : Icons.menu_book,
+              size: iconSize,
+              color: Colors.white.withOpacity(0.5),
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              if (_showOnlyFavorites.value || _searchQuery.value.isNotEmpty) {
-                // Limpar filtros
-                _showOnlyFavorites.value = false;
-                _searchController.clear();
-                _searchQuery.value = '';
-              } else {
-                // Ir para nova leitura
-                Get.toNamed(AppRoutes.tarotReading);
-              }
-            },
-            icon: Icon(
-              _showOnlyFavorites.value || _searchQuery.value.isNotEmpty
-                  ? Icons.filter_alt_off
-                  : Icons.add,
-            ),
-            label: Text(
-              _showOnlyFavorites.value || _searchQuery.value.isNotEmpty
-                  ? 'Limpar Filtros'
-                  : 'Nova Leitura',
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 12,
+            const SizedBox(height: 24),
+            Text(
+              _showOnlyFavorites.value
+                  ? 'Nenhuma leitura favorita encontrada'
+                  : _searchQuery.value.isNotEmpty
+                  ? 'Nenhuma leitura encontrada para "${_searchQuery.value}"'
+                  : 'Você ainda não tem leituras salvas',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: textSize,
+                fontWeight: FontWeight.bold,
               ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _showOnlyFavorites.value || _searchQuery.value.isNotEmpty
+                  ? 'Tente ajustar os filtros para ver mais resultados'
+                  : 'Suas leituras de tarô salvas aparecerão aqui',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: textSize - 2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () {
+                if (_showOnlyFavorites.value || _searchQuery.value.isNotEmpty) {
+                  // Limpar filtros
+                  _showOnlyFavorites.value = false;
+                  _searchController.clear();
+                  _searchQuery.value = '';
+                } else {
+                  // Ir para nova leitura
+                  Get.toNamed(AppRoutes.tarotReading);
+                }
+              },
+              icon: Icon(
+                _showOnlyFavorites.value || _searchQuery.value.isNotEmpty
+                    ? Icons.filter_alt_off
+                    : Icons.add,
+                size: isTablet ? 24.0 : 20.0,
+              ),
+              label: Text(
+                _showOnlyFavorites.value || _searchQuery.value.isNotEmpty
+                    ? 'Limpar Filtros'
+                    : 'Nova Leitura',
+                style: TextStyle(
+                  fontSize: buttonTextSize,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  horizontal: buttonPadding * 2,
+                  vertical: buttonPadding,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(isTablet ? 16.0 : 12.0),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ).animate().fadeIn(delay: 300.ms, duration: 500.ms);
   }
 
-  Widget _buildReadingCard(Map<String, dynamic> reading, bool isSmallScreen, int index) {
+  Widget _buildReadingCard(Map<String, dynamic> reading, bool isSmallScreen, bool isTablet, int index) {
     final readingId = reading['id'] as String;
     final createdAt = _formatDate(reading['createdAt']);
     final isFavorite = reading['isFavorite'] ?? false;
     final interpretation = reading['interpretation'] as String? ?? '';
-    final summary = _getReadingSummary(interpretation, 100);
+
+    // Ajustar o tamanho do resumo com base no tamanho da tela
+    final summaryLength = isTablet ? 150 : (isSmallScreen ? 80 : 100);
+    final summary = _getReadingSummary(interpretation, summaryLength);
 
     // Obter IDs das cartas da leitura
     final cardIds = List<String>.from(reading['cardIds'] ?? []);
 
+    // Ajustar dimensões com base no tamanho da tela
+    final buttonTextSize = isTablet ? 14.0 : isSmallScreen ? 12.0 : 13.0;
+    final titleSize = isTablet ? 16.0 : isSmallScreen ? 14.0 : 15.0;
+    final subtitleSize = isTablet ? 14.0 : isSmallScreen ? 12.0 : 13.0;
+    final bodyTextSize = isTablet ? 15.0 : isSmallScreen ? 12.0 : 13.0;
+
+    // Ajustar o padding com base no tamanho da tela
+    final cardPadding = isTablet ? 24.0 : isSmallScreen ? 12.0 : 16.0;
+
+    // Altura das miniaturas das cartas
+    final cardHeight = isTablet ? 100.0 : 80.0;
+    final cardWidth = isTablet ? 70.0 : 50.0;
+    final cardIconSize = isTablet ? 20.0 : 16.0;
+
     return Card(
       elevation: 4,
-      margin: EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: isTablet ? 0 : 16), // Remove margin for grid layout
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: isFavorite
@@ -441,13 +524,13 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
         onTap: () {
           // Navegar para a tela de detalhes da leitura
           Get.toNamed(
-            AppRoutes.savedReading,
+            AppRoutes.savedReadingsList,
             arguments: readingId,
           );
         },
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(cardPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -459,7 +542,7 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
                     createdAt,
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
+                      fontSize: isTablet ? 14.0 : 12.0,
                     ),
                   ),
                   Row(
@@ -470,25 +553,31 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
                         icon: Icon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
                           color: isFavorite ? Colors.amber : Colors.white,
-                          size: 20,
+                          size: isTablet ? 24.0 : 20.0,
                         ),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        splashRadius: 20,
+                        constraints: BoxConstraints(
+                          minWidth: isTablet ? 40.0 : 30.0,
+                          minHeight: isTablet ? 40.0 : 30.0,
+                        ),
+                        splashRadius: isTablet ? 24.0 : 20.0,
                         tooltip: isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos',
                       ),
-                      const SizedBox(width: 16),
+                      SizedBox(width: isTablet ? 16.0 : 8.0),
                       // Botão de excluir
                       IconButton(
                         onPressed: () => _confirmDeleteReading(readingId),
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.delete_outline,
                           color: Colors.white,
-                          size: 20,
+                          size: isTablet ? 24.0 : 20.0,
                         ),
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        splashRadius: 20,
+                        constraints: BoxConstraints(
+                          minWidth: isTablet ? 40.0 : 30.0,
+                          minHeight: isTablet ? 40.0 : 30.0,
+                        ),
+                        splashRadius: isTablet ? 24.0 : 20.0,
                         tooltip: 'Excluir leitura',
                       ),
                     ],
@@ -496,11 +585,11 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
                 ],
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: isTablet ? 24.0 : 16.0),
 
               // Cartas da leitura
               SizedBox(
-                height: 80,
+                height: cardHeight,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: cardIds.length,
@@ -509,9 +598,10 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
                       future: _controller.getCardById(cardIds[cardIndex]),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const SizedBox(
-                            width: 50,
-                            child: Center(
+                          return Container(
+                            width: cardWidth,
+                            margin: EdgeInsets.only(right: isTablet ? 16.0 : 8.0),
+                            child: const Center(
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
@@ -522,19 +612,20 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
 
                         final card = snapshot.data;
                         if (card == null) {
-                          return const SizedBox(width: 50);
+                          return SizedBox(width: cardWidth);
                         }
 
                         return Container(
-                          width: 50,
-                          margin: const EdgeInsets.only(right: 8),
+                          width: cardWidth,
+                          margin: EdgeInsets.only(right: isTablet ? 16.0 : 8.0),
                           child: Column(
+                            mainAxisSize: MainAxisSize.min, // Evitar overflow
                             children: [
                               Container(
-                                height: 60,
-                                width: 40,
+                                height: cardHeight * 0.75,
+                                width: cardWidth * 0.8,
                                 decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: BorderRadius.circular(isTablet ? 10.0 : 6.0),
                                   boxShadow: [
                                     BoxShadow(
                                       color: Colors.black.withOpacity(0.3),
@@ -544,33 +635,35 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
                                   ],
                                 ),
                                 child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: BorderRadius.circular(isTablet ? 10.0 : 6.0),
                                   child: Image.network(
                                     card.imageUrl,
                                     fit: BoxFit.cover,
                                     errorBuilder: (context, error, stack) {
                                       return Container(
                                         color: Colors.grey.shade700,
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.image_not_supported,
                                           color: Colors.white,
-                                          size: 14,
+                                          size: cardIconSize,
                                         ),
                                       );
                                     },
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                card.name,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 8,
+                              SizedBox(height: isTablet ? 8.0 : 4.0),
+                              Flexible(
+                                child: Text(
+                                  card.name,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isTablet ? 12.0 : 8.0,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -581,54 +674,56 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
                 ),
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: isTablet ? 24.0 : 16.0),
 
               // Resumo da interpretação
               Text(
                 'Interpretação:',
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.9),
-                  fontSize: 14,
+                  fontSize: titleSize,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: isTablet ? 8.0 : 4.0),
               Text(
                 summary,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.8),
-                  fontSize: 13,
+                  fontSize: bodyTextSize,
+                  height: 1.4,
                 ),
-                maxLines: 3,
+                maxLines: isTablet ? 4 : 3,
                 overflow: TextOverflow.ellipsis,
               ),
 
-              const SizedBox(height: 16),
+              SizedBox(height: isTablet ? 24.0 : 16.0),
 
               // Botão para ver detalhes
               Align(
                 alignment: Alignment.centerRight,
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Get.toNamed(
-                      AppRoutes.savedReading,
-                      arguments: readingId,
-                    );
+                    Map<String, dynamic> args = {'readingId': readingId};
+                    Get.toNamed(AppRoutes.savedReading, arguments: args);
                   },
-                  icon: const Icon(Icons.visibility, size: 16),
-                  label: const Text('Ver Detalhes'),
+                  icon: Icon(Icons.visibility, size: isTablet ? 20.0 : 16.0),
+                  label: Text(
+                    'Ver Detalhes',
+                    style: TextStyle(
+                      fontSize: buttonTextSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C63FF),
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: isSmallScreen ? 8 : 10,
+                      horizontal: isTablet ? 24.0 : 12.0,
+                      vertical: isTablet ? 12.0 : isSmallScreen ? 8.0 : 10.0,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    textStyle: TextStyle(
-                      fontSize: isSmallScreen ? 12 : 14,
+                      borderRadius: BorderRadius.circular(isTablet ? 12.0 : 8.0),
                     ),
                   ),
                 ),

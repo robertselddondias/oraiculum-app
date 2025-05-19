@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/services/gemini_service.dart';
@@ -14,6 +15,8 @@ class TarotController extends GetxController {
   RxList<TarotCard> selectedCards = <TarotCard>[].obs;
   Rx<TarotCard?> currentCard = Rx<TarotCard?>(null);
   RxString interpretation = ''.obs;
+
+  RxList<Map<String, dynamic>> savedReadings = <Map<String, dynamic>>[].obs;
 
   @override
   void onInit() {
@@ -159,5 +162,141 @@ class TarotController extends GetxController {
     final shuffledCards = List<TarotCard>.from(allCards);
     shuffledCards.shuffle(random);
     return shuffledCards.take(count).toList();
+  }
+
+  // Carregar leituras salvas do usuário
+  Future<void> loadSavedReadings() async {
+    try {
+      isLoading.value = true;
+
+      final authController = Get.find<AuthController>();
+      if (authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para ver suas leituras.');
+        return;
+      }
+
+      final userId = authController.currentUser.value!.uid;
+      final readingsSnapshot = await _firebaseService.getUserTarotReadings(userId);
+
+      if (readingsSnapshot.docs.isNotEmpty) {
+        savedReadings.value = readingsSnapshot.docs.map((doc) {
+          return {
+            'id': doc.id,
+            ...doc.data() as Map<String, dynamic>,
+          };
+        }).toList();
+      } else {
+        savedReadings.clear();
+      }
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível carregar suas leituras salvas: $e');
+    } finally {
+      isLoading.value = false;
+      update();
+    }
+  }
+
+// Marcar/desmarcar leitura como favorita
+  Future<void> toggleFavoriteReading(String readingId) async {
+    try {
+      // Encontrar a leitura na lista
+      final index = savedReadings.indexWhere((reading) => reading['id'] == readingId);
+      if (index == -1) return;
+
+      // Inverter o status de favorito
+      final currentStatus = savedReadings[index]['isFavorite'] ?? false;
+      final newStatus = !currentStatus;
+
+      // Atualizar no Firestore
+      await _firebaseService.toggleFavoriteTarotReading(readingId, newStatus);
+
+      // Atualizar localmente
+      savedReadings[index]['isFavorite'] = newStatus;
+      savedReadings.refresh();
+
+      Get.snackbar(
+        'Sucesso',
+        newStatus ? 'Leitura adicionada aos favoritos' : 'Leitura removida dos favoritos',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível atualizar os favoritos: $e');
+    }
+  }
+
+// Excluir uma leitura salva
+  Future<void> deleteReading(String readingId) async {
+    try {
+      isLoading.value = true;
+
+      // Excluir do Firestore
+      await _firebaseService.firestore.collection('tarot_readings').doc(readingId).delete();
+
+      // Remover da lista local
+      savedReadings.removeWhere((reading) => reading['id'] == readingId);
+      savedReadings.refresh();
+
+      Get.snackbar(
+        'Sucesso',
+        'Leitura excluída com sucesso',
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível excluir a leitura: $e');
+    } finally {
+      isLoading.value = false;
+      update();
+    }
+  }
+
+// Obter detalhes de uma leitura específica por ID
+  Future<Map<String, dynamic>?> getReadingById(String readingId) async {
+    try {
+      // Verificar primeiro na lista local
+      final localReading = savedReadings.firstWhereOrNull((reading) => reading['id'] == readingId);
+      if (localReading != null) return localReading;
+
+      // Se não estiver na lista local, buscar do Firestore
+      final docSnapshot = await _firebaseService.firestore
+          .collection('tarot_readings')
+          .doc(readingId)
+          .get();
+
+      if (docSnapshot.exists) {
+        return {
+          'id': docSnapshot.id,
+          ...docSnapshot.data() as Map<String, dynamic>,
+        };
+      }
+
+      return null;
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível carregar a leitura: $e');
+      return null;
+    }
+  }
+
+// Buscar uma carta específica por ID
+  Future<TarotCard?> getCardById(String cardId) async {
+    try {
+      // Verificar primeiro na lista de cartas carregadas
+      final localCard = allCards.firstWhereOrNull((card) => card.id == cardId);
+      if (localCard != null) return localCard;
+
+      // Se não estiver na lista local, buscar do Firestore
+      final docSnapshot = await _firebaseService.getTarotCard(cardId);
+
+      if (docSnapshot.exists) {
+        return TarotCard.fromMap(
+          docSnapshot.data() as Map<String, dynamic>,
+          docSnapshot.id,
+        );
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Erro ao buscar carta: $e');
+      return null;
+    }
   }
 }
