@@ -203,12 +203,6 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => Get.toNamed(AppRoutes.tarotReading),
-        backgroundColor: const Color(0xFF6C63FF),
-        child: const Icon(Icons.add),
-        tooltip: 'Nova Leitura',
-      ),
     );
   }
 
@@ -225,7 +219,7 @@ class _SavedReadingsListScreenState extends State<SavedReadingsListScreen> with 
         children: [
           // Botão de voltar
           IconButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,

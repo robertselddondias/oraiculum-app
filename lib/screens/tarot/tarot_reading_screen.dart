@@ -6,6 +6,7 @@ import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
+import 'package:oraculum/widgets/app_card_image.dart';
 import 'dart:math';
 import 'dart:convert';
 import 'package:share_plus/share_plus.dart';
@@ -281,7 +282,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
         children: [
           // Botão de voltar
           IconButton(
-            onPressed: () => Get.back(),
+            onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,
@@ -495,15 +496,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
         child: Stack(
           children: [
             // Imagem da carta
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                image: DecorationImage(
-                  image: NetworkImage(card.imageUrl),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
+            AppCardImage(imageUrl: card.imageUrl),
 
             // Gradiente para melhorar a legibilidade do texto
             Container(

@@ -303,9 +303,10 @@ class _SavedReadingDetailScreenState extends State<SavedReadingDetailScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Botão de voltar
+          // Back button - Fix the navigation issue
           IconButton(
-            onPressed: () => Get.back(),
+            // Instead of Get.back(), use Navigator.of(context).pop()
+            onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,

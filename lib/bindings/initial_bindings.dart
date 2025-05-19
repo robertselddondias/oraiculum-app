@@ -11,20 +11,21 @@ import 'package:oraculum/services/payment_service.dart';
 class InitialBinding implements Bindings {
   @override
   void dependencies() {
-    // Serviços
+    // First, initialize all services
     Get.put(FirebaseService());
 
-    // Inicializar GeminiService com a API key do .env
     final apiKey = 'AIzaSyD2aGQjaAvnlm75UwuEsT6QR0R9jZ1bKW0';
     Get.put(GeminiService(apiKey: apiKey));
 
     Get.put(PaymentService());
 
-    // Controladores
+    // Second, initialize base controllers that others might depend on
     Get.put(AuthController(), permanent: true);
-    Get.lazyPut(() => HoroscopeController());
-    Get.lazyPut(() => TarotController());
-    Get.lazyPut(() => MediumController());
-    Get.lazyPut(() => PaymentController());
+    Get.put(PaymentController());
+
+    // Finally, initialize controllers that depend on others
+    Get.put(MediumController());
+    Get.put(TarotController());
+    Get.put(HoroscopeController());
   }
 }
