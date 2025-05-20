@@ -125,7 +125,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> with SingleTickerPr
       }
 
       final result = await _controller.getBirthChartInterpretation(
-          _selectedDate,
+          _birthDateController.text,
           _timeController.text,
           _birthPlaceController.text
       );
@@ -392,7 +392,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> with SingleTickerPr
         children: [
           BirthChartResultHeader(
             name: _nameController.text,
-            birthDate: _selectedDate,
+            birthDate: _birthDateController.text,
             birthTime: _timeController.text,
             birthPlace: _birthPlaceController.text,
             isSmallScreen: isSmallScreen,

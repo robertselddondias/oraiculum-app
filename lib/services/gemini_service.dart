@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:intl/intl.dart';
+
 class GeminiService {
   final String apiKey;
 
@@ -151,37 +153,114 @@ class GeminiService {
 
   // Método para obter uma interpretação do mapa astral
   Future<String> getBirthChartInterpretation(
-      DateTime birthDate,
+      String birthDate,
       String birthTime,
       String birthPlace,
+      {bool jsonFormat = false}
       ) async {
     try {
-      final dateStr = '${birthDate.day}/${birthDate.month}/${birthDate.year}';
-      final prompt = '''
-        Por favor, forneça uma interpretação para o mapa astral de uma pessoa nascida em:
-        - Data: $dateStr
-        - Hora: $birthTime
-        - Local: $birthPlace
+      String prompt;
+      if (jsonFormat) {
+        // Prompt estruturado em JSON
+        prompt = '''
+        Gere uma interpretação completa de mapa astral para alguém nascido em 
+        $birthDate às $birthTime em $birthPlace.
         
-        Coloque uma formatação  moderna separada, bem elegante e estruturada. Sem asterisco e coloque quebra de linhas e emoctions
+        Retorne a interpretação como um objeto JSON com a seguinte estrutura:
         
-        A interpretação deve incluir:
-        - Signo solar, lunar e ascendente
-        - Posições dos planetas nas casas
-        - Aspectos planetários importantes
-        - Personalidade geral
-        - Pontos fortes e desafios
-        - Potenciais caminhos de vida
-        - Conselhos para desenvolvimento pessoal
+        {
+          "visao_geral": {
+            "title": "Visão Geral", 
+            "body": "Texto descrevendo o mapa como um todo..."
+          },
+          "sol": {
+            "title": "Sol em [Signo]", 
+            "body": "Texto sobre a posição do Sol..."
+          },
+          "lua": {
+            "title": "Lua em [Signo]", 
+            "body": "Texto sobre a posição da Lua..."
+          },
+          "ascendente": {
+            "title": "Ascendente em [Signo]", 
+            "body": "Texto sobre o Ascendente..."
+          },
+          "planetas": {
+            "title": "Posições Planetárias", 
+            "body": "Texto sobre os outros planetas importantes..."
+          },
+          "casas": {
+            "title": "Casas Astrológicas", 
+            "body": "Texto sobre as casas astrológicas..."
+          },
+          "aspectos": {
+            "title": "Aspectos Importantes", 
+            "body": "Texto sobre aspectos importantes entre planetas..."
+          },
+          "conclusao": {
+            "title": "Conclusão", 
+            "body": "Texto resumo com conselhos..."
+          }
+        }
         
-        A resposta deve ser detalhada, perspicaz e oferecer orientação útil.
+        A resposta deve ser apenas o JSON válido, sem explicações adicionais ou formatação.
+        Faça a interpretação detalhada, positiva e perspicaz.
       ''';
+      } else {
+        // Prompt de texto regular
+        prompt = '''
+        Gere uma interpretação detalhada de mapa astral para alguém nascido em 
+        $birthDate às $birthTime em $birthPlace.
+        
+        Coloque uma formatação moderna separada, bem elegante e estruturada. Sem asterisco e coloque quebra de linhas e emoticons.
+        
+        Inclua informações sobre:
+        - Análise geral do mapa
+        - Signo solar e seu significado
+        - Signo lunar e seu impacto emocional
+        - Ascendente e sua influência na personalidade
+        - Outras posições planetárias importantes
+        - Aspectos-chave entre planetas
+        - Áreas da vida afetadas (casas)
+        - Conselhos baseados no mapa
+        
+        Faça a interpretação detalhada, positiva e perspicaz.
+      ''';
+      }
 
-      final response = await _generateContent(prompt);
+      final response = await _generateContent(prompt, temperature: 0.7);
+
+      // Se solicitado em formato JSON, limpe a resposta
+      if (jsonFormat) {
+        // Limpar a resposta para garantir que seja um JSON válido
+        String cleanedResponse = response.trim();
+
+        // Verificar se o texto começa com ``` e termina com ``` (caso o Gemini encapsule em código)
+        if (cleanedResponse.startsWith('```json')) {
+          cleanedResponse = cleanedResponse.substring(7);
+        } else if (cleanedResponse.startsWith('```')) {
+          cleanedResponse = cleanedResponse.substring(3);
+        }
+
+        if (cleanedResponse.endsWith('```')) {
+          cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3);
+        }
+
+        // Verificar se é um JSON válido
+        try {
+          json.decode(cleanedResponse);
+          return cleanedResponse;
+        } catch (e) {
+          debugPrint('Resposta não é um JSON válido: $e');
+          // Se não for JSON válido, retorne como texto comum
+          return response;
+        }
+      }
+
       return response;
     } catch (e) {
-      debugPrint('Erro ao interpretar mapa astral: $e');
-      return 'Não foi possível interpretar o mapa astral neste momento. Erro: $e';
+      debugPrint('Erro ao gerar interpretação do mapa astral: $e');
+      throw Exception('Falha ao gerar interpretação do mapa astral: $e');
     }
   }
 
@@ -203,7 +282,7 @@ class GeminiService {
         "temperature": temperature ?? 0.7,
         "topK": 40,
         "topP": 0.95,
-        "maxOutputTokens": maxOutputTokens ?? 1024,
+        "maxOutputTokens": maxOutputTokens ?? 5000,
       }
     };
 

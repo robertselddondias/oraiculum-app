@@ -7,7 +7,7 @@ import 'package:oraculum/utils/zodiac_utils.dart';
 
 class BirthChartResultHeader extends StatelessWidget {
   final String name;
-  final DateTime birthDate;
+  final String birthDate;
   final String birthTime;
   final String birthPlace;
   final bool isSmallScreen;
@@ -31,8 +31,9 @@ class BirthChartResultHeader extends StatelessWidget {
     final textSize = isTablet ? 16.0 : isSmallScreen ? 13.0 : 14.0;
     final iconSize = isTablet ? 24.0 : isSmallScreen ? 18.0 : 20.0;
 
+    DateTime birthDateConverter = DateFormat('dd/MM/yyyy').parse(birthDate);
     // Determinar o signo solar
-    final sign = ZodiacUtils.getZodiacSignFromDate(birthDate);
+    final sign = ZodiacUtils.getZodiacSignFromDate(birthDateConverter);
     final signColor = ZodiacUtils.getSignColor(sign);
 
     return Card(
@@ -100,7 +101,7 @@ class BirthChartResultHeader extends StatelessWidget {
                     context: context,
                     icon: Icons.calendar_today,
                     title: 'Data',
-                    value: DateFormat('dd/MM/yyyy').format(birthDate),
+                    value: birthDate,
                     iconSize: iconSize,
                     titleSize: textSize - 2,
                     valueSize: textSize,

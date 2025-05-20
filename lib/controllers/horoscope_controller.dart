@@ -355,7 +355,7 @@ class HoroscopeController extends GetxController {
   }
 
   Future<Map<String, dynamic>> getBirthChartInterpretation(
-      DateTime birthDate,
+      String birthDate,
       String birthTime,
       String birthPlace,
       ) async {
@@ -376,12 +376,12 @@ class HoroscopeController extends GetxController {
         birthDate,
         birthTime,
         birthPlace,
+        jsonFormat: true
       );
 
       // Salvar a interpretação no histórico do usuário
       if (_authController.currentUser.value != null) {
         final userId = _authController.currentUser.value!.uid;
-        final birthdateFormatted = DateFormat('dd/MM/yyyy').format(birthDate);
 
         await _firebaseService.firestore.collection('birth_charts').add({
           'userId': userId,
