@@ -27,6 +27,7 @@ class FirebaseService {
   CollectionReference get tarotCardsCollection => _firestore.collection('tarot_cards');
   CollectionReference get tarotReadingsCollection => _firestore.collection('tarot_readings');
   CollectionReference get paymentsCollection => _firestore.collection('payments');
+  CollectionReference get creditCardCollection => _firestore.collection('credit_cards');
 
   // Métodos de usuário
   Future<DocumentSnapshot> getUserData(String userId) {
@@ -166,6 +167,14 @@ class FirebaseService {
     return paymentsCollection
         .where('userId', isEqualTo: userId)
         .orderBy('timestamp', descending: true)
+        .get();
+  }
+
+  Future<QuerySnapshot> getDefaultCreditCard(String userId) {
+    return creditCardCollection
+        .where('isDefault', isEqualTo: true)
+        .where('userId', isEqualTo: userId)
+        .limit(1)
         .get();
   }
 

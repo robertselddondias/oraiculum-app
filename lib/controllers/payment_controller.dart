@@ -1,13 +1,20 @@
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/models/credit_card_model.dart';
 import 'package:oraculum/services/firebase_service.dart';
+import 'package:oraculum/services/pagarme_service.dart';
 import 'package:oraculum/services/payment_service.dart';
+import 'package:http/http.dart' as http;
 
 class PaymentController extends GetxController {
   final PaymentService _paymentService = Get.find<PaymentService>();
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
+  final PagarmeService _pagarmeService = Get.find<PagarmeService>();
 
   RxBool isLoading = false.obs;
   RxList<Map<String, dynamic>> paymentHistory = <Map<String, dynamic>>[].obs;
@@ -399,22 +406,40 @@ class PaymentController extends GetxController {
         return false;
       }
 
-      final userId = _authController.currentUser.value!.uid;
-      final success = await _paymentService.updateUserCredits(userId, amount);
+      QuerySnapshot querySnapshot = await _firebaseService.getDefaultCreditCard(_firebaseService.userId!);
+      if(!querySnapshot.docs.isEmpty) {
+        final userId = _authController.currentUser.value!.uid;
+        Map<String, dynamic> cartao = querySnapshot.docs.first.data() as Map<
+            String,
+            dynamic>;
 
-      if (success) {
-        await loadUserCredits();
-
-        final action = amount > 0 ? 'adicionados' : 'removidos';
-        Get.snackbar(
-          'Sucesso',
-          'Créditos $action com sucesso',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
+        http.Response response = await _pagarmeService.createOrder(
+            creditCardId: cartao['cardId'],
+            customerId: cartao['customerId'],
+            userId: cartao['userId'],
+            amount: amount.toInt(),
+            orderId: 'credit-$userId}'
         );
+        Map<String, dynamic> body = json.decode(response.body);
+        if(response.statusCode == 200 && body['status'] == 'paid') {
 
-        return true;
+          final success = await _paymentService.updateUserCredits(userId, amount);
+
+          if (success) {
+            await loadUserCredits();
+
+            final action = amount > 0 ? 'adicionados' : 'removidos';
+            Get.snackbar(
+              'Sucesso',
+              'Créditos $action com sucesso',
+              backgroundColor: Colors.green,
+              colorText: Colors.white,
+              snackPosition: SnackPosition.BOTTOM,
+            );
+
+            return true;
+          }
+        }
       }
 
       return false;

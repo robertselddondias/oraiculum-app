@@ -201,15 +201,6 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
-      // Criar objeto para tokenização
-      final cardData = {
-        "number": cardNumber,
-        "holder_name": cardHolder,
-        "exp_month": expiryMonth,
-        "exp_year": expiryYear,
-        "cvv": cvv,
-      };
-
       // Criar cliente na Pagar.me se necessário
       String? customerId = await _getOrCreatePagarMeCustomer(userId, document, phone, cardHolder);
 
@@ -246,7 +237,7 @@ class NewCreditCardController extends GetxController {
         'expiryYear': expiryYear,
         'brand': cardBrand.value,
         'customerId': customerId,
-        'isDefault': savedCards.isEmpty, // Se for o primeiro cartão, define como padrão
+        'isDefault': true,
         'createdAt': DateTime.now(),
       });
 

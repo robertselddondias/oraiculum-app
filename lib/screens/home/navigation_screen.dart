@@ -19,21 +19,21 @@ class _NavigationScreenState extends State<NavigationScreen> {
   int _selectedIndex = 0;
 
   // Páginas que serão exibidas na navegação
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const HoroscopeScreen(),
-    const TarotReadingScreen(),
-    const MediumsListScreen(),
-    const ProfileScreen(),
+  final List<Widget> _screens = const [
+    HomeScreen(),
+    HoroscopeScreen(),
+    TarotReadingScreen(),
+    MediumsListScreen(),
+    ProfileScreen(),
   ];
 
   // Controlador para gerenciar a navegação entre abas
-  final PageController _pageController = PageController();
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
-    // Opcionalmente configurar a cor da barra de status
+    _pageController = PageController(initialPage: _selectedIndex);
     _setStatusBarColor();
   }
 
@@ -44,43 +44,35 @@ class _NavigationScreenState extends State<NavigationScreen> {
   }
 
   void _setStatusBarColor() {
-    // Deixar a barra de status com cores claras em iOS
     if (Platform.isIOS) {
       SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.dark);
     }
   }
 
   void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
     setState(() {
       _selectedIndex = index;
-      // Transição suave entre as páginas
-      _pageController.animateToPage(
-        index,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
     });
+
+    // Salta direto para a página sem exibir as intermediárias
+    _pageController.jumpToPage(index);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Detectar o tamanho da tela para ajustes responsivos
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-
-    // Ajustar tamanho dos ícones e fontes com base no tamanho da tela
     final iconSize = isSmallScreen ? 22.0 : 24.0;
     final fontSize = isSmallScreen ? 11.0 : 12.0;
-    final bottomNavBarHeight = isSmallScreen ? 56.0 : 60.0;
 
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), // Desativar deslizar entre páginas
-        onPageChanged: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
+        physics: const NeverScrollableScrollPhysics(),
+        onPageChanged: (idx) {
+          setState(() => _selectedIndex = idx);
         },
         children: _screens,
       ),
@@ -100,7 +92,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
             type: BottomNavigationBarType.fixed,
-            backgroundColor: Theme.of(context).brightness == Brightness.dark
+            backgroundColor:
+            Theme.of(context).brightness == Brightness.dark
                 ? const Color(0xFF1E1E1E)
                 : Colors.white,
             selectedItemColor: Theme.of(context).colorScheme.primary,

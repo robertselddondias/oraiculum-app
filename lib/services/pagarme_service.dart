@@ -205,7 +205,9 @@ class PagarmeService {
   /// Cria um pedido na API do Pagar.me
   Future<http.Response> createOrder(
       {
-        required CreditCardUserModel creditCard,
+        required String creditCardId,
+        required String customerId,
+        required String userId,
         required int amount,
         required String orderId
       }
@@ -214,19 +216,19 @@ class PagarmeService {
 
 
     final body = {
-      "customer_id": creditCard.customerId,
+      "customer_id": customerId,
       "code": orderId,
       "items": [
         {
           'amount': amount,
-          'description': 'Viagem customerId: ${creditCard.customerId} - UsuarioId: ${creditCard.userId}',
+          'description': 'Credito Oraculum customerId: ${customerId} - UsuarioId: ${userId}',
           'quantity': 1,
           'code': 1
         },
       ],
       "payments": [{
         'credit_card':{
-          'card_id': creditCard.cardId
+          'card_id': creditCardId
         },
         'amount': amount,
         'payment_method': 'credit_card'

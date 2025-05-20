@@ -230,12 +230,6 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               ),
               const Divider(height: 1),
               _buildPaymentMethodItem(
-                icon: const Icon(Icons.account_balance, color: Colors.green),
-                title: 'Transferência Bancária',
-                onTap: () => _processPaymentWithBankTransfer(),
-              ),
-              const Divider(height: 1),
-              _buildPaymentMethodItem(
                 icon: const Icon(Icons.pix, color: Colors.blue),
                 title: 'PIX',
                 onTap: () => _processPaymentWithPix(),
@@ -367,7 +361,14 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               child: const Text('Cancelar'),
             ),
             ElevatedButton(
-              onPressed: () => Get.back(result: true),
+              onPressed: () => _controller.processPayment(
+                  context: context,
+                  description: 'Compra de créditos: R\$ $amount',
+                  amount: amount,
+                  serviceId: 'credits-${DateTime.now().millisecondsSinceEpoch}',
+                  serviceType: 'credit',
+                  paymentMethod: paymentMethod
+              ),
               child: const Text('Confirmar'),
             ),
           ],

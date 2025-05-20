@@ -307,12 +307,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       {
         'title': 'Leituras Favoritas',
         'icon': Icons.favorite,
-        'onTap': () {
-          // Implementar navegação para favoritos
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Navegando para favoritos...')),
-          );
-        },
+        'onTap': () => Get.toNamed(AppRoutes.savedReadingsList),
       },
       {
         'title': 'Histórico de Pagamentos',
