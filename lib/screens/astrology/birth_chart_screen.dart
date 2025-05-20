@@ -5,6 +5,9 @@ import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/screens/astrology/widgets/birth_chart_History_dialog.dart';
+import 'package:oraculum/screens/astrology/widgets/birth_chart_header.dart';
+import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:share_plus/share_plus.dart';
 
 class BirthChartScreen extends StatefulWidget {
@@ -14,7 +17,7 @@ class BirthChartScreen extends StatefulWidget {
   State<BirthChartScreen> createState() => _BirthChartScreenState();
 }
 
-class _BirthChartScreenState extends State<BirthChartScreen> {
+class _BirthChartScreenState extends State<BirthChartScreen> with SingleTickerProviderStateMixin {
   final HoroscopeController _controller = Get.find<HoroscopeController>();
   final PaymentController _paymentController = Get.find<PaymentController>();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
@@ -23,16 +26,47 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
   final TextEditingController _birthPlaceController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
 
-  DateTime _selectedDate = DateTime.now().subtract(const Duration(days: 365 * 30)); // 30 anos por padrão
+  DateTime _selectedDate = DateTime.now().subtract(const Duration(days: 365 * 30));
   final RxMap<String, dynamic> _chartResult = <String, dynamic>{}.obs;
   final RxBool _isLoading = false.obs;
   final RxBool _hasResult = false.obs;
 
+  late AnimationController _backgroundController;
+  late Animation<Alignment> _topAlignmentAnimation;
+  late Animation<Alignment> _bottomAlignmentAnimation;
+
   @override
   void initState() {
     super.initState();
-    // Carregar créditos do usuário
     _paymentController.loadUserCredits();
+    _setupAnimations();
+  }
+
+  void _setupAnimations() {
+    _backgroundController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _topAlignmentAnimation = Tween<Alignment>(
+      begin: Alignment.topLeft,
+      end: Alignment.topRight,
+    ).animate(
+      CurvedAnimation(
+        parent: _backgroundController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _bottomAlignmentAnimation = Tween<Alignment>(
+      begin: Alignment.bottomRight,
+      end: Alignment.bottomLeft,
+    ).animate(
+      CurvedAnimation(
+        parent: _backgroundController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   @override
@@ -40,6 +74,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
     _nameController.dispose();
     _birthPlaceController.dispose();
     _timeController.dispose();
+    _backgroundController.dispose();
     super.dispose();
   }
 
@@ -75,7 +110,6 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
     _hasResult.value = false;
 
     try {
-      // Verificar se tem créditos suficientes e mostrar diálogo de confirmação
       final confirmedPurchase = await _showPaymentConfirmationDialog();
 
       if (!confirmedPurchase) {
@@ -83,7 +117,6 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
         return;
       }
 
-      // Gerar o mapa astral
       final result = await _controller.getBirthChartInterpretation(
           _selectedDate,
           _timeController.text,
@@ -167,628 +200,220 @@ class _BirthChartScreenState extends State<BirthChartScreen> {
     ) ?? false;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mapa Astral'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history),
-            tooltip: 'Histórico de Mapas Astrais',
-            onPressed: () => _showHistoryDialog(context),
-          ),
-        ],
-      ),
-      body: Obx(() {
-        if (_hasResult.value) {
-          return _buildResultView();
-        }
+  Future<void> _showHistoryDialog(BuildContext context) async {
+    return await BirthChartHistoryDialog.show(
+      context: context,
+      controller: _controller,
+      onChartSelected: (chartData) {
+        setState(() {
+          if (chartData['birthDate'] != null) {
+            _selectedDate = chartData['birthDate'] as DateTime;
+          }
+          _birthPlaceController.text = chartData['birthPlace'] ?? '';
+          _timeController.text = chartData['birthTime'] ?? '';
 
-        return _buildInputForm();
-      }),
+          _chartResult.value = {
+            'success': true,
+            'interpretation': chartData['interpretation'] ?? 'Interpretação não disponível'
+          };
+          _hasResult.value = true;
+        });
+      },
     );
   }
 
-  Widget _buildInputForm() {
+  @override
+  Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth >= 600;
     final textFieldPadding = isSmallScreen ? 12.0 : 16.0;
 
+    return Scaffold(
+      body: AnimatedBuilder(
+        animation: _backgroundController,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: _topAlignmentAnimation.value,
+                end: _bottomAlignmentAnimation.value,
+                colors: const [
+                  Color(0xFF392F5A),
+                  Color(0xFF483D8B),
+                  Color(0xFF8C6BAE),
+                ],
+              ),
+            ),
+            child: child,
+          );
+        },
+        child: SafeArea(
+          child: Stack(
+            children: [
+              ...ZodiacUtils.buildStarParticles(context, 30),
+
+              Column(
+                children: [
+                  _buildAppBar(context, isSmallScreen, isTablet),
+                  Expanded(
+                    child: Obx(() {
+                      if (_hasResult.value) {
+                        return _buildResultView(context, isSmallScreen, isTablet);
+                      }
+                      return _buildInputForm(context, isSmallScreen, isTablet, textFieldPadding);
+                    }),
+                  ),
+                ],
+              ),
+
+              Obx(() => _isLoading.value
+                  ? Container(
+                color: Colors.black54,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              )
+                  : const SizedBox.shrink()
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context, bool isSmallScreen, bool isTablet) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallScreen ? 16.0 : isTablet ? 24.0 : 20.0,
+        vertical: 8.0,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+            ),
+            tooltip: 'Voltar',
+            splashRadius: 24,
+          ),
+
+          Expanded(
+            child: Text(
+              'Mapa Astral',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isSmallScreen ? 20.0 : isTablet ? 24.0 : 22.0,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+
+          IconButton(
+            icon: const Icon(Icons.history, color: Colors.white),
+            tooltip: 'Histórico de Mapas Astrais',
+            onPressed: () => _showHistoryDialog(context),
+            splashRadius: 24,
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1, end: 0);
+  }
+
+  Widget _buildInputForm(BuildContext context, bool isSmallScreen, bool isTablet, double padding) {
     return SingleChildScrollView(
-      padding: EdgeInsets.all(textFieldPadding),
+      padding: EdgeInsets.all(padding),
+      physics: const BouncingScrollPhysics(),
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
+            BirthChartHeader(isSmallScreen: isSmallScreen, isTablet: isTablet),
+
+            BirthChartInfoCard(
+              controller: _controller,
+              paymentController: _paymentController,
+              isSmallScreen: isSmallScreen,
+              isTablet: isTablet,
+            ),
+
             const SizedBox(height: 24),
-            _buildInfoCard(),
-            const SizedBox(height: 24),
-            _buildFormFields(isSmallScreen, textFieldPadding),
+
+            BirthChartFormFields(
+              nameController: _nameController,
+              birthPlaceController: _birthPlaceController,
+              timeController: _timeController,
+              selectedDate: _selectedDate,
+              onDateSelect: () => _selectDate(context),
+              isSmallScreen: isSmallScreen,
+              isTablet: isTablet,
+              padding: padding,
+            ),
+
             const SizedBox(height: 32),
-            _buildSubmitButton(),
+
+            BirthChartSubmitButton(
+              controller: _controller,
+              isLoading: _isLoading.value,
+              onPressed: _generateChart,
+              isSmallScreen: isSmallScreen,
+              isTablet: isTablet,
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Mapa Astral Personalizado',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Descubra os segredos do seu nascimento e as influências planetárias em sua vida.',
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            fontSize: 16,
-          ),
-        ),
-      ],
-    ).animate().fadeIn().slideY(
-      begin: 0.2,
-      end: 0,
-      curve: Curves.easeOutQuad,
-      duration: const Duration(milliseconds: 500),
-    );
-  }
+  Widget _buildResultView(BuildContext context, bool isSmallScreen, bool isTablet) {
+    final padding = isSmallScreen ? 12.0 : isTablet ? 24.0 : 16.0;
 
-  Widget _buildInfoCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.info_outline,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Mapa Astral Premium',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Para gerar um mapa astral completo é necessário um pagamento de R\$ ${_controller.birthChartCost.toStringAsFixed(2)}.',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Obx(() => Row(
-              children: [
-                Icon(
-                  Icons.account_balance_wallet,
-                  color: _paymentController.userCredits.value >= _controller.birthChartCost
-                      ? Colors.green
-                      : Colors.orange,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Seus créditos: R\$ ${_paymentController.userCredits.value.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: _paymentController.userCredits.value >= _controller.birthChartCost
-                        ? Colors.green
-                        : Colors.orange,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                if (_paymentController.userCredits.value < _controller.birthChartCost)
-                  TextButton.icon(
-                    onPressed: () => Get.toNamed(AppRoutes.paymentMethods),
-                    icon: const Icon(Icons.add_circle_outline, size: 16),
-                    label: const Text('Adicionar'),
-                  ),
-              ],
-            )),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(
-      delay: const Duration(milliseconds: 300),
-      duration: const Duration(milliseconds: 500),
-    );
-  }
-
-  Widget _buildFormFields(bool isSmallScreen, double padding) {
-    final labelTextStyle = TextStyle(
-      fontSize: isSmallScreen ? 14.0 : 16.0,
-    );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextFormField(
-          controller: _nameController,
-          decoration: InputDecoration(
-            labelText: 'Nome Completo',
-            prefixIcon: const Icon(Icons.person_outline),
-            contentPadding: EdgeInsets.symmetric(horizontal: padding, vertical: padding),
-            labelStyle: labelTextStyle,
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Por favor, informe seu nome';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-
-        // Data de nascimento
-        GestureDetector(
-          onTap: () => _selectDate(context),
-          child: AbsorbPointer(
-            child: TextFormField(
-              decoration: InputDecoration(
-                labelText: 'Data de Nascimento',
-                prefixIcon: const Icon(Icons.calendar_today),
-                contentPadding: EdgeInsets.symmetric(horizontal: padding, vertical: padding),
-                labelStyle: labelTextStyle,
-              ),
-              controller: TextEditingController(
-                text: DateFormat('dd/MM/yyyy').format(_selectedDate),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Por favor, selecione a data de nascimento';
-                }
-                return null;
-              },
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Hora de nascimento
-        TextFormField(
-          controller: _timeController,
-          decoration: InputDecoration(
-            labelText: 'Hora de Nascimento (HH:MM)',
-            prefixIcon: const Icon(Icons.access_time),
-            hintText: 'Ex: 15:30',
-            contentPadding: EdgeInsets.symmetric(horizontal: padding, vertical: padding),
-            labelStyle: labelTextStyle,
-          ),
-          keyboardType: TextInputType.datetime,
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Por favor, informe a hora de nascimento';
-            }
-
-            // Validar formato da hora
-            final RegExp timeRegex = RegExp(r'^([01]?[0-9]|2[0-3]):([0-5][0-9])$');
-            if (!timeRegex.hasMatch(value)) {
-              return 'Formato inválido. Use HH:MM (Ex: 15:30)';
-            }
-
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-
-        // Local de nascimento
-        TextFormField(
-          controller: _birthPlaceController,
-          decoration: InputDecoration(
-            labelText: 'Local de Nascimento',
-            prefixIcon: const Icon(Icons.location_on_outlined),
-            hintText: 'Ex: São Paulo, SP, Brasil',
-            contentPadding: EdgeInsets.symmetric(horizontal: padding, vertical: padding),
-            labelStyle: labelTextStyle,
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Por favor, informe o local de nascimento';
-            }
-            return null;
-          },
-        ),
-      ],
-    ).animate().fadeIn(
-      delay: const Duration(milliseconds: 400),
-      duration: const Duration(milliseconds: 500),
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: Obx(() => ElevatedButton.icon(
-        onPressed: _isLoading.value ? null : _generateChart,
-        icon: _isLoading.value
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.white,
-          ),
-        )
-            : const Icon(Icons.auto_graph),
-        label: Text(_isLoading.value ? 'Gerando Mapa...' : 'Gerar Mapa Astral (R\$ ${_controller.birthChartCost.toStringAsFixed(2)})'),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      )),
-    ).animate().fadeIn(
-      delay: const Duration(milliseconds: 500),
-      duration: const Duration(milliseconds: 500),
-    );
-  }
-
-  Widget _buildResultView() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(padding),
+      physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Cabeçalho com os dados
-          Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Text(
-                    _nameController.text,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Nascido(a) em ${DateFormat('dd/MM/yyyy').format(_selectedDate)} às ${_timeController.text}',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  Text(
-                    _birthPlaceController.text,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildPlanetIndicator(
-                        icon: Icons.wb_sunny,
-                        title: 'Sol',
-                        sign: 'Áries', // Isso seria dinâmico em uma versão completa
-                      ),
-                      _buildPlanetIndicator(
-                        icon: Icons.nights_stay,
-                        title: 'Lua',
-                        sign: 'Câncer', // Isso seria dinâmico em uma versão completa
-                      ),
-                      _buildPlanetIndicator(
-                        icon: Icons.arrow_upward,
-                        title: 'Ascendente',
-                        sign: 'Leão', // Isso seria dinâmico em uma versão completa
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ).animate().fadeIn(
-            duration: const Duration(milliseconds: 500),
+          BirthChartResultHeader(
+            name: _nameController.text,
+            birthDate: _selectedDate,
+            birthTime: _timeController.text,
+            birthPlace: _birthPlaceController.text,
+            isSmallScreen: isSmallScreen,
+            isTablet: isTablet,
           ),
 
           const SizedBox(height: 24),
 
-          // Título da interpretação
-          const Text(
-            'Interpretação do Mapa Astral',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ).animate().fadeIn(
-            delay: const Duration(milliseconds: 300),
-            duration: const Duration(milliseconds: 500),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Interpretação
-          Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                _chartResult['interpretation'] ?? '',
-                style: const TextStyle(
-                  fontSize: 16,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ).animate().fadeIn(
-            delay: const Duration(milliseconds: 400),
-            duration: const Duration(milliseconds: 500),
+          BirthChartInterpretation(
+            interpretation: _chartResult['interpretation'] ?? '',
+            isSmallScreen: isSmallScreen,
+            isTablet: isTablet,
           ),
 
           const SizedBox(height: 24),
 
-          // Botões de ação
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    _hasResult.value = false;
-                  },
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Nova Consulta'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    SharePlus.instance.share(
-                        ShareParams(text: 'check out my website https://example.com')
-                    );
-                  },
-                  icon: const Icon(Icons.share),
-                  label: const Text('Compartilhar'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ).animate().fadeIn(
-            delay: const Duration(milliseconds: 500),
-            duration: const Duration(milliseconds: 500),
+          BirthChartActionButtons(
+            onNewChart: () {
+              _hasResult.value = false;
+            },
+            onShare: () {
+              SharePlus.instance.share(
+                  ShareParams(text: 'Meu mapa astral gerado no app Oraculum. Nascido em ${DateFormat('dd/MM/yyyy').format(_selectedDate)} às ${_timeController.text} em ${_birthPlaceController.text}.\n\nDescubra seu destino também!')
+              );
+            },
+            isSmallScreen: isSmallScreen,
+            isTablet: isTablet,
           ),
         ],
       ),
     );
-  }
-
-  Widget _buildPlanetIndicator({
-    required IconData icon,
-    required String title,
-    required String sign,
-  }) {
-    return Column(
-      children: [
-        Icon(
-          icon,
-          color: Theme.of(context).colorScheme.primary,
-          size: 24,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          title,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 12,
-          ),
-        ),
-        Text(
-          sign,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // Dialog para mostrar o histórico de mapas astrais
-  Future<void> _showHistoryDialog(BuildContext context) async {
-    try {
-      // Mostrar carregando
-      Get.dialog(
-        const Center(
-          child: CircularProgressIndicator(),
-        ),
-        barrierDismissible: false,
-      );
-
-      // Buscar os mapas astrais do usuário
-      final birthCharts = await _controller.getUserBirthCharts();
-
-      // Remover o diálogo de carregamento
-      Get.back();
-
-      if (birthCharts.isEmpty) {
-        Get.dialog(
-          AlertDialog(
-            title: const Text('Histórico de Mapas Astrais'),
-            content: const Text('Você ainda não gerou nenhum mapa astral.'),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(),
-                child: const Text('Fechar'),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-
-      // Mostrar lista de mapas astrais
-      Get.dialog(
-        AlertDialog(
-          title: const Text('Histórico de Mapas Astrais'),
-          content: SizedBox(
-            width: double.maxFinite,
-            height: 300,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: birthCharts.length,
-              itemBuilder: (context, index) {
-                final chart = birthCharts[index];
-                final date = chart['birthDate'] != null
-                    ? DateFormat('dd/MM/yyyy').format((chart['birthDate'] as DateTime))
-                    : 'Data desconhecida';
-                final place = chart['birthPlace'] ?? 'Local desconhecido';
-                final time = chart['birthTime'] ?? 'Hora desconhecida';
-                final createdAt = chart['createdAt'] != null
-                    ? DateFormat('dd/MM/yyyy').format((chart['createdAt'] as DateTime))
-                    : 'Data desconhecida';
-
-                return Card(
-                  child: ListTile(
-                    title: Text('Mapa Astral - $date'),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Local: $place'),
-                        Text('Hora: $time'),
-                        Text('Gerado em: $createdAt'),
-                      ],
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.visibility),
-                      onPressed: () {
-                        // Fechar o diálogo atual
-                        Get.back();
-
-                        // Mostrar a interpretação completa
-                        Get.dialog(
-                          AlertDialog(
-                            title: Text('Mapa Astral - $date'),
-                            content: SingleChildScrollView(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('Local: $place'),
-                                  Text('Hora: $time'),
-                                  Text('Gerado em: $createdAt'),
-                                  const Divider(),
-                                  const SizedBox(height: 8),
-                                  const Text(
-                                    'Interpretação:',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(chart['interpretation'] ?? 'Interpretação não disponível'),
-                                ],
-                              ),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Get.back(),
-                                child: const Text('Fechar'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    onTap: () {
-                      // Fechar o diálogo atual
-                      Get.back();
-
-                      // Preencher o formulário com os dados deste mapa astral
-                      setState(() {
-                        if (chart['birthDate'] != null) {
-                          _selectedDate = chart['birthDate'] as DateTime;
-                        }
-                        _birthPlaceController.text = chart['birthPlace'] ?? '';
-                        _timeController.text = chart['birthTime'] ?? '';
-
-                        // Mostrar a interpretação
-                        _chartResult.value = {
-                          'success': true,
-                          'interpretation': chart['interpretation'] ?? 'Interpretação não disponível'
-                        };
-                        _hasResult.value = true;
-                      });
-                    },
-                  ),
-                );
-              },
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: const Text('Fechar'),
-            ),
-          ],
-        ),
-      );
-    } catch (e) {
-      // Remover o diálogo de carregamento se houver erro
-      Get.back();
-
-      Get.snackbar(
-        'Erro',
-        'Não foi possível carregar o histórico de mapas astrais: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
   }
 }
