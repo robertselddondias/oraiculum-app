@@ -9,6 +9,7 @@ import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/pagarme_service.dart';
 import 'package:oraculum/services/payment_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:oraculum/utils/pagarme_payment_status.dart';
 
 class PaymentController extends GetxController {
   final PaymentService _paymentService = Get.find<PaymentService>();
@@ -160,9 +161,12 @@ class PaymentController extends GetxController {
           break;
 
         case 'cartão de crédito':
-        // Simular pagamento e adicionar créditos diretamente
-          await addCredits(amount);
-          paymentId = 'card-${DateTime.now().millisecondsSinceEpoch}';
+          paymentId = await processPaymentWithCreditCard(
+            description: description,
+            amount: amount,
+            serviceId: serviceId,
+            serviceType: serviceType,
+          );
           break;
 
         case 'transferência bancária':
@@ -338,6 +342,192 @@ class PaymentController extends GetxController {
     }
   }
 
+  // Novo método implementado com a classe PagarmePaymentStatus
+  Future<String> processPaymentWithCreditCard({
+    required String description,
+    required double amount,
+    required String serviceId,
+    required String serviceType,
+    String? specificCardId,
+  }) async {
+    try {
+      isLoading.value = true;
+
+      if (_authController.currentUser.value == null) {
+        Get.snackbar(
+          'Erro',
+          'Você precisa estar logado para realizar um pagamento',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return '';
+      }
+
+      final userId = _authController.currentUser.value!.uid;
+
+      // Buscar o cartão padrão ou o cartão específico
+      QuerySnapshot querySnapshot;
+      if (specificCardId != null) {
+        querySnapshot = await _firebaseService.firestore
+            .collection('credit_cards')
+            .where('id', isEqualTo: specificCardId)
+            .limit(1)
+            .get();
+      } else {
+        querySnapshot = await _firebaseService.getDefaultCreditCard(userId);
+      }
+
+      if (querySnapshot.docs.isEmpty) {
+        Get.snackbar(
+          'Erro',
+          'Nenhum cartão encontrado para realizar o pagamento',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return '';
+      }
+
+      final cartao = querySnapshot.docs.first.data() as Map<String, dynamic>;
+
+      // Processar o pagamento com o Pagar.me
+      http.Response response = await _pagarmeService.createOrder(
+          creditCardId: cartao['cardId'],
+          customerId: cartao['customerId'],
+          userId: userId,
+          amount: (amount * 100).toInt(), // Converter para centavos
+          orderId: 'credit-$userId-${DateTime.now().millisecondsSinceEpoch}'
+      );
+
+      Map<String, dynamic> responseBody = json.decode(response.body);
+
+      // Verificar o status da resposta usando a classe PagarmePaymentStatus
+      if (response.statusCode == 200 && PagarmePaymentStatus.isSuccessful(responseBody['status'])) {
+        // Pagamento bem-sucedido, adicionar créditos
+        final success = await _paymentService.updateUserCredits(userId, amount);
+
+        if (success) {
+          await loadUserCredits();
+
+          // Registrar o pagamento no Firestore
+          final paymentData = {
+            'userId': userId,
+            'amount': amount,
+            'serviceId': serviceId,
+            'serviceType': serviceType,
+            'description': description,
+            'paymentMethod': 'Cartão de Crédito',
+            'cardLastFourDigits': cartao['lastFourDigits'] ?? '****',
+            'cardBrand': cartao['brandType'] ?? 'unknown',
+            'pagarmeOrderId': responseBody['id'],
+            'pagarmeChargeId': responseBody['charges']?[0]?['id'] ?? '',
+            'status': responseBody['status'],
+            'statusMessage': PagarmePaymentStatus.getStatusMessage(responseBody['status']),
+            'timestamp': FieldValue.serverTimestamp(),
+          };
+
+          final docRef = await _firebaseService.firestore
+              .collection('payments')
+              .add(paymentData);
+
+          Get.back();
+          Get.snackbar(
+            'Sucesso',
+            'Pagamento ${PagarmePaymentStatus.getStatusMessage(responseBody['status'])}',
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+
+          return docRef.id;
+        }
+      } else if (PagarmePaymentStatus.isInProgress(responseBody['status'])) {
+        // Pagamento em processamento
+        final paymentData = {
+          'userId': userId,
+          'amount': amount,
+          'serviceId': serviceId,
+          'serviceType': serviceType,
+          'description': description,
+          'paymentMethod': 'Cartão de Crédito',
+          'cardLastFourDigits': cartao['lastFourDigits'] ?? '****',
+          'cardBrand': cartao['brandType'] ?? 'unknown',
+          'pagarmeOrderId': responseBody['id'],
+          'pagarmeChargeId': responseBody['charges']?[0]?['id'] ?? '',
+          'status': responseBody['status'],
+          'statusMessage': PagarmePaymentStatus.getStatusMessage(responseBody['status']),
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        final docRef = await _firebaseService.firestore
+            .collection('payments')
+            .add(paymentData);
+
+        Get.snackbar(
+          'Processando',
+          'Seu pagamento está sendo processado: ${PagarmePaymentStatus.getStatusMessage(responseBody['status'])}',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+
+        return docRef.id;
+      } else {
+        // Pagamento falhou
+        final failMessage = responseBody['charges']?[0]?['last_transaction']?['acquirer_message'] ??
+            PagarmePaymentStatus.getStatusMessage(responseBody['status']);
+
+        Get.snackbar(
+          'Erro no Pagamento',
+          failMessage,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+
+        // Registrar a falha no pagamento no Firestore
+        final paymentData = {
+          'userId': userId,
+          'amount': amount,
+          'serviceId': serviceId,
+          'serviceType': serviceType,
+          'description': description,
+          'paymentMethod': 'Cartão de Crédito',
+          'cardLastFourDigits': cartao['lastFourDigits'] ?? '****',
+          'cardBrand': cartao['brandType'] ?? 'unknown',
+          'pagarmeOrderId': responseBody['id'] ?? '',
+          'pagarmeChargeId': responseBody['charges']?[0]?['id'] ?? '',
+          'status': responseBody['status'] ?? 'failed',
+          'statusMessage': failMessage,
+          'errorDetails': responseBody['charges']?[0]?['last_transaction']?['acquirer_message'] ?? '',
+          'timestamp': FieldValue.serverTimestamp(),
+        };
+
+        await _firebaseService.firestore
+            .collection('failed_payments')
+            .add(paymentData);
+
+        return '';
+      }
+
+      return '';
+    } catch (e) {
+      debugPrint('Erro ao processar pagamento com cartão de crédito: $e');
+      Get.snackbar(
+        'Erro',
+        'Falha ao processar o pagamento: ${e.toString().split(': ').last}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return '';
+    } finally {
+      isLoading.value = false;
+      update();
+    }
+  }
+
   Future<bool> checkUserCredits(String userId, double requiredAmount) async {
     try {
       return await _paymentService.checkUserCredits(userId, requiredAmount);
@@ -409,9 +599,7 @@ class PaymentController extends GetxController {
       QuerySnapshot querySnapshot = await _firebaseService.getDefaultCreditCard(_firebaseService.userId!);
       if(!querySnapshot.docs.isEmpty) {
         final userId = _authController.currentUser.value!.uid;
-        Map<String, dynamic> cartao = querySnapshot.docs.first.data() as Map<
-            String,
-            dynamic>;
+        Map<String, dynamic> cartao = querySnapshot.docs.first.data() as Map<String, dynamic>;
 
         http.Response response = await _pagarmeService.createOrder(
             creditCardId: cartao['cardId'],
@@ -421,17 +609,17 @@ class PaymentController extends GetxController {
             orderId: 'credit-$userId}'
         );
         Map<String, dynamic> body = json.decode(response.body);
-        if(response.statusCode == 200 && body['status'] == 'paid') {
 
+        // Usando a classe PagarmePaymentStatus para verificar o status
+        if(response.statusCode == 200 && PagarmePaymentStatus.isSuccessful(body['status'])) {
           final success = await _paymentService.updateUserCredits(userId, amount);
 
           if (success) {
             await loadUserCredits();
 
-            final action = amount > 0 ? 'adicionados' : 'removidos';
             Get.snackbar(
               'Sucesso',
-              'Créditos $action com sucesso',
+              'Créditos adicionados com sucesso',
               backgroundColor: Colors.green,
               colorText: Colors.white,
               snackPosition: SnackPosition.BOTTOM,
@@ -439,6 +627,28 @@ class PaymentController extends GetxController {
 
             return true;
           }
+        } else if (PagarmePaymentStatus.isInProgress(body['status'])) {
+          Get.snackbar(
+            'Processando',
+            'Seu pagamento está sendo processado: ${PagarmePaymentStatus.getStatusMessage(body['status'])}',
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+          return false;
+        } else {
+          // Pagamento falhou
+          final failMessage = body['charges']?[0]?['last_transaction']?['acquirer_message'] ??
+              PagarmePaymentStatus.getStatusMessage(body['status']);
+
+          Get.snackbar(
+            'Erro no Pagamento',
+            failMessage,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+          return false;
         }
       }
 
@@ -447,7 +657,7 @@ class PaymentController extends GetxController {
       debugPrint('Erro ao adicionar créditos: $e');
       Get.snackbar(
         'Erro',
-        'Falha ao adicionar créditos',
+        'Falha ao adicionar créditos: ${e.toString().split(': ').last}',
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
