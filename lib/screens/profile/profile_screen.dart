@@ -321,7 +321,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       {
         'title': 'Métodos de Pagamento',
         'icon': Icons.payment,
-        'onTap': () => Get.toNamed(AppRoutes.paymentMethods),
+        'onTap': () => Get.toNamed(AppRoutes.creditcardList),
       },
       {
         'title': 'Configurações',

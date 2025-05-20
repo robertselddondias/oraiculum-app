@@ -1,4 +1,6 @@
 import 'package:oraculum/screens/astrology/birth_chart_screen.dart';
+import 'package:oraculum/screens/credit_card/add_credit_card_screen.dart';
+import 'package:oraculum/screens/credit_card/credit_card_list_screen.dart';
 import 'package:oraculum/screens/onboarding_screen.dart';
 import 'package:oraculum/screens/payment/payment_history_screen.dart';
 import 'package:oraculum/screens/splash_screen.dart';
@@ -43,7 +45,9 @@ class AppRoutes {
   static const String settings = '/settings';
   static const String paymentMethods = '/payment-methods';
   static const String paymentHistory = '/payment-history';
-  static const String savedReading = '/saved-reading-detail';  // Nome ajustado para evitar conflito
+  static const String savedReading = '/saved-reading-detail';
+  static const String creditcardList = '/creditcard-list';
+  static const String addCreditCard = '/add-credit-card';
 
   static final routes = [
     GetPage(name: splash, page: () => const SplashScreen()),
@@ -66,6 +70,8 @@ class AppRoutes {
     GetPage(name: settings, page: () => const SettingsScreen()),
     GetPage(name: paymentMethods, page: () => const PaymentMethodsScreen()),
     GetPage(name: paymentHistory, page: () => const PaymentHistoryScreen()),
+    GetPage(name: creditcardList, page: () => CreditCardListScreen()),
+    GetPage(name: addCreditCard, page: () => AddCreditCardScreen()),
     GetPage(
       name: savedReading,
       page: () => const SavedReadingDetailScreen(),

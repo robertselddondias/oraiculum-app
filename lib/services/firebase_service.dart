@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 
 import 'package:oraculum/models/tarot_model.dart';
+import 'package:oraculum/models/user_model.dart';
 import 'package:uuid/uuid.dart';
 
 class FirebaseService {
@@ -30,6 +31,14 @@ class FirebaseService {
   // Métodos de usuário
   Future<DocumentSnapshot> getUserData(String userId) {
     return usersCollection.doc(userId).get();
+  }
+
+  Future<UserModel?> getUser(String userId) async {
+    DocumentSnapshot documentSnapshot = await usersCollection.doc(userId).get();
+    if(documentSnapshot.exists) {
+      return UserModel.fromMap(documentSnapshot.data() as Map<String, dynamic>, documentSnapshot.id);
+    }
+    return null;
   }
 
   Future<void> updateUserData(String userId, Map<String, dynamic> data) {
