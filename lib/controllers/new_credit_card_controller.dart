@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:oraculum/services/pagarme_service.dart';
 import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/services/pagarme_service.dart';
 
 class NewCreditCardController extends GetxController {
-  // Injeções de dependência
-  final PagarmeService _pagarmeService = Get.find<PagarmeService>();
+  // Serviços injetados
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
-  final PaymentController _paymentController = Get.find<PaymentController>();
   final AuthController _authController = Get.find<AuthController>();
+  final PagarmeService _pagarmeService = Get.find<PagarmeService>();
 
   // Controladores para os campos do formulário
   final TextEditingController cardNumberController = TextEditingController();
@@ -61,7 +59,7 @@ class NewCreditCardController extends GetxController {
   final RxString cardBrand = ''.obs;
   final RxList<Map<String, dynamic>> savedCards = <Map<String, dynamic>>[].obs;
 
-  // Formulário
+  // Chave para o formulário (validação)
   final formKey = GlobalKey<FormState>();
 
   @override
@@ -78,6 +76,10 @@ class NewCreditCardController extends GetxController {
 
   @override
   void onClose() {
+    // Remover listeners
+    cvvFocus.removeListener(_onCvvFocusChange);
+    cardNumberController.removeListener(_updateCardBrand);
+
     // Limpar os controladores
     cardNumberController.dispose();
     cardHolderController.dispose();
@@ -98,7 +100,6 @@ class NewCreditCardController extends GetxController {
   }
 
   // Métodos do controlador
-
   void _onCvvFocusChange() {
     showBackView.value = cvvFocus.hasFocus;
   }
@@ -162,7 +163,6 @@ class NewCreditCardController extends GetxController {
           ...doc.data(),
         };
       }).toList();
-
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível carregar os cartões: $e');
     } finally {
@@ -195,6 +195,12 @@ class NewCreditCardController extends GetxController {
       final document = documentController.text.replaceAll(RegExp(r'[.-]'), '');
       final phone = phoneController.text.replaceAll(RegExp(r'[() -]'), '');
 
+      // Verificar se o cartão é válido usando o algoritmo de Luhn
+      if (!validateCardLuhn(cardNumber)) {
+        Get.snackbar('Erro', 'Número de cartão inválido');
+        return false;
+      }
+
       // Criar objeto para tokenização
       final cardData = {
         "number": cardNumber,
@@ -204,12 +210,25 @@ class NewCreditCardController extends GetxController {
         "cvv": cvv,
       };
 
+      // Criar cliente na Pagar.me se necessário
+      String? customerId = await _getOrCreatePagarMeCustomer(userId, document, phone, cardHolder);
 
+      if (customerId == null) {
+        Get.snackbar('Erro', 'Não foi possível processar seu cadastro');
+        return false;
+      }
 
       // Criar token do cartão usando PagarmeService
-      final cardToken = null;//await _pagarmeService.generateCardToken(cardData);
+      final cardId = await _pagarmeService.createCard(
+          cardNumber: cardNumber,
+          cardHolderName: cardHolder,
+          cardExpirationDate: '${expiryMonth}/${expiryParts[1]}',
+          cardCvv: cvv,
+          documentNumber: document,
+          customerId: customerId
+      );
 
-      if (cardToken == null) {
+      if (cardId.isEmpty) {
         Get.snackbar('Erro', 'Não foi possível tokenizar o cartão');
         return false;
       }
@@ -220,20 +239,16 @@ class NewCreditCardController extends GetxController {
           .doc(userId)
           .collection('saved_cards')
           .add({
-        'token': cardToken,
+        'cardId': cardId,
         'lastFourDigits': cardNumber.substring(cardNumber.length - 4),
         'cardHolder': cardHolder,
         'expiryMonth': expiryMonth,
         'expiryYear': expiryYear,
         'brand': cardBrand.value,
-        'document': document,
-        'phone': phone,
+        'customerId': customerId,
         'isDefault': savedCards.isEmpty, // Se for o primeiro cartão, define como padrão
         'createdAt': DateTime.now(),
       });
-
-      // Criar ou atualizar cliente na Pagar.me
-      await _createOrUpdatePagarMeCustomer(userId, document, phone, cardHolder);
 
       // Limpar o formulário
       _clearForm();
@@ -243,7 +258,6 @@ class NewCreditCardController extends GetxController {
 
       Get.snackbar('Sucesso', 'Cartão adicionado com sucesso');
       return true;
-
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível adicionar o cartão: $e');
       return false;
@@ -252,8 +266,8 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Criar ou atualizar cliente na Pagar.me
-  Future<void> _createOrUpdatePagarMeCustomer(
+  // Obter ou criar cliente na Pagar.me
+  Future<String?> _getOrCreatePagarMeCustomer(
       String userId,
       String document,
       String phone,
@@ -265,33 +279,42 @@ class NewCreditCardController extends GetxController {
         final userDoc = userData.data() as Map<String, dynamic>;
 
         // Verificar se já existe um cliente na Pagar.me
-        if (!userDoc.containsKey('pagarme_customer_id')) {
-          // Criar cliente na Pagar.me
-          final customerData = {
-            "name": name,
-            "email": userDoc['email'] ?? '',
-            "type": "individual",
-            "document": document,
-            "phones": {
-              "mobile_phone": {
-                "country_code": "55",
-                "number": phone.substring(2),
-                "area_code": phone.substring(0, 2)
-              }
+        if (userDoc.containsKey('pagarme_customer_id')) {
+          return userDoc['pagarme_customer_id'];
+        }
+
+        // Obter e-mail do usuário
+        final email = _authController.currentUser.value?.email ?? '';
+
+        // Criar cliente na Pagar.me
+        final customerData = {
+          "name": name,
+          "email": email,
+          "type": "individual",
+          "document": document,
+          "phones": {
+            "mobile_phone": {
+              "country_code": "55",
+              "number": phone.substring(2),
+              "area_code": phone.substring(0, 2)
             }
-          };
-
-          final customerId = await _pagarmeService.createCustomer(customerData);
-
-          if (customerId != null) {
-            await _firebaseService.updateUserData(userId, {
-              'pagarme_customer_id': customerId
-            });
           }
+        };
+
+        final customerId = await _pagarmeService.createCustomer(customerData);
+
+        if (customerId.isNotEmpty) {
+          // Atualizar ID do cliente no Firestore
+          await _firebaseService.updateUserData(userId, {
+            'pagarme_customer_id': customerId
+          });
+          return customerId;
         }
       }
+      return null;
     } catch (e) {
-      debugPrint('Erro ao criar/atualizar cliente na Pagar.me: $e');
+      debugPrint('Erro ao criar/obter cliente na Pagar.me: $e');
+      return null;
     }
   }
 
@@ -310,7 +333,11 @@ class NewCreditCardController extends GetxController {
       final cardToRemove = savedCards.firstWhereOrNull((card) => card['id'] == cardId);
       final isDefault = cardToRemove != null && cardToRemove['isDefault'] == true;
 
-      // Remover o cartão
+      // TODO: Implementar a remoção do cartão na Pagar.me
+      // Aqui deveríamos chamar a API da Pagar.me para remover o token do cartão
+      // await _pagarmeService.deleteCard(cardToRemove['cardId']);
+
+      // Remover o cartão do Firestore
       await _firebaseService.firestore
           .collection('users')
           .doc(userId)
@@ -333,7 +360,6 @@ class NewCreditCardController extends GetxController {
 
       Get.snackbar('Sucesso', 'Cartão removido com sucesso');
       return true;
-
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível remover o cartão: $e');
       return false;
@@ -353,7 +379,7 @@ class NewCreditCardController extends GetxController {
       isLoading.value = true;
       final userId = _authController.currentUser.value!.uid;
 
-      // Primeiro, remover flag de cartão padrão de todos os cartões
+      // Usar batch para atualizar todos os cartões de uma vez
       final batch = _firebaseService.firestore.batch();
 
       final cardsSnapshot = await _firebaseService.firestore
@@ -362,6 +388,7 @@ class NewCreditCardController extends GetxController {
           .collection('saved_cards')
           .get();
 
+      // Remover flag de cartão padrão de todos os cartões
       for (var doc in cardsSnapshot.docs) {
         batch.update(doc.reference, {'isDefault': false});
       }
@@ -386,7 +413,6 @@ class NewCreditCardController extends GetxController {
 
       Get.snackbar('Sucesso', 'Cartão definido como padrão');
       return true;
-
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível definir o cartão como padrão: $e');
       return false;
@@ -439,5 +465,68 @@ class NewCreditCardController extends GetxController {
   // Obter o cartão padrão
   Map<String, dynamic>? getDefaultCard() {
     return savedCards.firstWhereOrNull((card) => card['isDefault'] == true);
+  }
+
+  // Processar pagamento com cartão
+  Future<bool> processPayment({
+    required double amount,
+    required String description,
+    String? cardId
+  }) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
+        return false;
+      }
+
+      isLoading.value = true;
+      final userId = _authController.currentUser.value!.uid;
+
+      // Se cardId não foi fornecido, usar o cartão padrão
+      if (cardId == null) {
+        final defaultCard = getDefaultCard();
+        if (defaultCard == null) {
+          Get.snackbar('Erro', 'Nenhum cartão padrão definido');
+          return false;
+        }
+        cardId = defaultCard['id'];
+      }
+
+      // Encontrar o cartão pelo ID
+      final card = savedCards.firstWhere(
+            (card) => card['id'] == cardId,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (card.isEmpty) {
+        Get.snackbar('Erro', 'Cartão não encontrado');
+        return false;
+      }
+
+      // TODO: Implementar o processamento de pagamento
+      // Aqui deveria chamar a API da Pagar.me para processar o pagamento
+
+      // Registrar o pagamento no Firestore
+      final paymentData = {
+        'userId': userId,
+        'cardId': cardId,
+        'amount': amount,
+        'description': description,
+        'status': 'approved', // Temporário, deveria vir da resposta da API
+        'timestamp': DateTime.now(),
+      };
+
+      await _firebaseService.firestore
+          .collection('payments')
+          .add(paymentData);
+
+      Get.snackbar('Sucesso', 'Pagamento realizado com sucesso');
+      return true;
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível realizar o pagamento: $e');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
   }
 }

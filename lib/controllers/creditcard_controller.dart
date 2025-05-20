@@ -9,7 +9,6 @@ import 'package:oraculum/services/firebase_service.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 
 class CreditCardController extends GetxController {
-  final PagarmeService _pagarmeService = Get.find<PagarmeService>();
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
 

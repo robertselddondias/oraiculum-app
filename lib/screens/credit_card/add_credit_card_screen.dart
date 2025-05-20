@@ -1,203 +1,110 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'dart:math' as math;
+import 'package:oraculum/controllers/new_credit_card_controller.dart';
 
-import 'package:oraculum/controllers/creditcard_controller.dart';
-
-class AddCreditCardScreen extends StatefulWidget {
+class AddCreditCardScreen extends GetView<NewCreditCardController> {
   const AddCreditCardScreen({Key? key}) : super(key: key);
 
   @override
-  State<AddCreditCardScreen> createState() => _NewCreditCardScreenState();
-}
-
-class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
-  // Controladores para os campos do formulário
-  final TextEditingController _cardNumberController = TextEditingController();
-  final TextEditingController _cardHolderController = TextEditingController();
-  final TextEditingController _expiryDateController = TextEditingController();
-  final TextEditingController _cvvController = TextEditingController();
-  final TextEditingController _documentController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-
-  final CreditCardController controller = Get.find<CreditCardController>();
-
-  // Formatadores para os campos
-  final cardNumberFormatter = MaskTextInputFormatter(
-    mask: '#### #### #### ####',
-    filter: {"#": RegExp(r'[0-9]')},
-  );
-
-  final expiryDateFormatter = MaskTextInputFormatter(
-    mask: '##/##',
-    filter: {"#": RegExp(r'[0-9]')},
-  );
-
-  final cvvFormatter = MaskTextInputFormatter(
-    mask: '###',
-    filter: {"#": RegExp(r'[0-9]')},
-  );
-
-  final documentFormatter = MaskTextInputFormatter(
-    mask: '###.###.###-##',
-    filter: {"#": RegExp(r'[0-9]')},
-  );
-
-  final phoneFormatter = MaskTextInputFormatter(
-    mask: '(##) #####-####',
-    filter: {"#": RegExp(r'[0-9]')},
-  );
-
-  // Focus nodes para controlar o foco dos campos
-  final FocusNode _cardNumberFocus = FocusNode();
-  final FocusNode _cardHolderFocus = FocusNode();
-  final FocusNode _expiryDateFocus = FocusNode();
-  final FocusNode _cvvFocus = FocusNode();
-  final FocusNode _documentFocus = FocusNode();
-  final FocusNode _phoneFocus = FocusNode();
-
-  // Variáveis para controlar a animação do cartão
-  bool _showBackView = false;
-  String _cardBrand = '';
-
-  // Chave para o formulário (validação)
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  // Estado de carregamento
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Adicionar listeners para os focus nodes
-    _cvvFocus.addListener(_updateCardView);
-
-    // Adicionar listener para detectar a bandeira do cartão
-    _cardNumberController.addListener(_updateCardBrand);
-  }
-
-  @override
-  void dispose() {
-    // Liberar os controladores
-    _cardNumberController.dispose();
-    _cardHolderController.dispose();
-    _expiryDateController.dispose();
-    _cvvController.dispose();
-    _documentController.dispose();
-    _phoneController.dispose();
-
-    // Liberar os focus nodes
-    _cardNumberFocus.dispose();
-    _cardHolderFocus.dispose();
-    _expiryDateFocus.dispose();
-    _cvvFocus.dispose();
-    _documentFocus.dispose();
-    _phoneFocus.dispose();
-
-    super.dispose();
-  }
-
-  // Atualizar a visualização do cartão com base no foco
-  void _updateCardView() {
-    setState(() {
-      _showBackView = _cvvFocus.hasFocus;
-    });
-  }
-
-  // Detectar a bandeira do cartão
-  void _updateCardBrand() {
-    final cardNumber = _cardNumberController.text.replaceAll(' ', '');
-
-    if (cardNumber.isEmpty) {
-      setState(() {
-        _cardBrand = '';
-      });
-      return;
-    }
-
-    if (cardNumber.startsWith('4')) {
-      setState(() {
-        _cardBrand = 'visa';
-      });
-    } else if ((cardNumber.startsWith('5') &&
-        int.parse(cardNumber.substring(1, 2)) >= 1 &&
-        int.parse(cardNumber.substring(1, 2)) <= 5) ||
-        (cardNumber.length >= 4 &&
-            int.parse(cardNumber.substring(0, 4)) >= 2221 &&
-            int.parse(cardNumber.substring(0, 4)) <= 2720)) {
-      setState(() {
-        _cardBrand = 'mastercard';
-      });
-    } else if (cardNumber.startsWith('34') || cardNumber.startsWith('37')) {
-      setState(() {
-        _cardBrand = 'amex';
-      });
-    } else if (cardNumber.startsWith('6')) {
-      setState(() {
-        _cardBrand = 'elo';
-      });
-    } else {
-      setState(() {
-        _cardBrand = '';
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
+    // Obter dimensões da tela para cálculos responsivos
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 360;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Adicionar Cartão'),
         backgroundColor: Colors.deepPurple.shade800,
       ),
       body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Visualização do cartão
-                _buildCreditCardView(),
-                const SizedBox(height: 24),
+        // Use GetX para apenas mostrar o loader quando necessário
+        child: GetX<NewCreditCardController>(
+          builder: (_) {
+            if (controller.isLoading.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-                // Formulário
-                _buildCardForm(),
-
-                const SizedBox(height: 24),
-
-                // Botão de salvar
-                _buildSaveButton(),
-
-                const SizedBox(height: 16),
-
-                // Texto de segurança
-                _buildSecurityText(),
-              ],
-            ),
-          ),
+            return _buildBody(context, isSmallScreen);
+          },
         ),
       ),
     );
   }
 
-  Widget _buildCreditCardView() {
+  Widget _buildBody(BuildContext context, bool isSmallScreen) {
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _showBackView = !_showBackView;
-        });
-      },
-      child: Container(
-        height: 200,
-        width: double.infinity,
-        child: _showBackView ? _buildCardBack() : _buildCardFront(),
+      // Quando o usuário tocar fora de um campo, remove o foco
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Determinar se estamos em um layout de tablet/desktop
+          final isTablet = constraints.maxWidth > 600;
+
+          // Calcular o padding horizontal baseado no tamanho da tela
+          final horizontalPadding = isTablet ? 32.0 : 16.0;
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: 20,
+            ),
+            child: Form(
+              key: controller.formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Visualização do cartão
+                  SizedBox(
+                    height: isSmallScreen ? 170 : 200,
+                    child: _buildCreditCardView(constraints),
+                  ),
+                  SizedBox(height: isSmallScreen ? 16 : 24),
+
+                  // Formulário do cartão
+                  _buildCardForm(context, isTablet, isSmallScreen),
+
+                  SizedBox(height: isSmallScreen ? 16 : 24),
+
+                  // Botão de salvar
+                  _buildSaveButton(),
+
+                  SizedBox(height: isSmallScreen ? 12 : 16),
+
+                  // Texto de segurança
+                  _buildSecurityText(),
+
+                  // Espaço extra para evitar que o conteúdo fique coberto pelo teclado
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCreditCardView(BoxConstraints constraints) {
+    // Ajustar tamanho do cartão com base na largura da tela
+    final cardWidth = constraints.maxWidth;
+    final cardHeight = constraints.maxWidth > 600 ? 220.0 : 200.0;
+
+    return GestureDetector(
+      onTap: controller.flipCard,
+      child: Center(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          width: cardWidth,
+          height: cardHeight,
+          child: GetX<NewCreditCardController>(
+            builder: (_) {
+              return controller.showBackView.value
+                  ? _buildCardBack()
+                  : _buildCardFront();
+            },
+          ),
+        ),
       ),
     );
   }
@@ -209,7 +116,7 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
@@ -233,74 +140,102 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
                   'Oraculum',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 22,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                _getBrandIcon(),
+                // Use GetBuilder para atualizar somente quando a marca do cartão mudar
+                GetBuilder<NewCreditCardController>(
+                  id: 'cardBrand',
+                  builder: (_) {
+                    return _getBrandIcon(controller.cardBrand.value);
+                  },
+                ),
               ],
             ),
 
             // Número do cartão
-            Text(
-              _cardNumberController.text.isEmpty
-                  ? '•••• •••• •••• ••••'
-                  : _cardNumberController.text.padRight(19, '•'),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                letterSpacing: 2,
-                fontFamily: 'monospace',
-              ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller.cardNumberController,
+              builder: (context, value, child) {
+                return Text(
+                  value.text.isEmpty
+                      ? '•••• •••• •••• ••••'
+                      : value.text.padRight(19, '•'),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    letterSpacing: 2,
+                    fontFamily: 'monospace',
+                  ),
+                );
+              },
             ),
 
             // Dados do titular e validade
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'TITULAR',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10,
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TITULAR',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _cardHolderController.text.isEmpty
-                          ? 'NOME DO TITULAR'
-                          : _cardHolderController.text.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+                      const SizedBox(height: 4),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller.cardHolderController,
+                        builder: (context, value, child) {
+                          return Text(
+                            value.text.isEmpty
+                                ? 'NOME DO TITULAR'
+                                : value.text.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            maxLines: 1,
+                          );
+                        },
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'VALIDADE',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 10,
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'VALIDADE',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _expiryDateController.text.isEmpty
-                          ? 'MM/AA'
-                          : _expiryDateController.text,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
+                      const SizedBox(height: 4),
+                      ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: controller.expiryDateController,
+                        builder: (context, value, child) {
+                          return Text(
+                            value.text.isEmpty ? 'MM/AA' : value.text,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          );
+                        },
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -317,7 +252,7 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
@@ -356,14 +291,17 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
                     height: 40,
                     color: Colors.white,
                     alignment: Alignment.center,
-                    child: Text(
-                      _cvvController.text.isEmpty
-                          ? '***'
-                          : _cvvController.text,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    child: ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: controller.cvvController,
+                      builder: (context, value, child) {
+                        return Text(
+                          value.text.isEmpty ? '***' : value.text,
+                          style: const TextStyle(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -374,7 +312,12 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
             // Bandeira
             Align(
               alignment: Alignment.centerRight,
-              child: _getBrandIcon(),
+              child: GetBuilder<NewCreditCardController>(
+                id: 'cardBrand',
+                builder: (_) {
+                  return _getBrandIcon(controller.cardBrand.value);
+                },
+              ),
             ),
           ],
         ),
@@ -382,7 +325,7 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
     );
   }
 
-  Widget _buildCardForm() {
+  Widget _buildCardForm(BuildContext context, bool isTablet, bool isSmallScreen) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -390,23 +333,27 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
         Text(
           'Informações do Cartão',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: isSmallScreen ? 16 : 18,
             fontWeight: FontWeight.bold,
             color: Colors.deepPurple.shade800,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isSmallScreen ? 12 : 16),
 
         // Número do cartão
         _buildTextField(
-          controller: _cardNumberController,
+          controller: controller.cardNumberController,
           label: 'Número do Cartão',
           hint: '0000 0000 0000 0000',
           icon: Icons.credit_card,
           keyboardType: TextInputType.number,
-          focusNode: _cardNumberFocus,
-          nextFocusNode: _cardHolderFocus,
-          inputFormatters: [cardNumberFormatter],
+          focusNode: controller.cardNumberFocus,
+          nextFocusNode: controller.cardHolderFocus,
+          inputFormatters: [controller.cardNumberFormatter],
+          onChanged: (_) {
+            // Forçar atualização da UI para mostrar a bandeira do cartão
+            controller.update(['cardBrand']);
+          },
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Digite o número do cartão';
@@ -416,22 +363,27 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
             }
             return null;
           },
-          suffixIcon: _cardBrand.isNotEmpty
-              ? _getSuffixBrandIcon()
-              : null,
+          suffixIcon: GetBuilder<NewCreditCardController>(
+            id: 'cardBrand',
+            builder: (_) {
+              return controller.cardBrand.value.isNotEmpty
+                  ? _getSuffixBrandIcon(controller.cardBrand.value)
+                  : const SizedBox.shrink();
+            },
+          ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isSmallScreen ? 12 : 16),
 
         // Nome do titular
         _buildTextField(
-          controller: _cardHolderController,
+          controller: controller.cardHolderController,
           label: 'Nome do Titular',
           hint: 'Nome como está no cartão',
           icon: Icons.person,
           keyboardType: TextInputType.text,
           textCapitalization: TextCapitalization.words,
-          focusNode: _cardHolderFocus,
-          nextFocusNode: _expiryDateFocus,
+          focusNode: controller.cardHolderFocus,
+          nextFocusNode: controller.expiryDateFocus,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Digite o nome do titular';
@@ -439,136 +391,182 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
             return null;
           },
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isSmallScreen ? 12 : 16),
 
-        // Linha com validade e CVV
-        Row(
-          children: [
-            // Validade
-            Expanded(
-              child: _buildTextField(
-                controller: _expiryDateController,
-                label: 'Validade',
-                hint: 'MM/AA',
-                icon: Icons.calendar_today,
-                keyboardType: TextInputType.number,
-                focusNode: _expiryDateFocus,
-                nextFocusNode: _cvvFocus,
-                inputFormatters: [expiryDateFormatter],
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Digite a validade';
-                  }
-                  if (value.length < 5) {
-                    return 'Formato inválido';
-                  }
-
-                  // Verificar se a data é válida
-                  final parts = value.split('/');
-                  if (parts.length != 2) {
-                    return 'Formato inválido';
-                  }
-
-                  final month = int.tryParse(parts[0]);
-                  final year = int.tryParse('20${parts[1]}');
-
-                  if (month == null || year == null || month < 1 || month > 12) {
-                    return 'Data inválida';
-                  }
-
-                  // Verificar se o cartão já expirou
-                  final now = DateTime.now();
-                  final cardDate = DateTime(year, month);
-                  if (cardDate.isBefore(DateTime(now.year, now.month))) {
-                    return 'Cartão expirado';
-                  }
-
-                  return null;
-                },
+        // Layout adaptativo para validade e CVV
+        if (isTablet)
+        // Layout para tablets (lado a lado)
+          Row(
+            children: [
+              // Validade
+              Expanded(
+                child: _buildExpiryField(isSmallScreen),
               ),
-            ),
-            const SizedBox(width: 16),
-
-            // CVV
-            Expanded(
-              child: _buildTextField(
-                controller: _cvvController,
-                label: 'CVV',
-                hint: '000',
-                icon: Icons.security,
-                keyboardType: TextInputType.number,
-                focusNode: _cvvFocus,
-                nextFocusNode: _documentFocus,
-                inputFormatters: [cvvFormatter],
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Digite o CVV';
-                  }
-                  if (value.length < 3) {
-                    return 'CVV inválido';
-                  }
-                  return null;
-                },
+              const SizedBox(width: 16),
+              // CVV
+              Expanded(
+                child: _buildCvvField(isSmallScreen),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
+            ],
+          )
+        else
+        // Layout para celulares (empilhados)
+          Column(
+            children: [
+              _buildExpiryField(isSmallScreen),
+              SizedBox(height: isSmallScreen ? 12 : 16),
+              _buildCvvField(isSmallScreen),
+            ],
+          ),
+
+        SizedBox(height: isSmallScreen ? 20 : 24),
 
         // Título da seção de dados pessoais
         Text(
           'Dados do Titular',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: isSmallScreen ? 16 : 18,
             fontWeight: FontWeight.bold,
             color: Colors.deepPurple.shade800,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isSmallScreen ? 12 : 16),
 
-        // CPF
-        _buildTextField(
-          controller: _documentController,
-          label: 'CPF',
-          hint: '000.000.000-00',
-          icon: Icons.badge,
-          keyboardType: TextInputType.number,
-          focusNode: _documentFocus,
-          nextFocusNode: _phoneFocus,
-          inputFormatters: [documentFormatter],
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Digite o CPF';
-            }
-            if (value.replaceAll(RegExp(r'[.-]'), '').length < 11) {
-              return 'CPF inválido';
-            }
-            return null;
-          },
-        ),
-        const SizedBox(height: 16),
-
-        // Celular
-        _buildTextField(
-          controller: _phoneController,
-          label: 'Celular',
-          hint: '(00) 00000-0000',
-          icon: Icons.phone,
-          keyboardType: TextInputType.number,
-          focusNode: _phoneFocus,
-          inputFormatters: [phoneFormatter],
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Digite o número de celular';
-            }
-            if (value.replaceAll(RegExp(r'[() -]'), '').length < 11) {
-              return 'Número de celular inválido';
-            }
-            return null;
-          },
-        ),
+        // Layout adaptativo para CPF e telefone
+        if (isTablet)
+        // Layout para tablets (lado a lado)
+          Row(
+            children: [
+              // CPF
+              Expanded(
+                child: _buildDocumentField(isSmallScreen),
+              ),
+              const SizedBox(width: 16),
+              // Telefone
+              Expanded(
+                child: _buildPhoneField(isSmallScreen),
+              ),
+            ],
+          )
+        else
+        // Layout para celulares (empilhados)
+          Column(
+            children: [
+              _buildDocumentField(isSmallScreen),
+              SizedBox(height: isSmallScreen ? 12 : 16),
+              _buildPhoneField(isSmallScreen),
+            ],
+          ),
       ],
+    );
+  }
+
+  Widget _buildExpiryField(bool isSmallScreen) {
+    return _buildTextField(
+      controller: controller.expiryDateController,
+      label: 'Validade',
+      hint: 'MM/AA',
+      icon: Icons.calendar_today,
+      keyboardType: TextInputType.number,
+      focusNode: controller.expiryDateFocus,
+      nextFocusNode: controller.cvvFocus,
+      inputFormatters: [controller.expiryDateFormatter],
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Digite a validade';
+        }
+        if (value.length < 5) {
+          return 'Formato inválido';
+        }
+
+        // Verificar se a data é válida
+        final parts = value.split('/');
+        if (parts.length != 2) {
+          return 'Formato inválido';
+        }
+
+        final month = int.tryParse(parts[0]);
+        final year = int.tryParse('20${parts[1]}');
+
+        if (month == null || year == null || month < 1 || month > 12) {
+          return 'Data inválida';
+        }
+
+        // Verificar se o cartão já expirou
+        final now = DateTime.now();
+        final cardDate = DateTime(year, month);
+        if (cardDate.isBefore(DateTime(now.year, now.month))) {
+          return 'Cartão expirado';
+        }
+
+        return null;
+      },
+    );
+  }
+
+  Widget _buildCvvField(bool isSmallScreen) {
+    return _buildTextField(
+      controller: controller.cvvController,
+      label: 'CVV',
+      hint: '000',
+      icon: Icons.security,
+      keyboardType: TextInputType.number,
+      focusNode: controller.cvvFocus,
+      nextFocusNode: controller.documentFocus,
+      inputFormatters: [controller.cvvFormatter],
+      obscureText: true,
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Digite o CVV';
+        }
+        if (value.length < 3) {
+          return 'CVV inválido';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildDocumentField(bool isSmallScreen) {
+    return _buildTextField(
+      controller: controller.documentController,
+      label: 'CPF',
+      hint: '000.000.000-00',
+      icon: Icons.badge,
+      keyboardType: TextInputType.number,
+      focusNode: controller.documentFocus,
+      nextFocusNode: controller.phoneFocus,
+      inputFormatters: [controller.documentFormatter],
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Digite o CPF';
+        }
+        if (value.replaceAll(RegExp(r'[.-]'), '').length < 11) {
+          return 'CPF inválido';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPhoneField(bool isSmallScreen) {
+    return _buildTextField(
+      controller: controller.phoneController,
+      label: 'Celular',
+      hint: '(00) 00000-0000',
+      icon: Icons.phone,
+      keyboardType: TextInputType.number,
+      focusNode: controller.phoneFocus,
+      inputFormatters: [controller.phoneFormatter],
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Digite o número de celular';
+        }
+        if (value.replaceAll(RegExp(r'[() -]'), '').length < 11) {
+          return 'Número de celular inválido';
+        }
+        return null;
+      },
     );
   }
 
@@ -583,6 +581,7 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
     bool obscureText = false,
     List<TextInputFormatter>? inputFormatters,
     String? Function(String?)? validator,
+    Function(String)? onChanged,
     Widget? suffixIcon,
     TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
@@ -602,6 +601,11 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
           borderSide: BorderSide(color: Colors.deepPurple.shade800, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        // Adiciona mensagem de erro de forma mais compacta
+        errorStyle: const TextStyle(
+          fontSize: 12,
+          height: 0.8,
+        ),
       ),
       keyboardType: keyboardType,
       obscureText: obscureText,
@@ -609,11 +613,12 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
       inputFormatters: inputFormatters,
       validator: validator,
       focusNode: focusNode,
+      onChanged: onChanged,
       onEditingComplete: () {
         if (nextFocusNode != null) {
-          FocusScope.of(context).requestFocus(nextFocusNode);
+          FocusScope.of(Get.context!).requestFocus(nextFocusNode);
         } else {
-          FocusScope.of(context).unfocus();
+          FocusScope.of(Get.context!).unfocus();
         }
       },
     );
@@ -624,9 +629,10 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton(
-        onPressed: _submitForm,
+        onPressed: _onSavePressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.deepPurple.shade800,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -641,6 +647,19 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
         ),
       ),
     );
+  }
+
+  void _onSavePressed() {
+    // Esconder o teclado ao pressionar o botão
+    FocusScope.of(Get.context!).unfocus();
+
+    // Tentar adicionar o cartão
+    controller.addNewCard().then((success) {
+      if (success) {
+        // Cartão adicionado com sucesso, voltar para a tela anterior
+        Get.back();
+      }
+    });
   }
 
   Widget _buildSecurityText() {
@@ -675,10 +694,10 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
     );
   }
 
-  Widget _getBrandIcon() {
+  Widget _getBrandIcon(String cardBrand) {
     Widget icon;
 
-    switch (_cardBrand) {
+    switch (cardBrand) {
       case 'visa':
         icon = Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -773,10 +792,10 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
     return icon;
   }
 
-  Widget _getSuffixBrandIcon() {
+  Widget _getSuffixBrandIcon(String cardBrand) {
     Widget icon;
 
-    switch (_cardBrand) {
+    switch (cardBrand) {
       case 'visa':
         icon = Padding(
           padding: const EdgeInsets.all(10.0),
@@ -846,37 +865,5 @@ class _NewCreditCardScreenState extends State<AddCreditCardScreen> {
     }
 
     return icon;
-  }
-
-  void _submitForm() {
-    if (_formKey.currentState?.validate() ?? false) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      Future.delayed(const Duration(seconds: 2), () {
-        setState(() {
-          _isLoading = false;
-        });
-
-        // Mostrar diálogo de sucesso
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Cartão Salvo'),
-            content: const Text('Seu cartão foi adicionado com sucesso!'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Fecha o diálogo
-                  Get.back(); // Volta para a tela anterior
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
-      });
-    }
   }
 }
