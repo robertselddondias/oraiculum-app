@@ -1,0 +1,17 @@
+{
+  "provider": "apple_pay",
+  "data": {
+    "merchantIdentifier": "com.selddon.oraculum",
+    "displayName": "Oraculum App",
+    "merchantCapabilities": ["3DS", "debit", "credit"],
+    "supportedNetworks": ["visa", "masterCard", "amex"],
+    "countryCode": "BR",
+    "currencyCode": "BRL",
+    "paymentSummaryItems": [
+      {
+        "label": "Total",
+        "amount": "10.00"
+      }
+    ]
+  }
+}

@@ -39,7 +39,7 @@ dependencies:
   shared_preferences: ^2.2.1
   image_picker: ^1.0.4
 
-  pay: ^1.1.2
+  pay: ^3.2.1
 
   # IA
   google_generative_ai: ^0.2.0
@@ -61,3 +61,4 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/images/zodiac/
+    - assets/pay_configs/

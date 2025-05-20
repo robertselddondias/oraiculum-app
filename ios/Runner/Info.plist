@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSApplePayUsageDescription</key>
+    <string>Usamos o Apple Pay para facilitar pagamentos seguros.</string>
     <key>NSCameraUsageDescription</key>
     <string>Este app precisa usar a câmera para tirar fotos.</string>
     <key>NSPhotoLibraryUsageDescription</key>

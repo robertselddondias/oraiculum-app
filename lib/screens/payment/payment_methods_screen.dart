@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:oraculum/services/pagarme_wallet_service.dart';
 import 'dart:io' show Platform;
+
+import 'package:pay/pay.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({Key? key}) : super(key: key);
@@ -323,11 +326,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   Future<void> _processPaymentWithPix() async {
-    // No momento apenas simulamos o pagamento com Pix através da adição de créditos
-    await _processGenericPayment('PIX', (amount, description, serviceId, serviceType) async {
-      await _controller.addCredits(amount);
-      return 'pix-payment-${DateTime.now().millisecondsSinceEpoch}';
-    });
+
   }
 
   // Método genérico para processamento de pagamentos
