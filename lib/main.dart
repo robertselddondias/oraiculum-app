@@ -1,14 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:get/get.dart';
 import 'package:oraculum/bindings/initial_bindings.dart';
 import 'package:oraculum/config/routes.dart';
-import 'package:oraculum/models/load_cards.dart';
-import 'package:oraculum/screens/splash_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:get/get.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:oraculum/config/theme.dart';
-import 'package:oraculum/services/firebase_service.dart';
+import 'package:oraculum/screens/splash_screen.dart';
 import 'package:oraculum/utils/keyboard_dismiss.dart';
 
 Future<void> main() async {

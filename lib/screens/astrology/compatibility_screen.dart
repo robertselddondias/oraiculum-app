@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:oraculum/controllers/horoscope_controller.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
+import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
 class CompatibilityScreen extends StatefulWidget {
@@ -558,7 +559,7 @@ class _CompatibilityScreenState extends State<CompatibilityScreen> with SingleTi
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: Container(
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Colors.white24,
                           shape: BoxShape.circle,
                         ),

@@ -1,27 +1,27 @@
-import 'package:oraculum/screens/astrology/birth_chart_screen.dart';
-import 'package:oraculum/screens/credit_card/add_credit_card_screen.dart';
-import 'package:oraculum/screens/credit_card/credit_card_list_screen.dart';
-import 'package:oraculum/screens/onboarding_screen.dart';
-import 'package:oraculum/screens/payment/payment_history_screen.dart';
-import 'package:oraculum/screens/splash_screen.dart';
-import 'package:oraculum/screens/tarot/card_details_screen.dart';
 import 'package:get/get.dart';
+import 'package:oraculum/screens/astrology/birth_chart_screen.dart';
+import 'package:oraculum/screens/astrology/compatibility_screen.dart';
+import 'package:oraculum/screens/astrology/horoscope_screen.dart';
+import 'package:oraculum/screens/auth/forgot_password_screen.dart';
 import 'package:oraculum/screens/auth/login_screen.dart';
 import 'package:oraculum/screens/auth/register_screen.dart';
-import 'package:oraculum/screens/auth/forgot_password_screen.dart';
+import 'package:oraculum/screens/credit_card/add_credit_card_screen.dart';
+import 'package:oraculum/screens/credit_card/credit_card_list_screen.dart';
 import 'package:oraculum/screens/home/home_screen.dart';
 import 'package:oraculum/screens/home/navigation_screen.dart';
-import 'package:oraculum/screens/astrology/horoscope_screen.dart';
-import 'package:oraculum/screens/astrology/compatibility_screen.dart';
+import 'package:oraculum/screens/mediums/booking_screen.dart';
+import 'package:oraculum/screens/mediums/medium_profile_screen.dart';
+import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
+import 'package:oraculum/screens/onboarding_screen.dart';
+import 'package:oraculum/screens/payment/payment_history_screen.dart';
+import 'package:oraculum/screens/payment/payment_methods_screen.dart';
+import 'package:oraculum/screens/profile/profile_screen.dart';
+import 'package:oraculum/screens/profile/settings_screen.dart';
+import 'package:oraculum/screens/splash_screen.dart';
+import 'package:oraculum/screens/tarot/card_details_screen.dart';
 import 'package:oraculum/screens/tarot/saved_reading_detail_screen.dart';
 import 'package:oraculum/screens/tarot/saved_readings_list_screen.dart';
 import 'package:oraculum/screens/tarot/tarot_reading_screen.dart';
-import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
-import 'package:oraculum/screens/mediums/medium_profile_screen.dart';
-import 'package:oraculum/screens/mediums/booking_screen.dart';
-import 'package:oraculum/screens/profile/profile_screen.dart';
-import 'package:oraculum/screens/profile/settings_screen.dart';
-import 'package:oraculum/screens/payment/payment_methods_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -70,8 +70,8 @@ class AppRoutes {
     GetPage(name: settings, page: () => const SettingsScreen()),
     GetPage(name: paymentMethods, page: () => const PaymentMethodsScreen()),
     GetPage(name: paymentHistory, page: () => const PaymentHistoryScreen()),
-    GetPage(name: creditcardList, page: () => CreditCardListScreen()),
-    GetPage(name: addCreditCard, page: () => AddCreditCardScreen()),
+    GetPage(name: creditcardList, page: () => const CreditCardListScreen()),
+    GetPage(name: addCreditCard, page: () => const AddCreditCardScreen()),
     GetPage(
       name: savedReading,
       page: () => const SavedReadingDetailScreen(),

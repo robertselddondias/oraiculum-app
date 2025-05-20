@@ -1,6 +1,6 @@
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:oraculum/controllers/creditcard_controller.dart';
+import 'package:oraculum/controllers/card_list_controller.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/controllers/new_credit_card_controller.dart';
@@ -18,7 +18,7 @@ class InitialBinding implements Bindings {
     // First, initialize all services
     Get.put(FirebaseService());
 
-    final apiKey = 'AIzaSyD2aGQjaAvnlm75UwuEsT6QR0R9jZ1bKW0';
+    const apiKey = 'AIzaSyD2aGQjaAvnlm75UwuEsT6QR0R9jZ1bKW0';
     Get.put(GeminiService(apiKey: apiKey));
 
     Get.put(PaymentService());
@@ -33,7 +33,7 @@ class InitialBinding implements Bindings {
     Get.put(MediumController());
     Get.put(TarotController());
     Get.put(HoroscopeController());
-    Get.put(CreditCardController());
+    Get.put(CardListController());
     Get.put(NewCreditCardController());
   }
 }

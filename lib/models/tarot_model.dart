@@ -60,7 +60,7 @@ class TarotCard {
     String? description,
   }) {
     return TarotCard(
-      id: this.id,
+      id: id,
       name: name ?? this.name,
       suit: suit ?? this.suit,
       number: number ?? this.number,

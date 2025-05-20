@@ -1,8 +1,8 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:oraculum/models/tarot_model.dart';
 import 'package:oraculum/models/user_model.dart';
 import 'package:uuid/uuid.dart';
@@ -54,7 +54,7 @@ class FirebaseService {
     try {
       WriteBatch batch = FirebaseFirestore.instance.batch();
       for (final card in cards) {
-        final DocumentReference docRef = tarotCardsCollection.doc(Uuid().v6());
+        final DocumentReference docRef = tarotCardsCollection.doc(const Uuid().v6());
         batch.set(docRef, card.toMap());
       }
       await batch.commit();

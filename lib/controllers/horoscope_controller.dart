@@ -1,12 +1,13 @@
-import 'package:get/get.dart';
-import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:oraculum/services/gemini_service.dart';
-import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/models/horoscope_model.dart';
-import 'package:intl/intl.dart';
-import 'package:oraculum/controllers/payment_controller.dart';
-import 'package:oraculum/controllers/auth_controller.dart';
 import 'dart:convert';
+
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/controllers/payment_controller.dart';
+import 'package:oraculum/models/horoscope_model.dart';
+import 'package:oraculum/services/firebase_service.dart';
+import 'package:oraculum/services/gemini_service.dart';
 
 class HoroscopeController extends GetxController {
   final GeminiService _geminiService = Get.find<GeminiService>();
@@ -23,13 +24,13 @@ class HoroscopeController extends GetxController {
     'Sagitário', 'Capricórnio', 'Aquário', 'Peixes'
   ].obs;
 
-  final dataNascimento = new MaskTextInputFormatter(
+  final dataNascimento = MaskTextInputFormatter(
       mask: '##/##/#####',
       filter: { "#": RegExp(r'[0-9]') },
       type: MaskAutoCompletionType.lazy
   );
 
-  final horaNascimento = new MaskTextInputFormatter(
+  final horaNascimento = MaskTextInputFormatter(
       mask: '##:##',
       filter: { "#": RegExp(r'[0-9]') },
       type: MaskAutoCompletionType.lazy
@@ -174,8 +175,8 @@ class HoroscopeController extends GetxController {
       isLoading.value = true;
 
       // Verificar se a análise já existe no Firebase
-      final compatibilityId = '${sign1}_${sign2}';
-      final reversedId = '${sign2}_${sign1}';
+      final compatibilityId = '${sign1}_$sign2';
+      final reversedId = '${sign2}_$sign1';
 
       // Verificar no Firestore se já existe esta análise
       final compatibilityDoc = await _firebaseService.firestore
@@ -324,7 +325,7 @@ class HoroscopeController extends GetxController {
       }
 
       // Processar o pagamento
-      final paymentDescription = 'Geração de Mapa Astral';
+      const paymentDescription = 'Geração de Mapa Astral';
       final serviceId = 'birthchart-${DateTime.now().millisecondsSinceEpoch}';
       final paymentId = await _paymentController.processPaymentWithCredits(
           userId,

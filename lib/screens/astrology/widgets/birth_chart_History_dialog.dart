@@ -284,7 +284,7 @@ class BirthChartHistoryDialog {
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
       );
-      return null;
+      return;
     }
   }
 }

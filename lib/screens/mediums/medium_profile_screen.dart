@@ -1,9 +1,8 @@
-import 'package:oraculum/config/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/models/medium_model.dart';
-import 'package:intl/intl.dart';
 
 class MediumProfileScreen extends StatelessWidget {
   const MediumProfileScreen({Key? key}) : super(key: key);

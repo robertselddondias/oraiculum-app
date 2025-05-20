@@ -1,9 +1,9 @@
-import 'package:oraculum/config/routes.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({Key? key}) : super(key: key);

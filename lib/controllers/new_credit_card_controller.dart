@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/pagarme_service.dart';
 
 class NewCreditCardController extends GetxController {
@@ -222,7 +222,7 @@ class NewCreditCardController extends GetxController {
       final cardId = await _pagarmeService.createCard(
           cardNumber: cardNumber,
           cardHolderName: cardHolder,
-          cardExpirationDate: '${expiryMonth}/${expiryParts[1]}',
+          cardExpirationDate: '$expiryMonth/${expiryParts[1]}',
           cardCvv: cvv,
           documentNumber: document,
           customerId: customerId

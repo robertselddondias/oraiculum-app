@@ -1,11 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:oraculum/controllers/payment_controller.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:oraculum/services/pagarme_wallet_service.dart';
 import 'dart:io' show Platform;
 
-import 'package:pay/pay.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
+import 'package:oraculum/controllers/payment_controller.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
   const PaymentMethodsScreen({Key? key}) : super(key: key);

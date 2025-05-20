@@ -1,10 +1,11 @@
-import 'package:flutter/cupertino.dart';
-import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:get/get.dart';
-import 'package:oraculum/services/gemini_service.dart';
-import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/models/tarot_model.dart';
 import 'dart:math';
+
+import 'package:flutter/cupertino.dart';
+import 'package:get/get.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/models/tarot_model.dart';
+import 'package:oraculum/services/firebase_service.dart';
+import 'package:oraculum/services/gemini_service.dart';
 
 class TarotController extends GetxController {
   final GeminiService _geminiService = Get.find<GeminiService>();

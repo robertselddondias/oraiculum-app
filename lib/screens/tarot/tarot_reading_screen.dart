@@ -1,14 +1,15 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:oraculum/widgets/app_card_image.dart';
-import 'dart:math';
-import 'dart:convert';
 import 'package:share_plus/share_plus.dart';
 
 class TarotReadingScreen extends StatefulWidget {
@@ -1536,7 +1537,7 @@ class TarotBackPatternPainter extends CustomPainter {
     canvas.drawPath(
       circlePath,
       Paint()
-        ..color = Color(0xFF4A3988)
+        ..color = const Color(0xFF4A3988)
         ..style = PaintingStyle.fill
         ..blendMode = BlendMode.clear,
     );

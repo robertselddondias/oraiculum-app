@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
+import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/models/medium_model.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:oraculum/config/routes.dart';
 
 class MediumsListScreen extends StatefulWidget {
   const MediumsListScreen({Key? key}) : super(key: key);

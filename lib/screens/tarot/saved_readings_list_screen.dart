@@ -1,15 +1,13 @@
 import 'dart:convert';
-import 'dart:ui';
 
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:oraculum/controllers/tarot_controller.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
-import 'package:oraculum/models/tarot_model.dart';
-import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/controllers/tarot_controller.dart';
+import 'package:oraculum/models/tarot_model.dart';
 
 class SavedReadingsListScreen extends StatefulWidget {
   const SavedReadingsListScreen({Key? key}) : super(key: key);

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter/services.dart';
 
 class CardDetailsScreen extends StatefulWidget {
   const CardDetailsScreen({Key? key}) : super(key: key);

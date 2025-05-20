@@ -1,8 +1,8 @@
-import 'package:oraculum/config/routes.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
+import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);

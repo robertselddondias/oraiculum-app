@@ -49,6 +49,7 @@ dependencies:
   uuid: any
   share_plus: ^11.0.0
   mask_text_input_formatter: ^2.9.0
+  http: any
 dev_dependencies:
   flutter_test:
     sdk: flutter

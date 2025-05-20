@@ -293,7 +293,7 @@ class CreditCardListScreen extends GetView<CardListController> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isDefault
-            ? BorderSide(color: AppTheme.primaryColor, width: 1.5)
+            ? const BorderSide(color: AppTheme.primaryColor, width: 1.5)
             : BorderSide.none,
       ),
       child: InkWell(
@@ -364,7 +364,7 @@ class CreditCardListScreen extends GetView<CardListController> {
                                   color: AppTheme.primaryColor.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                child: Text(
+                                child: const Text(
                                   'Padrão',
                                   style: TextStyle(
                                     fontSize: 10,
@@ -551,7 +551,7 @@ class CreditCardListScreen extends GetView<CardListController> {
       Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: Colors.black,
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
         child: Column(
@@ -605,7 +605,7 @@ class CreditCardListScreen extends GetView<CardListController> {
             // Opções do cartão
             if (!isDefault)
               ListTile(
-                leading: Icon(
+                leading: const Icon(
                   Icons.star_outline,
                   color: AppTheme.primaryColor,
                 ),
@@ -615,23 +615,6 @@ class CreditCardListScreen extends GetView<CardListController> {
                   controller.setDefaultCard(card['id']);
                 },
               ),
-
-            ListTile(
-              leading: const Icon(
-                Icons.payments_outlined,
-                color: Colors.blue,
-              ),
-              title: const Text('Pagar com este cartão'),
-              onTap: () {
-                Get.back();
-                // Implementar a lógica de pagamento
-                Get.snackbar(
-                  'Ação',
-                  'Pagamento com este cartão não implementado',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
-              },
-            ),
 
             ListTile(
               leading: const Icon(

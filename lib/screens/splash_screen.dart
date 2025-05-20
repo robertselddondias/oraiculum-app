@@ -1,11 +1,11 @@
 import 'dart:math';
 
-import 'package:oraculum/config/routes.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:lottie/lottie.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);

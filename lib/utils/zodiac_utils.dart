@@ -1,6 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'dart:math';
 
 /// Classe utilitária para elementos relacionados aos signos do zodíaco
 /// que são compartilhados em múltiplas telas do aplicativo
@@ -420,7 +421,7 @@ class ZodiacUtils {
     bool showDetails = false,
     bool showScrollbar = true,
   }) {
-    return Container(
+    return SizedBox(
       height: height ?? 160.0,
       child: Column(
         children: [

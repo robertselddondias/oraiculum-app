@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:oraculum/controllers/horoscope_controller.dart';
-import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/controllers/horoscope_controller.dart';
+import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/screens/astrology/widgets/birth_chart_History_dialog.dart';
 import 'package:oraculum/screens/astrology/widgets/birth_chart_action_buttons.dart';
 import 'package:oraculum/screens/astrology/widgets/birth_chart_form_fields.dart';

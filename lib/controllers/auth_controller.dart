@@ -1,8 +1,8 @@
-import 'package:oraculum/config/routes.dart';
-import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:oraculum/services/firebase_service.dart';
+import 'package:get/get.dart';
+import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/models/user_model.dart';
+import 'package:oraculum/services/firebase_service.dart';
 
 class AuthController extends GetxController {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();

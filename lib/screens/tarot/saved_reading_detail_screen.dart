@@ -1,14 +1,14 @@
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
 import 'package:oraculum/models/tarot_model.dart';
 import 'package:share_plus/share_plus.dart';
-import 'dart:convert';
-import 'dart:math';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SavedReadingDetailScreen extends StatefulWidget {
   const SavedReadingDetailScreen({Key? key}) : super(key: key);
@@ -393,7 +393,7 @@ class _SavedReadingDetailScreenState extends State<SavedReadingDetailScreen>
         ),
       ),
     ).animate().fadeIn(
-      delay: Duration(milliseconds: 200),
+      delay: const Duration(milliseconds: 200),
       duration: const Duration(milliseconds: 400),
     );
   }
@@ -523,7 +523,7 @@ class _SavedReadingDetailScreenState extends State<SavedReadingDetailScreen>
         // Mostrar seções estruturadas se houver, ou texto completo
         ..._parsedInterpretation.entries.map((entry) {
           // Pular se não for um mapa (para evitar mostrar a lista de números)
-          if (entry.key == 'numeros_sorte' || !(entry.value is Map)) {
+          if (entry.key == 'numeros_sorte' || entry.value is! Map) {
             return const SizedBox.shrink();
           }
 
@@ -588,7 +588,7 @@ class _SavedReadingDetailScreenState extends State<SavedReadingDetailScreen>
               ),
             ),
           ).animate().fadeIn(
-            delay: Duration(milliseconds: 300),
+            delay: const Duration(milliseconds: 300),
             duration: const Duration(milliseconds: 400),
           );
         }).toList(),
@@ -613,7 +613,7 @@ class _SavedReadingDetailScreenState extends State<SavedReadingDetailScreen>
               ),
             ),
           ).animate().fadeIn(
-            delay: Duration(milliseconds: 300),
+            delay: const Duration(milliseconds: 300),
             duration: const Duration(milliseconds: 400),
           ),
       ],
@@ -720,7 +720,7 @@ class _SavedReadingDetailScreenState extends State<SavedReadingDetailScreen>
         ),
       ],
     ).animate().fadeIn(
-      delay: Duration(milliseconds: 500),
+      delay: const Duration(milliseconds: 500),
       duration: const Duration(milliseconds: 400),
     );
   }

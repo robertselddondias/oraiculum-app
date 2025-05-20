@@ -41,7 +41,7 @@ class BirthChartActionButtons extends StatelessWidget {
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: BorderSide(color: Colors.white, width: 1.5),
+                    side: const BorderSide(color: Colors.white, width: 1.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(borderRadius),
                     ),

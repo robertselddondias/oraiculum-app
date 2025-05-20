@@ -1,9 +1,9 @@
 import 'package:get/get.dart';
-import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/models/medium_model.dart';
-import 'package:oraculum/models/appointment_model.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
+import 'package:oraculum/models/appointment_model.dart';
+import 'package:oraculum/models/medium_model.dart';
+import 'package:oraculum/services/firebase_service.dart';
 
 class MediumController extends GetxController {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();

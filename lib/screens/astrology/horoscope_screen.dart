@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:oraculum/controllers/horoscope_controller.dart';
-import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:get/get.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:share_plus/share_plus.dart';
 
 class HoroscopeScreen extends StatefulWidget {

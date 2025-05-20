@@ -1,11 +1,12 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:oraculum/screens/astrology/horoscope_screen.dart';
 import 'package:oraculum/screens/home/home_screen.dart';
 import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
 import 'package:oraculum/screens/profile/profile_screen.dart';
 import 'package:oraculum/screens/tarot/tarot_reading_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'dart:io' show Platform;
 
 class NavigationScreen extends StatefulWidget {
   const NavigationScreen({Key? key}) : super(key: key);

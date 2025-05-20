@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
-import 'package:oraculum/utils/zodiac_utils.dart';
 
 /// Widget que exibe informações sobre o custo do Mapa Astral e créditos do usuário
 class BirthChartInfoCard extends StatelessWidget {

@@ -1,14 +1,14 @@
 import 'dart:convert';
 
-import 'package:oraculum/config/routes.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:intl/intl.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -209,16 +209,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       pinned: true,
       stretch: true,
       flexibleSpace: FlexibleSpaceBar(
-        title: Row(
+        title: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.nights_stay_rounded,
               color: Colors.white,
               size: 20,
             ),
-            const SizedBox(width: 8),
-            const Text(
+            SizedBox(width: 8),
+            Text(
               'Oraculum',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
@@ -1257,13 +1257,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           child: Container(
             height: 220,
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  const Color(0xFF392F5A),
-                  const Color(0xFF8C6BAE),
+                  Color(0xFF392F5A),
+                  Color(0xFF8C6BAE),
                 ],
               ),
             ),
