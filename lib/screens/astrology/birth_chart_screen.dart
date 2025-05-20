@@ -6,7 +6,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/screens/astrology/widgets/birth_chart_History_dialog.dart';
+import 'package:oraculum/screens/astrology/widgets/birth_chart_action_buttons.dart';
+import 'package:oraculum/screens/astrology/widgets/birth_chart_form_fields.dart';
 import 'package:oraculum/screens/astrology/widgets/birth_chart_header.dart';
+import 'package:oraculum/screens/astrology/widgets/birth_chart_info_card.dart';
+import 'package:oraculum/screens/astrology/widgets/birth_chart_result_header.dart';
+import 'package:oraculum/screens/astrology/widgets/birth_chart_submit_button.dart';
+import 'package:oraculum/screens/astrology/widgets/interpretation_section.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -23,6 +29,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> with SingleTickerPr
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _birthDateController = TextEditingController();
   final TextEditingController _birthPlaceController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
 
@@ -355,6 +362,8 @@ class _BirthChartScreenState extends State<BirthChartScreen> with SingleTickerPr
               isSmallScreen: isSmallScreen,
               isTablet: isTablet,
               padding: padding,
+              horoscopeController: _controller,
+              birthDateController: _birthDateController,
             ),
 
             const SizedBox(height: 32),

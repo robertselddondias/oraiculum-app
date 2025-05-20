@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:oraculum/services/gemini_service.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/models/horoscope_model.dart';
@@ -21,6 +22,18 @@ class HoroscopeController extends GetxController {
     'Leão', 'Virgem', 'Libra', 'Escorpião',
     'Sagitário', 'Capricórnio', 'Aquário', 'Peixes'
   ].obs;
+
+  final dataNascimento = new MaskTextInputFormatter(
+      mask: '##/##/#####',
+      filter: { "#": RegExp(r'[0-9]') },
+      type: MaskAutoCompletionType.lazy
+  );
+
+  final horaNascimento = new MaskTextInputFormatter(
+      mask: '##:##',
+      filter: { "#": RegExp(r'[0-9]') },
+      type: MaskAutoCompletionType.lazy
+  );
 
   // Custo para gerar um mapa astral (em R$)
   final double birthChartCost = 20.0;
