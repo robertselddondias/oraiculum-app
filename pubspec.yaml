@@ -50,6 +50,8 @@ dependencies:
   share_plus: ^11.0.0
   mask_text_input_formatter: ^2.9.0
   http: any
+  qr_flutter: ^4.1.0
+  efipay: ^1.0.6
 dev_dependencies:
   flutter_test:
     sdk: flutter
