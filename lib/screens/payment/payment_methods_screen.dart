@@ -1,8 +1,8 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
+import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/config/theme.dart';
+import 'package:oraculum/controllers/card_list_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
@@ -13,425 +13,642 @@ class PaymentMethodsScreen extends StatefulWidget {
 }
 
 class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
-  final PaymentController _controller = Get.find<PaymentController>();
-  final TextEditingController _amountController = TextEditingController(text: '50.00');
+  final PaymentController _paymentController = Get.find<PaymentController>();
+  final CardListController _cardListController = Get.find<CardListController>();
+
+  // Lista de pacotes de créditos disponíveis
+  final List<Map<String, dynamic>> _creditPackages = [
+    {'amount': 20.0, 'description': 'Pacote Básico', 'bonus': 0},
+    {'amount': 50.0, 'description': 'Pacote Médio', 'bonus': 5},
+    {'amount': 100.0, 'description': 'Pacote Premium', 'bonus': 15},
+    {'amount': 200.0, 'description': 'Pacote VIP', 'bonus': 40},
+  ];
+
+  // Pacote selecionado inicialmente
+  Map<String, dynamic>? _selectedPackage;
+
+  // Método de pagamento selecionado
+  String _selectedPaymentMethod = 'Cartão de Crédito';
+
+  // Controlador para valor personalizado
+  final TextEditingController _customAmountController = TextEditingController();
+
+  // Indicador de carregamento
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _controller.loadUserCredits();
+    // Definir o pacote médio como padrão
+    _selectedPackage = _creditPackages[1];
+    // Carregar cartões ao iniciar
+    _loadCards();
   }
 
   @override
   void dispose() {
-    _amountController.dispose();
+    _customAmountController.dispose();
     super.dispose();
+  }
+
+  // Carregar cartões do usuário
+  Future<void> _loadCards() async {
+    await _cardListController.loadCards();
+  }
+
+  // Processar pagamento de acordo com o método selecionado
+  Future<void> _processPayment() async {
+    if (_selectedPackage == null) {
+      Get.snackbar(
+        'Erro',
+        'Selecione um pacote de créditos',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      double amount = _selectedPackage!['amount'];
+      String description = 'Compra de créditos: ${_selectedPackage!['description']}';
+      String serviceId = 'credit-purchase-${DateTime.now().millisecondsSinceEpoch}';
+
+      String paymentId = await _paymentController.processPayment(
+        context: context,
+        description: description,
+        amount: amount,
+        serviceId: serviceId,
+        serviceType: 'credit_purchase',
+        paymentMethod: _selectedPaymentMethod,
+      );
+
+      if (paymentId.isNotEmpty) {
+        Get.back(); // Voltar para a tela anterior após o pagamento bem-sucedido
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Erro',
+        'Falha ao processar o pagamento: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Verificar se é modo escuro
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth > 600;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Adicionar Créditos'),
+        backgroundColor: AppTheme.primaryColor,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildCreditBalanceCard(),
-            const SizedBox(height: 24),
-            _buildAmountSelection(),
-            const SizedBox(height: 24),
-            _buildPaymentMethods(),
+            // Cabeçalho com saldo atual
+            _buildHeader(isDarkMode),
+
+            // Pacotes de créditos
+            _buildCreditPackages(isDarkMode, isTablet),
+
+            // Valor personalizado
+            _buildCustomAmountSection(isDarkMode),
+
+            // Métodos de pagamento
+            _buildPaymentMethods(isDarkMode, isTablet),
+
+            // Botão de confirmação
+            _buildConfirmButton(isDarkMode),
+
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCreditBalanceCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+  // Cabeçalho com saldo atual
+  Widget _buildHeader(bool isDarkMode) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      decoration: BoxDecoration(
+        gradient: AppTheme.primaryGradient,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(20),
+          bottomRight: Radius.circular(20),
+        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.account_balance_wallet,
-                color: Theme.of(context).colorScheme.primary,
-                size: 24,
-              ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Seu Saldo Atual',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
             ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Seu saldo atual',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Obx(() => Text(
-                  'R\$ ${_controller.userCredits.value.toStringAsFixed(2)}',
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              const Icon(
+                Icons.account_balance_wallet,
+                color: Colors.white,
+                size: 30,
+              ),
+              const SizedBox(width: 10),
+              Obx(() {
+                return Text(
+                  'R\$ ${_paymentController.userCredits.value.toStringAsFixed(2)}',
                   style: const TextStyle(
-                    fontSize: 24,
+                    color: Colors.white,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
-                )),
-              ],
+                );
+              }),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Escolha um valor para adicionar créditos',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 14,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    ).animate().fadeIn(
-      duration: const Duration(milliseconds: 400),
     );
   }
 
-  Widget _buildAmountSelection() {
-    final predefinedAmounts = [20.0, 50.0, 100.0, 200.0];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Valor a adicionar',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  // Seção de pacotes de créditos
+  Widget _buildCreditPackages(bool isDarkMode, bool isTablet) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            child: Text(
+              'Pacotes de Créditos',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : AppTheme.lightTextColor,
+              ),
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 45,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: predefinedAmounts.length,
+          const SizedBox(height: 10),
+          isTablet
+              ? GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              childAspectRatio: 2.2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: _creditPackages.length,
             itemBuilder: (context, index) {
-              final amount = predefinedAmounts[index];
-              final amountString = amount.toStringAsFixed(2);
-              final isSelected = _amountController.text == amountString;
-
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _amountController.text = amountString;
-                  });
-                },
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.withOpacity(0.5),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'R\$ ${amount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+              return _buildCreditPackageCard(
+                _creditPackages[index],
+                isDarkMode,
+              );
+            },
+          )
+              : ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _creditPackages.length,
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: _buildCreditPackageCard(
+                  _creditPackages[index],
+                  isDarkMode,
                 ),
               );
             },
           ),
-        ).animate().fadeIn(
-          delay: const Duration(milliseconds: 200),
-          duration: const Duration(milliseconds: 400),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: _amountController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(
-            labelText: 'Valor personalizado',
-            prefixText: 'R\$ ',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ).animate().fadeIn(
-          delay: const Duration(milliseconds: 300),
-          duration: const Duration(milliseconds: 400),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildPaymentMethods() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Escolha o método de pagamento',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  // Card para pacote de créditos
+  Widget _buildCreditPackageCard(Map<String, dynamic> package, bool isDarkMode) {
+    final bool isSelected = _selectedPackage == package;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedPackage = package;
+          _customAmountController.clear(); // Limpar valor personalizado ao selecionar pacote
+        });
+      },
+      child: Card(
+        elevation: isSelected ? 4 : 1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+            width: 2,
           ),
         ),
-        const SizedBox(height: 16),
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
+        color: isDarkMode
+            ? isSelected ? Colors.grey.shade800 : Colors.grey.shade900
+            : isSelected ? Colors.white : Colors.grey.shade50,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
             children: [
-              // Opção de Google Pay (apenas para Android)
-              if (Platform.isAndroid)
-                _buildPaymentMethodItem(
-                  icon: const Icon(Icons.payment, color: Colors.green),
-                  title: 'Google Pay',
-                  onTap: () => _processPaymentWithGooglePay(),
+              // Ícone de seleção
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+                  border: Border.all(
+                    color: isSelected ? AppTheme.primaryColor : Colors.grey.shade400,
+                    width: 2,
+                  ),
                 ),
-
-              // Opção de Apple Pay (apenas para iOS)
-              if (Platform.isIOS)
-                _buildPaymentMethodItem(
-                  icon: const Icon(Icons.apple, color: Colors.black),
-                  title: 'Apple Pay',
-                  onTap: () => _processPaymentWithApplePay(),
+                child: isSelected
+                    ? const Icon(
+                  Icons.check,
+                  size: 16,
+                  color: Colors.white,
+                )
+                    : null,
+              ),
+              const SizedBox(width: 16),
+              // Informações do pacote
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      package['description'],
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : AppTheme.lightTextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'R\$ ${package['amount'].toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ],
                 ),
-
-              // Métodos tradicionais
-              if (Platform.isAndroid || Platform.isIOS)
-                const Divider(height: 1),
-
-              _buildPaymentMethodItem(
-                icon: Icon(Icons.credit_card, color: Theme.of(context).colorScheme.primary),
-                title: 'Cartão de Crédito',
-                onTap: () => _processPaymentWithCard(),
               ),
-              const Divider(height: 1),
-              _buildPaymentMethodItem(
-                icon: const Icon(Icons.pix, color: Colors.blue),
-                title: 'PIX',
-                onTap: () => _processPaymentWithPix(),
-              ),
+              // Bônus
+              if (package['bonus'] > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '+${package['bonus']}% Bônus',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.accentColor,
+                    ),
+                  ),
+                ),
             ],
           ),
-        ).animate().fadeIn(
-          delay: const Duration(milliseconds: 400),
-          duration: const Duration(milliseconds: 400),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPaymentMethodItem({
-    required Widget icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 32,
-              child: icon,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const Icon(Icons.chevron_right),
-          ],
         ),
       ),
     );
   }
 
-  Future<void> _processPaymentWithGooglePay() async {
-    await _processGenericPayment('Google Pay', (amount, description, serviceId, serviceType) async {
-      return await _controller.processPaymentWithGooglePay(
-        context: context,
-        description: description,
-        amount: amount,
-        serviceId: serviceId,
-        serviceType: serviceType,
-      );
-    });
+  // Seção de valor personalizado
+  Widget _buildCustomAmountSection(bool isDarkMode) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            child: Text(
+              'Valor Personalizado',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : AppTheme.lightTextColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _customAmountController,
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              hintText: 'Digite um valor personalizado',
+              prefixIcon: const Icon(Icons.attach_money),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: AppTheme.primaryColor,
+                  width: 2,
+                ),
+              ),
+            ),
+            onChanged: (value) {
+              if (value.isNotEmpty) {
+                try {
+                  final amount = double.parse(value);
+                  setState(() {
+                    _selectedPackage = {
+                      'amount': amount,
+                      'description': 'Valor Personalizado',
+                      'bonus': 0,
+                    };
+                  });
+                } catch (_) {
+                  // Ignorar se não for um número válido
+                }
+              } else {
+                setState(() {
+                  _selectedPackage = _creditPackages[1]; // Voltar ao pacote padrão
+                });
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _processPaymentWithApplePay() async {
-    await _processGenericPayment('Apple Pay', (amount, description, serviceId, serviceType) async {
-      return await _controller.processPaymentWithApplePay(
-        context: context,
-        description: description,
-        amount: amount,
-        serviceId: serviceId,
-        serviceType: serviceType,
-      );
-    });
+  // Seção de métodos de pagamento
+  Widget _buildPaymentMethods(bool isDarkMode, bool isTablet) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            child: Text(
+              'Método de Pagamento',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : AppTheme.lightTextColor,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Cartão de crédito
+          _buildPaymentMethodTile(
+            icon: Icons.credit_card,
+            title: 'Cartão de Crédito',
+            subtitle: 'Pague com seu cartão cadastrado',
+            isDarkMode: isDarkMode,
+            isSelected: _selectedPaymentMethod == 'Cartão de Crédito',
+            onTap: () {
+              setState(() {
+                _selectedPaymentMethod = 'Cartão de Crédito';
+              });
+            },
+          ),
+
+          // Google Pay
+          _buildPaymentMethodTile(
+            icon: Icons.account_balance_wallet,
+            title: 'Google Pay',
+            subtitle: 'Pagamento rápido e seguro',
+            isDarkMode: isDarkMode,
+            isSelected: _selectedPaymentMethod == 'Google Pay',
+            onTap: () {
+              setState(() {
+                _selectedPaymentMethod = 'Google Pay';
+              });
+            },
+          ),
+
+          // Apple Pay
+          _buildPaymentMethodTile(
+            icon: Icons.apple,
+            title: 'Apple Pay',
+            subtitle: 'Pagamento rápido e seguro',
+            isDarkMode: isDarkMode,
+            isSelected: _selectedPaymentMethod == 'Apple Pay',
+            onTap: () {
+              setState(() {
+                _selectedPaymentMethod = 'Apple Pay';
+              });
+            },
+          ),
+
+          // PIX
+          _buildPaymentMethodTile(
+            icon: Icons.qr_code,
+            title: 'PIX',
+            subtitle: 'Tranferência instantânea',
+            isDarkMode: isDarkMode,
+            isSelected: _selectedPaymentMethod == 'PIX',
+            onTap: () {
+              setState(() {
+                _selectedPaymentMethod = 'PIX';
+              });
+            },
+          ),
+
+          // Gerenciar cartões
+          if (_selectedPaymentMethod == 'Cartão de Crédito')
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+              child: TextButton.icon(
+                onPressed: () {
+                  Get.toNamed(AppRoutes.creditcardList);
+                },
+                icon: const Icon(
+                  Icons.credit_card,
+                  color: AppTheme.primaryColor,
+                ),
+                label: Text(
+                  'Gerenciar Cartões',
+                  style: TextStyle(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: AppTheme.primaryColor),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
-  Future<void> _processPaymentWithCard() async {
-    // No momento apenas simulamos o pagamento com cartão através da adição de créditos
-    await _processGenericPayment('Cartão de Crédito', (amount, description, serviceId, serviceType) async {
-      await _controller.addCredits(amount);
-      return 'card-payment-${DateTime.now().millisecondsSinceEpoch}';
-    });
-  }
-
-  Future<void> _processPaymentWithBankTransfer() async {
-    // No momento apenas simulamos o pagamento com transferência bancária através da adição de créditos
-    await _processGenericPayment('Transferência Bancária', (amount, description, serviceId, serviceType) async {
-      await _controller.addCredits(amount);
-      return 'bank-transfer-${DateTime.now().millisecondsSinceEpoch}';
-    });
-  }
-
-  Future<void> _processPaymentWithPix() async {
-
-  }
-
-  // Método genérico para processamento de pagamentos
-  Future<void> _processGenericPayment(
-      String paymentMethod,
-      Future<String> Function(double amount, String description, String serviceId, String serviceType) processFunction,
-      ) async {
-    try {
-      final amount = double.tryParse(_amountController.text.replaceAll(',', '.')) ?? 0.0;
-
-      if (amount <= 0) {
-        Get.snackbar(
-          'Erro',
-          'Por favor, insira um valor válido maior que zero.',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return;
-      }
-
-      final confirmed = await Get.dialog<bool>(
-        AlertDialog(
-          title: const Text('Confirmar Pagamento'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+  // Tile para método de pagamento
+  Widget _buildPaymentMethodTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isDarkMode,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      elevation: isSelected ? 2 : 0,
+      color: isDarkMode
+          ? isSelected ? Colors.grey.shade800 : Colors.grey.shade900
+          : isSelected ? Colors.white : Colors.grey.shade50,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
             children: [
-              Text('Adicionar R\$ ${amount.toStringAsFixed(2)} em créditos?'),
-              const SizedBox(height: 8),
-              Text(
-                'Você será redirecionado para o pagamento via $paymentMethod.',
-                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              // Ícone de seleção
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+                  border: Border.all(
+                    color: isSelected ? AppTheme.primaryColor : Colors.grey.shade400,
+                    width: 2,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(
+                  Icons.check,
+                  size: 16,
+                  color: Colors.white,
+                )
+                    : null,
+              ),
+              const SizedBox(width: 16),
+              // Ícone do método
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.grey.shade700
+                      : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: AppTheme.primaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Informações do método
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : AppTheme.lightTextColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(result: false),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () => _controller.processPayment(
-                  context: context,
-                  description: 'Compra de créditos: R\$ $amount',
-                  amount: amount,
-                  serviceId: 'credits-${DateTime.now().millisecondsSinceEpoch}',
-                  serviceType: 'credit',
-                  paymentMethod: paymentMethod
-              ),
-              child: const Text('Confirmar'),
-            ),
-          ],
         ),
-      );
+      ),
+    );
+  }
 
-      if (confirmed == true) {
-        final description = 'Compra de créditos: R\$ ${amount.toStringAsFixed(2)}';
-        final serviceId = 'credits-${DateTime.now().millisecondsSinceEpoch}';
-
-        // Processar pagamento
-        final paymentId = await processFunction(amount, description, serviceId, 'credits');
-
-        if (paymentId.isNotEmpty) {
-          // Mostrar confirmação de sucesso
-          await Get.dialog(
-            AlertDialog(
-              title: const Text('Pagamento Concluído'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 64,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Seus créditos foram adicionados com sucesso!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Novo saldo: R\$ ${_controller.userCredits.value.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                ElevatedButton(
-                  onPressed: () => Get.back(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-
-          Get.back(); // Voltar para a tela anterior após o pagamento
-        }
-      }
-    } catch (e) {
-      debugPrint('Erro ao processar pagamento: $e');
-      Get.snackbar(
-        'Erro',
-        'Ocorreu um erro ao processar o pagamento: ${e.toString().split(':').last}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
+  // Botão de confirmação
+  Widget _buildConfirmButton(bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _processPayment,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppTheme.primaryColor,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 2,
+        ),
+        child: Text(
+          'Comprar R\$ ${_selectedPackage != null ? _selectedPackage!['amount'].toStringAsFixed(2) : '0.00'}',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
   }
 }
