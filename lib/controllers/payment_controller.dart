@@ -25,13 +25,6 @@ class PaymentController extends GetxController {
   void onInit() {
     super.onInit();
 
-    // Inicializar o serviço EFI
-    _efiPayService = EfiPayService(
-      clientId: 'seu_client_id',  // Substitua pelo seu Client ID
-      clientSecret: 'seu_client_secret',  // Substitua pelo seu Client Secret
-      isSandbox: true,  // Ambiente de sandbox para testes
-    );
-
     if (_authController.isLoggedIn) {
       loadUserCredits();
     }
