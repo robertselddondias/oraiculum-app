@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 
 class PaymentHistoryScreen extends StatefulWidget {
@@ -28,6 +29,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Histórico de Pagamentos'),
+        backgroundColor: AppTheme.primaryColor,
       ),
       body: Obx(() {
         if (_controller.isLoading.value) {
@@ -73,6 +75,10 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
             onPressed: () => _controller.loadPaymentHistory(),
             icon: const Icon(Icons.refresh),
             label: const Text('Atualizar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
           ),
         ],
       ),
@@ -336,6 +342,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
                     ),
                   ),
                 ],
@@ -403,8 +410,18 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     final description = payment['description'] as String? ?? 'Sem descrição';
     final paymentId = payment['paymentId'] as String? ?? '';
 
+    // Verificar se é um pagamento PIX
+    final isPix = method.toLowerCase() == 'pix';
+    final pixQrCode = payment['pixQrCode'] as String?;  // Campo que armazenaria o QR code
+    final hasQrCode = pixQrCode != null && pixQrCode.isNotEmpty;
+
     // Para mapas astrais, adicionar um botão para ver o mapa
     final isBirthChart = type == 'birthchart';
+
+    // Verificar se tem ID de transação EFI
+    final efiTxid = payment['efiTxid'] as String?;
+    final efiChargeId = payment['efiChargeId'] as String?;
+    final transactionId = efiTxid ?? efiChargeId ?? paymentId;
 
     Get.dialog(
       AlertDialog(
@@ -420,7 +437,13 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
               _buildDetailRow('Método', method),
               _buildDetailRow('Tipo de Serviço', _formatCategoryName(type)),
               _buildDetailRow('Status', _getStatusText(status)),
-              _buildDetailRow('ID do Pagamento', paymentId),
+              _buildDetailRow('ID da Transação', transactionId),
+
+              // Para cartão de crédito, mostrar últimos dígitos
+              if (method.toLowerCase().contains('cartão') &&
+                  payment.containsKey('cardLastFourDigits'))
+                _buildDetailRow('Cartão',
+                    '**** **** **** ${payment['cardLastFourDigits']}'),
 
               if (isBirthChart) ...[
                 const SizedBox(height: 16),
@@ -441,6 +464,34 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                   ),
                 ),
               ],
+
+              if (isPix) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  'Pagamento via PIX',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (status.toLowerCase() == 'pending')
+                  const Text(
+                    'Este pagamento está pendente de confirmação. Verifique se você completou a transação PIX.',
+                    style: TextStyle(
+                      color: Colors.orange,
+                    ),
+                  )
+                else
+                  const Text(
+                    'Pagamento realizado via PIX.',
+                    style: TextStyle(
+                      color: Colors.grey,
+                    ),
+                  ),
+              ],
             ],
           ),
         ),
@@ -449,6 +500,18 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
             onPressed: () => Get.back(),
             child: const Text('Fechar'),
           ),
+          if (hasQrCode)
+            ElevatedButton.icon(
+              onPressed: () {
+                Get.back();
+                Get.dialog(_buildQrCodePopup(pixQrCode!));
+              },
+              icon: const Icon(Icons.qr_code),
+              label: const Text('Ver QR Code'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+              ),
+            ),
           if (isBirthChart)
             ElevatedButton(
               onPressed: () {
@@ -456,6 +519,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                 // Navegar para a tela de mapas astrais
                 Get.toNamed(AppRoutes.birthChart);
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+              ),
               child: const Text('Ver Mapas Astrais'),
             ),
           if (status.toLowerCase() == 'approved')
@@ -471,6 +537,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                   snackPosition: SnackPosition.BOTTOM,
                 );
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+              ),
               child: const Text('Solicitar Suporte'),
             ),
         ],
@@ -503,9 +572,87 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     );
   }
 
+  // Mostrar QR code do PIX
+  Widget _buildQrCodePopup(String qrCode) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'QR Code PIX',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // QR Code (simples representação visual)
+            Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.qr_code_2,
+                  size: 150,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Código PIX copia e cola
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      qrCode.length > 30 ? '${qrCode.substring(0, 30)}...' : qrCode,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy),
+                    onPressed: () {
+                      Get.snackbar(
+                        'Copiado',
+                        'Código PIX copiado para a área de transferência',
+                        backgroundColor: Colors.green,
+                        colorText: Colors.white,
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => Get.back(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+              ),
+              child: const Text('Fechar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _formatCategoryName(String category) {
     switch (category.toLowerCase()) {
       case 'credits':
+      case 'credit_purchase':
         return 'Compra de Créditos';
       case 'tarot':
         return 'Leitura de Tarô';
@@ -515,6 +662,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         return 'Mapa Astral';
       case 'appointment':
         return 'Consulta com Médium';
+      case 'pix':
+        return 'Pagamento via PIX';
       default:
       // Capitalize a primeira letra
         if (category.isNotEmpty) {
@@ -542,6 +691,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {
       case 'credits':
+      case 'credit_purchase':
         return Icons.credit_card;
       case 'tarot':
         return Icons.grid_view;
@@ -551,6 +701,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         return Icons.public;
       case 'appointment':
         return Icons.people;
+      case 'pix':
+        return Icons.qr_code;
       default:
         return Icons.receipt_long;
     }
@@ -559,6 +711,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'credits':
+      case 'credit_purchase':
         return Colors.green;
       case 'tarot':
         return Colors.purple;
@@ -568,6 +721,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         return Colors.orange;
       case 'appointment':
         return Colors.red;
+      case 'pix':
+        return Colors.cyan;
       default:
         return Colors.grey;
     }

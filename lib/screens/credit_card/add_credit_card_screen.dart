@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/new_credit_card_controller.dart';
 
 class AddCreditCardScreen extends GetView<NewCreditCardController> {
@@ -15,7 +16,7 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Adicionar Cartão'),
-        backgroundColor: Colors.deepPurple.shade800,
+        backgroundColor: AppTheme.primaryColor,
       ),
       body: SafeArea(
         // Use GetX para apenas mostrar o loader quando necessário
@@ -119,14 +120,7 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.deepPurple.shade800,
-              Colors.deepPurple.shade500,
-            ],
-          ),
+          gradient: AppTheme.primaryGradient,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -255,14 +249,7 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.deepPurple.shade800,
-              Colors.deepPurple.shade500,
-            ],
-          ),
+          gradient: AppTheme.primaryGradient,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,7 +322,7 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
           style: TextStyle(
             fontSize: isSmallScreen ? 16 : 18,
             fontWeight: FontWeight.bold,
-            color: Colors.deepPurple.shade800,
+            color: AppTheme.primaryColor,
           ),
         ),
         SizedBox(height: isSmallScreen ? 12 : 16),
@@ -427,7 +414,7 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
           style: TextStyle(
             fontSize: isSmallScreen ? 16 : 18,
             fontWeight: FontWeight.bold,
-            color: Colors.deepPurple.shade800,
+            color: AppTheme.primaryColor,
           ),
         ),
         SizedBox(height: isSmallScreen ? 12 : 16),
@@ -598,7 +585,7 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Colors.deepPurple.shade800, width: 2),
+          borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         // Adiciona mensagem de erro de forma mais compacta
@@ -631,7 +618,7 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
       child: ElevatedButton(
         onPressed: _onSavePressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.deepPurple.shade800,
+          backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),

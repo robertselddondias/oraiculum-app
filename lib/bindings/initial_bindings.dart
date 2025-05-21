@@ -30,7 +30,8 @@ class InitialBinding implements Bindings {
     Get.put(EfiPayService(
         clientId: 'Client_Id_f8157c294c8b932edeadc2d141467641bd8f9758',
         clientSecret: 'Client_Secret_da63f0aa39041e6362449a2dfcdde677e0189fbc',
-        isSandbox: true
+        isSandbox: true,
+
     ));
 
     // Second, initialize base controllers that others might depend on

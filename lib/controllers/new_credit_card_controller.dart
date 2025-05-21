@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:oraculum/services/efi_payment_service.dart';
 import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/services/pagarme_service.dart';
+import 'package:oraculum/services/efi_payment_service.dart';
+import 'package:oraculum/models/credit_card_model.dart';
 
 class NewCreditCardController extends GetxController {
   // Serviços injetados
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
-  final PagarmeService _pagarmeService = Get.find<PagarmeService>();
+
+  // Novo serviço EFI
+  late EfiPayService _efiPayService;
 
   // Controladores para os campos do formulário
   final TextEditingController cardNumberController = TextEditingController();
@@ -66,6 +68,13 @@ class NewCreditCardController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+
+    // Inicializar o serviço EFI
+    _efiPayService = EfiPayService(
+      clientId: 'seu_client_id',  // Substitua pelo seu Client ID
+      clientSecret: 'seu_client_secret',  // Substitua pelo seu Client Secret
+      isSandbox: true,  // Ambiente de sandbox para testes
+    );
 
     // Adicionar listeners para detectar mudanças
     cvvFocus.addListener(_onCvvFocusChange);
@@ -153,9 +162,8 @@ class NewCreditCardController extends GetxController {
       final userId = _authController.currentUser.value!.uid;
 
       final cardsSnapshot = await _firebaseService.firestore
-          .collection('users')
-          .doc(userId)
-          .collection('saved_cards')
+          .collection('credit_cards')
+          .where('userId', isEqualTo: userId)
           .get();
 
       savedCards.value = cardsSnapshot.docs.map((doc) {
@@ -171,6 +179,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
+  // Adicionar novo cartão - ATUALIZADO PARA USAR EFIPAYSERVICE
   Future<bool> addNewCard() async {
     if (!formKey.currentState!.validate()) {
       return false;
@@ -190,7 +199,7 @@ class NewCreditCardController extends GetxController {
       final cardHolder = cardHolderController.text;
       final expiryParts = expiryDateController.text.split('/');
       final expiryMonth = expiryParts[0];
-      final expiryYear = expiryParts[1];
+      final expiryYear = '20${expiryParts[1]}'; // Assumindo formato MM/YY
       final cvv = cvvController.text;
       final document = documentController.text.replaceAll(RegExp(r'[.-]'), '');
       final phone = phoneController.text.replaceAll(RegExp(r'[() -]'), '');
@@ -201,9 +210,8 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
-      // Criar token de cartão usando EfiPay
-      final efiPayService = Get.find<EfiPayService>();
-      final tokenResponse = await efiPayService.createCardToken(
+      // Criar token do cartão usando EfiPayService
+      final tokenResponse = await _efiPayService.createCardToken(
         cardNumber: cardNumber,
         cardExpirationMonth: expiryMonth,
         cardExpirationYear: expiryYear,
@@ -211,29 +219,52 @@ class NewCreditCardController extends GetxController {
       );
 
       if (!tokenResponse['success']) {
-        Get.snackbar('Erro', tokenResponse['error'] ?? 'Não foi possível tokenizar o cartão');
+        Get.snackbar('Erro', 'Não foi possível tokenizar o cartão: ${tokenResponse['error']}');
         return false;
       }
 
       final cardToken = tokenResponse['data']['card_token'];
 
+      // Obter os detalhes do cartão da resposta
+      final cardData = tokenResponse['data'];
+      final brand = cardData['brand'] ?? cardBrand.value;
+      final lastFourDigits = cardNumber.substring(cardNumber.length - 4);
+
       // Salvar informações do cartão no Firestore
-      await _firebaseService.firestore
-          .collection('users')
-          .doc(userId)
-          .collection('saved_cards')
-          .add({
-        'cardToken': cardToken,
-        'lastFourDigits': cardNumber.substring(cardNumber.length - 4),
-        'cardHolder': cardHolder,
-        'expiryMonth': expiryMonth,
-        'expiryYear': expiryYear,
-        'brand': cardBrand.value,
-        'isDefault': true,
-        'createdAt': DateTime.now(),
-        'document': document,
-        'cardType': cardBrand.value,
-      });
+      final docRef = _firebaseService.firestore.collection('credit_cards').doc();
+
+      CreditCardUserModel creditCardModel = CreditCardUserModel();
+      creditCardModel.cardId = cardToken;
+      creditCardModel.lastFourDigits = lastFourDigits;
+      creditCardModel.brandType = brand;
+      creditCardModel.cardHolderName = cardHolder;
+      creditCardModel.transationalType = 'credit';
+      creditCardModel.expirationDate = '$expiryMonth/${expiryParts[1]}';
+      creditCardModel.userId = userId;
+      creditCardModel.id = docRef.id;
+      creditCardModel.cvv = cvv;
+      creditCardModel.createdAt = DateTime.now();
+      creditCardModel.isDefault = true;
+
+      // Verificar cartões existentes para atualizar o padrão
+      final existingCards = await _firebaseService.firestore
+          .collection('credit_cards')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      // Usar batch para atualizar múltiplos documentos em uma operação
+      final batch = _firebaseService.firestore.batch();
+
+      // Se existirem outros cartões, remover a flag de padrão
+      for (var doc in existingCards.docs) {
+        batch.update(doc.reference, {'isDefault': false});
+      }
+
+      // Adicionar o novo cartão como padrão
+      batch.set(docRef, creditCardModel.toJson());
+
+      // Executar o batch
+      await batch.commit();
 
       // Limpar o formulário
       _clearForm();
@@ -251,115 +282,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Adiciona um método para processar pagamento com o cartão
-  Future<bool> processPaymentWithEfiPay({
-    required double amount,
-    required String cardToken,
-    required String description,
-  }) async {
-    try {
-      if (_authController.currentUser.value == null) {
-        Get.snackbar(
-            'Erro', 'Você precisa estar logado para realizar o pagamento');
-        return false;
-      }
-
-      isLoading.value = true;
-      final userId = _authController.currentUser.value!.uid;
-
-      // Buscar informações do usuário no Firestore
-      final userData = await _firebaseService.getUserData(userId);
-      final userMap = userData.data() as Map<String, dynamic>;
-
-      final efiPayService = Get.find<EfiPayService>();
-      final paymentResponse = await efiPayService.createCreditCardPayment(
-        value: amount,
-        cardToken: cardToken,
-        name: userMap['name'] ?? 'Usuário',
-        cpfCnpj: userMap['document'] ?? '',
-        // Certifique-se de ter o CPF salvo
-        installments: 1, // Pode ser configurável
-      );
-
-      if (paymentResponse['success']) {
-        // Registrar pagamento no Firestore ou em outro serviço
-        await _firebaseService.firestore.collection('payments').add({
-          'userId': userId,
-          'amount': amount,
-          'description': description,
-          'method': 'credit_card',
-          'timestamp': DateTime.now(),
-          'status': 'approved',
-          'transactionId': paymentResponse['data']['charge_id'],
-        });
-
-        Get.snackbar('Sucesso', 'Pagamento processado com sucesso');
-        return true;
-      } else {
-        Get.snackbar('Erro', paymentResponse['error'] ?? 'Falha no pagamento');
-        return false;
-      }
-    } catch (e) {
-      Get.snackbar('Erro', 'Não foi possível processar o pagamento: $e');
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  // Obter ou criar cliente na Pagar.me
-  Future<String?> _getOrCreatePagarMeCustomer(
-      String userId,
-      String document,
-      String phone,
-      String name
-      ) async {
-    try {
-      final userData = await _firebaseService.getUserData(userId);
-      if (userData.exists) {
-        final userDoc = userData.data() as Map<String, dynamic>;
-
-        // Verificar se já existe um cliente na Pagar.me
-        if (userDoc.containsKey('pagarme_customer_id')) {
-          return userDoc['pagarme_customer_id'];
-        }
-
-        // Obter e-mail do usuário
-        final email = _authController.currentUser.value?.email ?? '';
-
-        // Criar cliente na Pagar.me
-        final customerData = {
-          "name": name,
-          "email": email,
-          "type": "individual",
-          "document": document,
-          "phones": {
-            "mobile_phone": {
-              "country_code": "55",
-              "number": phone.substring(2),
-              "area_code": phone.substring(0, 2)
-            }
-          }
-        };
-
-        final customerId = await _pagarmeService.createCustomer(customerData);
-
-        if (customerId.isNotEmpty) {
-          // Atualizar ID do cliente no Firestore
-          await _firebaseService.updateUserData(userId, {
-            'pagarme_customer_id': customerId
-          });
-          return customerId;
-        }
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Erro ao criar/obter cliente na Pagar.me: $e');
-      return null;
-    }
-  }
-
-  // Remover um cartão
+  // Remover um cartão - ATUALIZADO PARA USAR EFIPAYSERVICE
   Future<bool> removeCard(String cardId) async {
     try {
       if (_authController.currentUser.value == null) {
@@ -374,15 +297,9 @@ class NewCreditCardController extends GetxController {
       final cardToRemove = savedCards.firstWhereOrNull((card) => card['id'] == cardId);
       final isDefault = cardToRemove != null && cardToRemove['isDefault'] == true;
 
-      // TODO: Implementar a remoção do cartão na Pagar.me
-      // Aqui deveríamos chamar a API da Pagar.me para remover o token do cartão
-      // await _pagarmeService.deleteCard(cardToRemove['cardId']);
-
-      // Remover o cartão do Firestore
+      // Não há necessidade de excluir o token no EfiPay, apenas remover do Firestore
       await _firebaseService.firestore
-          .collection('users')
-          .doc(userId)
-          .collection('saved_cards')
+          .collection('credit_cards')
           .doc(cardId)
           .delete();
 
@@ -424,9 +341,8 @@ class NewCreditCardController extends GetxController {
       final batch = _firebaseService.firestore.batch();
 
       final cardsSnapshot = await _firebaseService.firestore
-          .collection('users')
-          .doc(userId)
-          .collection('saved_cards')
+          .collection('credit_cards')
+          .where('userId', isEqualTo: userId)
           .get();
 
       // Remover flag de cartão padrão de todos os cartões
@@ -437,9 +353,7 @@ class NewCreditCardController extends GetxController {
       // Definir o cartão selecionado como padrão
       batch.update(
           _firebaseService.firestore
-              .collection('users')
-              .doc(userId)
-              .collection('saved_cards')
+              .collection('credit_cards')
               .doc(cardId),
           {'isDefault': true}
       );
@@ -456,6 +370,118 @@ class NewCreditCardController extends GetxController {
       return true;
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível definir o cartão como padrão: $e');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Processar pagamento com cartão - ATUALIZADO PARA USAR EFIPAYSERVICE
+  Future<bool> processPayment({
+    required double amount,
+    required String description,
+    String? cardId,
+  }) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
+        return false;
+      }
+
+      isLoading.value = true;
+      final userId = _authController.currentUser.value!.uid;
+
+      // Se cardId não foi fornecido, usar o cartão padrão
+      if (cardId == null) {
+        final defaultCard = getDefaultCard();
+        if (defaultCard == null) {
+          Get.snackbar('Erro', 'Nenhum cartão padrão definido');
+          return false;
+        }
+        cardId = defaultCard['id'];
+      }
+
+      // Encontrar o cartão pelo ID
+      final card = savedCards.firstWhere(
+            (card) => card['id'] == cardId,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (card.isEmpty) {
+        Get.snackbar('Erro', 'Cartão não encontrado');
+        return false;
+      }
+
+      // Buscar dados do usuário para o pagamento
+      final userData = await _firebaseService.getUserData(userId);
+      final userDoc = userData.data() as Map<String, dynamic>?;
+
+      if (userDoc == null) {
+        Get.snackbar('Erro', 'Dados do usuário não encontrados');
+        return false;
+      }
+
+      // Processar pagamento com EFI
+      final paymentResponse = await _efiPayService.createCreditCardPayment(
+        value: amount,
+        cardToken: card['cardId'],
+        name: userDoc['name'] ?? '',
+        cpfCnpj: card['document'] ?? userDoc['document'] ?? '',
+        installments: 1,
+      );
+
+      if (paymentResponse['success']) {
+        // Registrar o pagamento no Firestore
+        final paymentData = {
+          'userId': userId,
+          'cardId': cardId,
+          'amount': amount,
+          'description': description,
+          'status': 'approved',
+          'paymentMethod': 'credit_card',
+          'cardLastFourDigits': card['lastFourDigits'] ?? '****',
+          'cardBrand': card['brandType'] ?? 'unknown',
+          'efiPaymentId': paymentResponse['data']['charge_id'],
+          'timestamp': DateTime.now(),
+        };
+
+        await _firebaseService.firestore
+            .collection('payments')
+            .add(paymentData);
+
+        Get.snackbar('Sucesso', 'Pagamento realizado com sucesso');
+        return true;
+      } else {
+        // Pagamento falhou
+        Get.snackbar(
+          'Erro no Pagamento',
+          paymentResponse['error'] ?? 'Falha no processamento do pagamento',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+        );
+
+        // Registrar a falha no pagamento no Firestore
+        final paymentData = {
+          'userId': userId,
+          'cardId': cardId,
+          'amount': amount,
+          'description': description,
+          'paymentMethod': 'Cartão de Crédito',
+          'cardLastFourDigits': card['lastFourDigits'] ?? '****',
+          'cardBrand': card['brandType'] ?? 'unknown',
+          'status': 'failed',
+          'errorDetails': paymentResponse['error'],
+          'timestamp': DateTime.now(),
+        };
+
+        await _firebaseService.firestore
+            .collection('failed_payments')
+            .add(paymentData);
+
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível processar o pagamento: $e');
       return false;
     } finally {
       isLoading.value = false;
@@ -506,68 +532,5 @@ class NewCreditCardController extends GetxController {
   // Obter o cartão padrão
   Map<String, dynamic>? getDefaultCard() {
     return savedCards.firstWhereOrNull((card) => card['isDefault'] == true);
-  }
-
-  // Processar pagamento com cartão
-  Future<bool> processPayment({
-    required double amount,
-    required String description,
-    String? cardId
-  }) async {
-    try {
-      if (_authController.currentUser.value == null) {
-        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
-        return false;
-      }
-
-      isLoading.value = true;
-      final userId = _authController.currentUser.value!.uid;
-
-      // Se cardId não foi fornecido, usar o cartão padrão
-      if (cardId == null) {
-        final defaultCard = getDefaultCard();
-        if (defaultCard == null) {
-          Get.snackbar('Erro', 'Nenhum cartão padrão definido');
-          return false;
-        }
-        cardId = defaultCard['id'];
-      }
-
-      // Encontrar o cartão pelo ID
-      final card = savedCards.firstWhere(
-            (card) => card['id'] == cardId,
-        orElse: () => <String, dynamic>{},
-      );
-
-      if (card.isEmpty) {
-        Get.snackbar('Erro', 'Cartão não encontrado');
-        return false;
-      }
-
-      // TODO: Implementar o processamento de pagamento
-      // Aqui deveria chamar a API da Pagar.me para processar o pagamento
-
-      // Registrar o pagamento no Firestore
-      final paymentData = {
-        'userId': userId,
-        'cardId': cardId,
-        'amount': amount,
-        'description': description,
-        'status': 'approved', // Temporário, deveria vir da resposta da API
-        'timestamp': DateTime.now(),
-      };
-
-      await _firebaseService.firestore
-          .collection('payments')
-          .add(paymentData);
-
-      Get.snackbar('Sucesso', 'Pagamento realizado com sucesso');
-      return true;
-    } catch (e) {
-      Get.snackbar('Erro', 'Não foi possível realizar o pagamento: $e');
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
   }
 }

@@ -9,7 +9,7 @@ class EfiPayService {
   final bool _isSandbox;
 
   // Configurações de ambiente
-  static const String _sandboxBaseUrl = 'https://sandbox.api.efipay.com.br';
+  static const String _sandboxBaseUrl = 'https://cobrancas-h.api.efipay.com.br';
   static const String _productionBaseUrl = 'https://api.efipay.com.br';
 
   EfiPayService({

@@ -4,13 +4,15 @@ import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/models/credit_card_model.dart';
 import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/services/pagarme_service.dart';
+import 'package:oraculum/services/efi_payment_service.dart';
 
 class CardListController extends GetxController {
   // Serviços injetados
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
-  final PagarmeService _pagarmeService = Get.find<PagarmeService>();
+
+  // Novo serviço EFI
+  late EfiPayService _efiPayService;
 
   // Variáveis observáveis
   final RxList<Map<String, dynamic>> savedCards = <Map<String, dynamic>>[].obs;
@@ -25,6 +27,14 @@ class CardListController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+
+    // Inicializar serviço EFI
+    _efiPayService = EfiPayService(
+      clientId: 'seu_client_id',  // Substitua pelo seu Client ID
+      clientSecret: 'seu_client_secret',  // Substitua pelo seu Client Secret
+      isSandbox: true,  // Ambiente de sandbox para testes
+    );
+
     loadCards();
   }
 
@@ -168,19 +178,9 @@ class CardListController extends GetxController {
       }
 
       final card = savedCards[cardIndex];
-      final cardModel = CreditCardUserModel(
-        id: card['id'],
-        cardId: card['cardId'],
-        customerId: card['customerId'],
-      );
 
-      // Excluir da API da Pagar.me
-      try {
-        await _pagarmeService.deleteCard(cardModel);
-      } catch (e) {
-        debugPrint('Erro ao remover cartão da Pagar.me: $e');
-        // Continue mesmo com erro, para pelo menos remover do Firestore
-      }
+      // Para o Efi, não precisamos excluir o token do cartão na API
+      // O token é mantido mas podemos remover do nosso banco de dados
 
       // Excluir do Firestore
       await _firebaseService.firestore

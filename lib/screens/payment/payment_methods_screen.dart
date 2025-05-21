@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/config/theme.dart';
@@ -103,9 +104,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  @override
+  }@override
   Widget build(BuildContext context) {
     // Verificar se é modo escuro
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -202,7 +201,6 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       ),
     );
   }
-
   // Seção de pacotes de créditos
   Widget _buildCreditPackages(bool isDarkMode, bool isTablet) {
     return Padding(
@@ -237,6 +235,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               return _buildCreditPackageCard(
                 _creditPackages[index],
                 isDarkMode,
+              ).animate().fadeIn(
+                duration: Duration(milliseconds: 300),
+                delay: Duration(milliseconds: index * 100),
               );
             },
           )
@@ -250,6 +251,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 child: _buildCreditPackageCard(
                   _creditPackages[index],
                   isDarkMode,
+                ).animate().fadeIn(
+                  duration: Duration(milliseconds: 300),
+                  delay: Duration(milliseconds: index * 100),
                 ),
               );
             },
@@ -417,7 +421,6 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       ),
     );
   }
-
   // Seção de métodos de pagamento
   Widget _buildPaymentMethods(bool isDarkMode, bool isTablet) {
     return Padding(
@@ -452,6 +455,23 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             },
           ),
 
+          // PIX - Novo método de pagamento
+          _buildPaymentMethodTile(
+            icon: Icons.qr_code,
+            title: 'PIX',
+            subtitle: 'Pagamento instantâneo',
+            isDarkMode: isDarkMode,
+            isSelected: _selectedPaymentMethod == 'PIX',
+            onTap: () {
+              setState(() {
+                _selectedPaymentMethod = 'PIX';
+              });
+            },
+          ).animate().fadeIn(
+            duration: const Duration(milliseconds: 400),
+            delay: const Duration(milliseconds: 200),
+          ),
+
           // Google Pay
           _buildPaymentMethodTile(
             icon: Icons.account_balance_wallet,
@@ -480,21 +500,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             },
           ),
 
-          // PIX
-          _buildPaymentMethodTile(
-            icon: Icons.qr_code,
-            title: 'PIX',
-            subtitle: 'Tranferência instantânea',
-            isDarkMode: isDarkMode,
-            isSelected: _selectedPaymentMethod == 'PIX',
-            onTap: () {
-              setState(() {
-                _selectedPaymentMethod = 'PIX';
-              });
-            },
-          ),
-
-          // Gerenciar cartões
+          // Gerenciar cartões (mostrado apenas quando Cartão de Crédito está selecionado)
           if (_selectedPaymentMethod == 'Cartão de Crédito')
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
@@ -521,6 +527,53 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   ),
                 ),
               ),
+            ),
+
+          // Informações adicionais para o método PIX
+          if (_selectedPaymentMethod == 'PIX')
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.grey.shade800
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: AppTheme.infoColor,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Sobre o pagamento via PIX',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Você receberá um QR Code para efetuar o pagamento. Os créditos serão adicionados automaticamente após a confirmação do pagamento.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ).animate().fadeIn(
+              duration: const Duration(milliseconds: 300),
             ),
         ],
       ),
@@ -624,7 +677,6 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       ),
     );
   }
-
   // Botão de confirmação
   Widget _buildConfirmButton(bool isDarkMode) {
     return Container(
