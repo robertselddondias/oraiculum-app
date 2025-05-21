@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/services/efi_payment_service.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/pagarme_service.dart';
 
@@ -170,7 +171,6 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Adicionar novo cartão
   Future<bool> addNewCard() async {
     if (!formKey.currentState!.validate()) {
       return false;
@@ -190,7 +190,7 @@ class NewCreditCardController extends GetxController {
       final cardHolder = cardHolderController.text;
       final expiryParts = expiryDateController.text.split('/');
       final expiryMonth = expiryParts[0];
-      final expiryYear = '20${expiryParts[1]}'; // Assumindo formato MM/YY
+      final expiryYear = expiryParts[1];
       final cvv = cvvController.text;
       final document = documentController.text.replaceAll(RegExp(r'[.-]'), '');
       final phone = phoneController.text.replaceAll(RegExp(r'[() -]'), '');
@@ -201,28 +201,21 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
-      // Criar cliente na Pagar.me se necessário
-      String? customerId = await _getOrCreatePagarMeCustomer(userId, document, phone, cardHolder);
-
-      if (customerId == null) {
-        Get.snackbar('Erro', 'Não foi possível processar seu cadastro');
-        return false;
-      }
-
-      // Criar token do cartão usando PagarmeService
-      final cardId = await _pagarmeService.createCard(
-          cardNumber: cardNumber,
-          cardHolderName: cardHolder,
-          cardExpirationDate: '$expiryMonth/${expiryParts[1]}',
-          cardCvv: cvv,
-          documentNumber: document,
-          customerId: customerId
+      // Criar token de cartão usando EfiPay
+      final efiPayService = Get.find<EfiPayService>();
+      final tokenResponse = await efiPayService.createCardToken(
+        cardNumber: cardNumber,
+        cardExpirationMonth: expiryMonth,
+        cardExpirationYear: expiryYear,
+        cardCvv: cvv,
       );
 
-      if (cardId.isEmpty) {
-        Get.snackbar('Erro', 'Não foi possível tokenizar o cartão');
+      if (!tokenResponse['success']) {
+        Get.snackbar('Erro', tokenResponse['error'] ?? 'Não foi possível tokenizar o cartão');
         return false;
       }
+
+      final cardToken = tokenResponse['data']['card_token'];
 
       // Salvar informações do cartão no Firestore
       await _firebaseService.firestore
@@ -230,15 +223,16 @@ class NewCreditCardController extends GetxController {
           .doc(userId)
           .collection('saved_cards')
           .add({
-        'cardId': cardId,
+        'cardToken': cardToken,
         'lastFourDigits': cardNumber.substring(cardNumber.length - 4),
         'cardHolder': cardHolder,
         'expiryMonth': expiryMonth,
         'expiryYear': expiryYear,
         'brand': cardBrand.value,
-        'customerId': customerId,
         'isDefault': true,
         'createdAt': DateTime.now(),
+        'document': document,
+        'cardType': cardBrand.value,
       });
 
       // Limpar o formulário
@@ -251,6 +245,62 @@ class NewCreditCardController extends GetxController {
       return true;
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível adicionar o cartão: $e');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Adiciona um método para processar pagamento com o cartão
+  Future<bool> processPaymentWithEfiPay({
+    required double amount,
+    required String cardToken,
+    required String description,
+  }) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar(
+            'Erro', 'Você precisa estar logado para realizar o pagamento');
+        return false;
+      }
+
+      isLoading.value = true;
+      final userId = _authController.currentUser.value!.uid;
+
+      // Buscar informações do usuário no Firestore
+      final userData = await _firebaseService.getUserData(userId);
+      final userMap = userData.data() as Map<String, dynamic>;
+
+      final efiPayService = Get.find<EfiPayService>();
+      final paymentResponse = await efiPayService.createCreditCardPayment(
+        value: amount,
+        cardToken: cardToken,
+        name: userMap['name'] ?? 'Usuário',
+        cpfCnpj: userMap['document'] ?? '',
+        // Certifique-se de ter o CPF salvo
+        installments: 1, // Pode ser configurável
+      );
+
+      if (paymentResponse['success']) {
+        // Registrar pagamento no Firestore ou em outro serviço
+        await _firebaseService.firestore.collection('payments').add({
+          'userId': userId,
+          'amount': amount,
+          'description': description,
+          'method': 'credit_card',
+          'timestamp': DateTime.now(),
+          'status': 'approved',
+          'transactionId': paymentResponse['data']['charge_id'],
+        });
+
+        Get.snackbar('Sucesso', 'Pagamento processado com sucesso');
+        return true;
+      } else {
+        Get.snackbar('Erro', paymentResponse['error'] ?? 'Falha no pagamento');
+        return false;
+      }
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível processar o pagamento: $e');
       return false;
     } finally {
       isLoading.value = false;

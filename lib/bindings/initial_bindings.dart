@@ -11,6 +11,7 @@ import 'package:oraculum/services/gemini_service.dart';
 import 'package:oraculum/services/pagarme_service.dart';
 import 'package:oraculum/services/pagarme_wallet_service.dart';
 import 'package:oraculum/services/payment_service.dart';
+import 'package:oraculum/services/efi_payment_service.dart';
 
 class InitialBinding implements Bindings {
   @override
@@ -24,6 +25,13 @@ class InitialBinding implements Bindings {
     Get.put(PaymentService());
     Get.put(PagarmeWalletService());
     Get.put(PagarmeService());
+
+    // EfiPay service initialization with sandbox credentials
+    Get.put(EfiPayService(
+        clientId: 'Client_Id_f8157c294c8b932edeadc2d141467641bd8f9758',
+        clientSecret: 'Client_Secret_da63f0aa39041e6362449a2dfcdde677e0189fbc',
+        isSandbox: true
+    ));
 
     // Second, initialize base controllers that others might depend on
     Get.put(AuthController(), permanent: true);
