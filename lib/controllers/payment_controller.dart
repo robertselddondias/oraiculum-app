@@ -25,6 +25,8 @@ class PaymentController extends GetxController {
   void onInit() {
     super.onInit();
 
+    _efiPayService = Get.find<EfiPayService>();
+
     if (_authController.isLoggedIn) {
       loadUserCredits();
     }
@@ -381,8 +383,9 @@ class PaymentController extends GetxController {
       // Criar cobrança Pix
       final pixResponse = await _efiPayService.createPixCharge(
         value: amount,
-        chavePixDestinatario: 'chavepix@oraculum.com.br', // Substitua pela chave Pix real da aplicação
-        descricao: description,
+        name: 'chavepix@oraculum.com.br',
+        cpfCnpj: "71771786191",
+        description: description,
       );
 
       if (!pixResponse['success']) {

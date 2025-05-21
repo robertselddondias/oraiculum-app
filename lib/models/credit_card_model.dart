@@ -15,6 +15,11 @@ class CreditCardUserModel {
   DateTime? createdAt;
   bool? isDefault;
 
+  String? email;
+  String? cpf;
+  String? birthDate;
+  String? phone;
+
   CreditCardUserModel({
     this.id,
     this.cardHolderName,
@@ -28,7 +33,11 @@ class CreditCardUserModel {
     this.cardAliasName,
     this.cvv,
     this.createdAt,
-    this.isDefault
+    this.isDefault,
+    this.phone,
+    this.email,
+    this.birthDate,
+    this.cpf
   });
 
   CreditCardUserModel.fromJson(Map<String, dynamic> json) {
@@ -45,6 +54,11 @@ class CreditCardUserModel {
     cardAliasName = json['cardAliasName'];
     createdAt = json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null;
     isDefault = json['isDefault'];
+
+    phone = json['phone'];
+    email = json['email'];
+    birthDate = json['birthDate'];
+    cpf = json['cpf'];
   }
 
   Map<String, dynamic> toJson() {
@@ -62,6 +76,11 @@ class CreditCardUserModel {
     data['cvv'] = cvv;
     data['createdAt'] = DateTime.now().toIso8601String();
     data['isDefault'] = isDefault;
+
+    data['phone'] = phone;
+    data['email'] = email;
+    data['birthDate'] = birthDate;
+    data['cpf'] = cpf;
     return data;
   }
 }

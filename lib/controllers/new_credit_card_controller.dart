@@ -73,6 +73,8 @@ class NewCreditCardController extends GetxController {
     cvvFocus.addListener(_onCvvFocusChange);
     cardNumberController.addListener(_updateCardBrand);
 
+    _efiPayService = Get.find<EfiPayService>();
+
     // Carregar cartões salvos
     loadSavedCards();
   }
@@ -209,14 +211,17 @@ class NewCreditCardController extends GetxController {
         cardExpirationMonth: expiryMonth,
         cardExpirationYear: expiryYear,
         cardCvv: cvv,
+        brand: cardBrand.value
       );
 
       if (!tokenResponse['success']) {
-        Get.snackbar('Erro', 'Não foi possível tokenizar o cartão: ${tokenResponse['error']}');
+        // Aqui está a correção - trate error como String, não como Map
+        final errorMessage = tokenResponse['error'] as String;
+        Get.snackbar('Erro', 'Não foi possível tokenizar o cartão: $errorMessage');
         return false;
       }
 
-      final cardToken = tokenResponse['data']['card_token'];
+      final cardToken = tokenResponse['data']['data']['payment_token'];
 
       // Obter os detalhes do cartão da resposta
       final cardData = tokenResponse['data'];
@@ -235,6 +240,8 @@ class NewCreditCardController extends GetxController {
       creditCardModel.expirationDate = '$expiryMonth/${expiryParts[1]}';
       creditCardModel.userId = userId;
       creditCardModel.id = docRef.id;
+      creditCardModel.cpf = document;
+      creditCardModel.phone = phone;
       creditCardModel.cvv = cvv;
       creditCardModel.createdAt = DateTime.now();
       creditCardModel.isDefault = true;
@@ -369,7 +376,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Processar pagamento com cartão - ATUALIZADO PARA USAR EFIPAYSERVICE
+  // Processar pagamento com cartão - ATUALIZADO
   Future<bool> processPayment({
     required double amount,
     required String description,
@@ -445,10 +452,12 @@ class NewCreditCardController extends GetxController {
         Get.snackbar('Sucesso', 'Pagamento realizado com sucesso');
         return true;
       } else {
-        // Pagamento falhou
+        // Pagamento falhou - Aqui está a correção
+        final errorMessage = paymentResponse['error'] as String;
+
         Get.snackbar(
           'Erro no Pagamento',
-          paymentResponse['error'] ?? 'Falha no processamento do pagamento',
+          errorMessage,
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
@@ -463,7 +472,7 @@ class NewCreditCardController extends GetxController {
           'cardLastFourDigits': card['lastFourDigits'] ?? '****',
           'cardBrand': card['brandType'] ?? 'unknown',
           'status': 'failed',
-          'errorDetails': paymentResponse['error'],
+          'errorDetails': errorMessage,
           'timestamp': DateTime.now(),
         };
 

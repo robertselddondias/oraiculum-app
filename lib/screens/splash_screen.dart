@@ -16,11 +16,20 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
-  final AuthController _authController = Get.find<AuthController>();
+
+  AuthController? _authController;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+
+    if (!Get.isRegistered<AuthController>()) {
+      Get.put(AuthController(), permanent: true);
+    }
+
+    _authController = Get.find<AuthController>();
+    _isInitialized = true;
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
@@ -36,7 +45,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
       if (isFirstTime) {
         Get.offAllNamed(AppRoutes.onboarding);
-      } else if (_authController.isLoggedIn) {
+      } else if (_authController!.isLoggedIn) {
         Get.offAllNamed(AppRoutes.navigation);
       } else {
         Get.offAllNamed(AppRoutes.login);

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/controllers/card_list_controller.dart';
@@ -15,7 +16,7 @@ import 'package:oraculum/services/efi_payment_service.dart';
 
 class InitialBinding implements Bindings {
   @override
-  void dependencies() {
+  void dependencies() async {
     // First, initialize all services
     Get.put(FirebaseService());
 
@@ -26,14 +27,10 @@ class InitialBinding implements Bindings {
     Get.put(PagarmeWalletService());
     Get.put(PagarmeService());
 
+    final certificateContent = await loadCertificate();
+
     // EfiPay service initialization with sandbox credentials
-    Get.put(EfiPayService(
-      clientId: 'Client_Id_f8157c294c8b932edeadc2d141467641bd8f9758',
-      clientSecret: 'Client_Secret_da63f0aa39041e6362449a2dfcdde677e0189fbc',
-      certificatePath: 'assets/certificates/oraculum_hml.pem', // Path to your certificate file
-      accountId: '768102-1', // Your EfiPay account ID
-      isSandbox: true,
-    ));
+    Get.put(EfiPayService());
 
     // Second, initialize base controllers that others might depend on
     Get.put(AuthController(), permanent: true);
@@ -45,5 +42,9 @@ class InitialBinding implements Bindings {
     Get.put(HoroscopeController());
     Get.put(CardListController());
     Get.put(NewCreditCardController());
+  }
+
+  Future<String> loadCertificate() async {
+    return await rootBundle.loadString('assets/certs/oraculum_hml.pem');
   }
 }
