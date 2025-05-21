@@ -3,12 +3,11 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:oraculum/models/credit_card_model.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/pagarme_service.dart';
 import 'package:oraculum/services/payment_service.dart';
-import 'package:http/http.dart' as http;
 import 'package:oraculum/utils/pagarme_payment_status.dart';
 
 class PaymentController extends GetxController {

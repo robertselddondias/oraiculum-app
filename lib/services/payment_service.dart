@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/services/pagarme_service.dart';
 import 'package:uuid/uuid.dart';
 
 /// Um serviço de pagamento simplificado que simula o Google Pay e Apple Pay
