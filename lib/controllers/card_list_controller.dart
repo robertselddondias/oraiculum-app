@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:oraculum/models/credit_card_model.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/efi_payment_service.dart';
 

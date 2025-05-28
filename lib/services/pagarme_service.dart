@@ -221,7 +221,7 @@ class PagarmeService {
       "items": [
         {
           'amount': amount,
-          'description': 'Credito Oraculum customerId: ${customerId} - UsuarioId: ${userId}',
+          'description': 'Credito Oraculum customerId: $customerId - UsuarioId: $userId',
           'quantity': 1,
           'code': 1
         },

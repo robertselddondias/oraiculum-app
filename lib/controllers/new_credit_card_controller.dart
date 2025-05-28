@@ -174,7 +174,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Adicionar novo cartão - ATUALIZADO PARA USAR EFIPAYSERVICE
+  // Adicionar novo cartão - VERSÃO CORRIGIDA COM MELHOR TRATAMENTO DE ERROS
   Future<bool> addNewCard() async {
     if (!formKey.currentState!.validate()) {
       return false;
@@ -205,28 +205,65 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
+      debugPrint('Iniciando processo de tokenização do cartão...');
+
       // Criar token do cartão usando EfiPayService
       final tokenResponse = await _efiPayService.createCardToken(
-        cardNumber: cardNumber,
-        cardExpirationMonth: expiryMonth,
-        cardExpirationYear: expiryYear,
-        cardCvv: cvv,
-        brand: cardBrand.value
+          cardNumber: cardNumber,
+          cardExpirationMonth: expiryMonth,
+          cardExpirationYear: expiryYear,
+          cardCvv: cvv,
+          brand: cardBrand.value
       );
 
-      if (!tokenResponse['success']) {
-        // Aqui está a correção - trate error como String, não como Map
-        final errorMessage = tokenResponse['error'] as String;
-        Get.snackbar('Erro', 'Não foi possível tokenizar o cartão: $errorMessage');
+      debugPrint('Resposta da tokenização: ${tokenResponse.toString()}');
+
+      if (tokenResponse['success'] != true) {
+        // Tratamento melhorado de erro
+        final errorMessage = tokenResponse['error'] as String? ?? 'Erro desconhecido na tokenização';
+
+        // Verificar se é erro de autenticação
+        if (errorMessage.contains('autenticação') ||
+            errorMessage.contains('Faça login') ||
+            errorMessage.contains('unauthenticated')) {
+
+          Get.snackbar(
+            'Erro de Autenticação',
+            'Sua sessão expirou. Por favor, faça login novamente.',
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 5),
+          );
+
+          // Opcional: redirecionar para tela de login
+          // Get.offAllNamed('/login');
+          return false;
+        }
+
+        Get.snackbar('Erro', 'Não foi possível processar o cartão: $errorMessage');
+        return false;
+      }
+
+      // Verificar se temos os dados necessários na resposta
+      if (tokenResponse['data'] == null || tokenResponse['data']['data'] == null) {
+        Get.snackbar('Erro', 'Resposta inválida do servidor de pagamento');
         return false;
       }
 
       final cardToken = tokenResponse['data']['data']['payment_token'];
 
+      if (cardToken == null || cardToken.isEmpty) {
+        Get.snackbar('Erro', 'Token do cartão não foi gerado corretamente');
+        return false;
+      }
+
       // Obter os detalhes do cartão da resposta
-      final cardData = tokenResponse['data'];
+      final cardData = tokenResponse['data']['data'];
       final brand = cardData['brand'] ?? cardBrand.value;
       final lastFourDigits = cardNumber.substring(cardNumber.length - 4);
+
+      debugPrint('Token criado com sucesso: $cardToken');
 
       // Salvar informações do cartão no Firestore
       final docRef = _firebaseService.firestore.collection('credit_cards').doc();
@@ -266,16 +303,44 @@ class NewCreditCardController extends GetxController {
       // Executar o batch
       await batch.commit();
 
+      debugPrint('Cartão salvo no Firestore com sucesso');
+
       // Limpar o formulário
       _clearForm();
 
       // Recarregar cartões
       await loadSavedCards();
 
-      Get.snackbar('Sucesso', 'Cartão adicionado com sucesso');
+      Get.snackbar(
+        'Sucesso',
+        'Cartão adicionado com sucesso',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
       return true;
     } catch (e) {
-      Get.snackbar('Erro', 'Não foi possível adicionar o cartão: $e');
+      debugPrint('Erro geral ao adicionar cartão: $e');
+
+      // Verificar se é erro específico de autenticação
+      if (e.toString().contains('unauthenticated') ||
+          e.toString().contains('permission-denied')) {
+        Get.snackbar(
+          'Erro de Autenticação',
+          'Sua sessão expirou. Faça login novamente.',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      } else {
+        Get.snackbar(
+          'Erro',
+          'Não foi possível adicionar o cartão: ${e.toString().split(': ').last}',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
       return false;
     } finally {
       isLoading.value = false;
@@ -376,7 +441,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Processar pagamento com cartão - ATUALIZADO
+  // Processar pagamento com cartão - ATUALIZADO COM MELHOR TRATAMENTO DE ERROS
   Future<bool> processPayment({
     required double amount,
     required String description,
@@ -421,16 +486,21 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
+      debugPrint('Processando pagamento de R\$ ${amount.toStringAsFixed(2)}');
+
       // Processar pagamento com EFI
       final paymentResponse = await _efiPayService.createCreditCardPayment(
         value: amount,
         cardToken: card['cardId'],
         name: userDoc['name'] ?? '',
-        cpfCnpj: card['document'] ?? userDoc['document'] ?? '',
+        cpfCnpj: card['cpf'] ?? userDoc['document'] ?? '',
         installments: 1,
+        description: description,
       );
 
-      if (paymentResponse['success']) {
+      debugPrint('Resposta do pagamento: ${paymentResponse.toString()}');
+
+      if (paymentResponse['success'] == true) {
         // Registrar o pagamento no Firestore
         final paymentData = {
           'userId': userId,
@@ -449,18 +519,37 @@ class NewCreditCardController extends GetxController {
             .collection('payments')
             .add(paymentData);
 
-        Get.snackbar('Sucesso', 'Pagamento realizado com sucesso');
+        Get.snackbar(
+          'Sucesso',
+          'Pagamento realizado com sucesso',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
         return true;
       } else {
-        // Pagamento falhou - Aqui está a correção
-        final errorMessage = paymentResponse['error'] as String;
+        // Pagamento falhou
+        final errorMessage = paymentResponse['error'] as String? ?? 'Erro desconhecido no pagamento';
 
-        Get.snackbar(
-          'Erro no Pagamento',
-          errorMessage,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        // Verificar se é erro de autenticação
+        if (errorMessage.contains('autenticação') ||
+            errorMessage.contains('Faça login')) {
+          Get.snackbar(
+            'Erro de Autenticação',
+            'Sua sessão expirou. Faça login novamente.',
+            backgroundColor: Colors.orange,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        } else {
+          Get.snackbar(
+            'Erro no Pagamento',
+            errorMessage,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
 
         // Registrar a falha no pagamento no Firestore
         final paymentData = {
@@ -483,7 +572,25 @@ class NewCreditCardController extends GetxController {
         return false;
       }
     } catch (e) {
-      Get.snackbar('Erro', 'Não foi possível processar o pagamento: $e');
+      debugPrint('Erro geral no pagamento: $e');
+
+      if (e.toString().contains('unauthenticated')) {
+        Get.snackbar(
+          'Erro de Autenticação',
+          'Sua sessão expirou. Faça login novamente.',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      } else {
+        Get.snackbar(
+          'Erro',
+          'Não foi possível processar o pagamento: ${e.toString().split(': ').last}',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
       return false;
     } finally {
       isLoading.value = false;
@@ -499,6 +606,7 @@ class NewCreditCardController extends GetxController {
     documentController.clear();
     phoneController.clear();
     cardBrand.value = '';
+    showBackView.value = false;
   }
 
   // Validar cartão de crédito (algoritmo de Luhn)
@@ -506,7 +614,7 @@ class NewCreditCardController extends GetxController {
     // Remover espaços e caracteres não numéricos
     cardNumber = cardNumber.replaceAll(RegExp(r'\D'), '');
 
-    if (cardNumber.isEmpty) {
+    if (cardNumber.isEmpty || cardNumber.length < 13) {
       return false;
     }
 

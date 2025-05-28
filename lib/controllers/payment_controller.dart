@@ -1,9 +1,7 @@
-import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/efi_payment_service.dart';
@@ -779,7 +777,7 @@ class PaymentController extends GetxController {
       }
 
       QuerySnapshot querySnapshot = await _firebaseService.getDefaultCreditCard(_firebaseService.userId!);
-      if(!querySnapshot.docs.isEmpty) {
+      if(querySnapshot.docs.isNotEmpty) {
         final userId = _authController.currentUser.value!.uid;
         Map<String, dynamic> cartao = querySnapshot.docs.first.data() as Map<String, dynamic>;
 

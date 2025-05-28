@@ -504,7 +504,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
             ElevatedButton.icon(
               onPressed: () {
                 Get.back();
-                Get.dialog(_buildQrCodePopup(pixQrCode!));
+                Get.dialog(_buildQrCodePopup(pixQrCode));
               },
               icon: const Icon(Icons.qr_code),
               label: const Text('Ver QR Code'),
@@ -597,7 +597,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                 border: Border.all(color: Colors.grey),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Center(
+              child: const Center(
                 child: Icon(
                   Icons.qr_code_2,
                   size: 150,

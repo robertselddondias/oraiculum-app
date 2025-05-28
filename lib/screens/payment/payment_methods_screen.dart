@@ -150,9 +150,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: AppTheme.primaryGradient,
-        borderRadius: const BorderRadius.only(
+        borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(20),
           bottomRight: Radius.circular(20),
         ),
@@ -236,7 +236,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 _creditPackages[index],
                 isDarkMode,
               ).animate().fadeIn(
-                duration: Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 300),
                 delay: Duration(milliseconds: index * 100),
               );
             },
@@ -252,7 +252,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   _creditPackages[index],
                   isDarkMode,
                 ).animate().fadeIn(
-                  duration: Duration(milliseconds: 300),
+                  duration: const Duration(milliseconds: 300),
                   delay: Duration(milliseconds: index * 100),
                 ),
               );
@@ -327,7 +327,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'R\$ ${package['amount'].toStringAsFixed(2)}',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.primaryColor,
@@ -346,7 +346,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   ),
                   child: Text(
                     '+${package['bonus']}% Bônus',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.accentColor,
@@ -381,7 +381,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           const SizedBox(height: 8),
           TextField(
             controller: _customAmountController,
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               hintText: 'Digite um valor personalizado',
               prefixIcon: const Icon(Icons.attach_money),
@@ -512,7 +512,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   Icons.credit_card,
                   color: AppTheme.primaryColor,
                 ),
-                label: Text(
+                label: const Text(
                   'Gerenciar Cartões',
                   style: TextStyle(
                     color: AppTheme.primaryColor,
@@ -546,7 +546,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.info_outline,
                           size: 18,
                           color: AppTheme.infoColor,

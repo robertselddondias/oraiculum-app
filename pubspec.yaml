@@ -50,6 +50,7 @@ dependencies:
   http: any
   qr_flutter: ^4.1.0
   cloud_functions: ^5.5.1
+  flutter_stripe: ^11.5.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
