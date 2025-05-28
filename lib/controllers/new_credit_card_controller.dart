@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/services/efi_payment_service.dart';
+import 'package:oraculum/services/stripe_payment_service.dart';
 import 'package:oraculum/models/credit_card_model.dart';
 
 class NewCreditCardController extends GetxController {
@@ -11,8 +11,8 @@ class NewCreditCardController extends GetxController {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
 
-  // Novo serviço EFI
-  late EfiPayService _efiPayService;
+  // Novo serviço Stripe
+  late StripePaymentService _stripePaymentService;
 
   // Controladores para os campos do formulário
   final TextEditingController cardNumberController = TextEditingController();
@@ -73,7 +73,7 @@ class NewCreditCardController extends GetxController {
     cvvFocus.addListener(_onCvvFocusChange);
     cardNumberController.addListener(_updateCardBrand);
 
-    _efiPayService = Get.find<EfiPayService>();
+    _stripePaymentService = Get.find<StripePaymentService>();
 
     // Carregar cartões salvos
     loadSavedCards();
@@ -174,7 +174,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Adicionar novo cartão - VERSÃO CORRIGIDA COM MELHOR TRATAMENTO DE ERROS
+  // Adicionar novo cartão - VERSÃO CORRIGIDA COM STRIPE
   Future<bool> addNewCard() async {
     if (!formKey.currentState!.validate()) {
       return false;
@@ -205,73 +205,56 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
-      debugPrint('Iniciando processo de tokenização do cartão...');
+      debugPrint('Iniciando processo de criação de cliente e método de pagamento...');
 
-      // Criar token do cartão usando EfiPayService
-      final tokenResponse = await _efiPayService.createCardToken(
-          cardNumber: cardNumber,
-          cardExpirationMonth: expiryMonth,
-          cardExpirationYear: expiryYear,
-          cardCvv: cvv,
-          brand: cardBrand.value
-      );
+      // Verificar se o usuário já tem um customer no Stripe
+      final userData = await _firebaseService.getUserData(userId);
+      final userDoc = userData.data() as Map<String, dynamic>?;
 
-      debugPrint('Resposta da tokenização: ${tokenResponse.toString()}');
+      String customerId = '';
 
-      if (tokenResponse['success'] != true) {
-        // Tratamento melhorado de erro
-        final errorMessage = tokenResponse['error'] as String? ?? 'Erro desconhecido na tokenização';
+      if (userDoc?['stripeCustomerId'] != null) {
+        customerId = userDoc!['stripeCustomerId'];
+        debugPrint('Customer Stripe existente: $customerId');
+      } else {
+        // Criar cliente no Stripe
+        final customerResponse = await _stripePaymentService.createCustomer(
+          email: userDoc?['email'] ?? _authController.currentUser.value!.email!,
+          name: cardHolder,
+          phone: phone,
+          metadata: {
+            'userId': userId,
+            'document': document,
+          },
+        );
 
-        // Verificar se é erro de autenticação
-        if (errorMessage.contains('autenticação') ||
-            errorMessage.contains('Faça login') ||
-            errorMessage.contains('unauthenticated')) {
-
-          Get.snackbar(
-            'Erro de Autenticação',
-            'Sua sessão expirou. Por favor, faça login novamente.',
-            backgroundColor: Colors.orange,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-            duration: const Duration(seconds: 5),
-          );
-
-          // Opcional: redirecionar para tela de login
-          // Get.offAllNamed('/login');
+        if (!customerResponse['success']) {
+          Get.snackbar('Erro', 'Não foi possível criar cliente: ${customerResponse['error']}');
           return false;
         }
 
-        Get.snackbar('Erro', 'Não foi possível processar o cartão: $errorMessage');
-        return false;
+        customerId = customerResponse['data']['id'];
+
+        // Salvar customer ID no perfil do usuário
+        await _firebaseService.updateUserData(userId, {
+          'stripeCustomerId': customerId,
+        });
+
+        debugPrint('Novo customer Stripe criado: $customerId');
       }
 
-      // Verificar se temos os dados necessários na resposta
-      if (tokenResponse['data'] == null || tokenResponse['data']['data'] == null) {
-        Get.snackbar('Erro', 'Resposta inválida do servidor de pagamento');
-        return false;
-      }
-
-      final cardToken = tokenResponse['data']['data']['payment_token'];
-
-      if (cardToken == null || cardToken.isEmpty) {
-        Get.snackbar('Erro', 'Token do cartão não foi gerado corretamente');
-        return false;
-      }
-
-      // Obter os detalhes do cartão da resposta
-      final cardData = tokenResponse['data']['data'];
-      final brand = cardData['brand'] ?? cardBrand.value;
+      // Obter os detalhes do cartão
       final lastFourDigits = cardNumber.substring(cardNumber.length - 4);
 
-      debugPrint('Token criado com sucesso: $cardToken');
+      debugPrint('Salvando cartão no Firestore...');
 
       // Salvar informações do cartão no Firestore
       final docRef = _firebaseService.firestore.collection('credit_cards').doc();
 
       CreditCardUserModel creditCardModel = CreditCardUserModel();
-      creditCardModel.cardId = cardToken;
+      creditCardModel.cardId = 'stripe_${docRef.id}'; // Para Stripe, usamos um ID local
       creditCardModel.lastFourDigits = lastFourDigits;
-      creditCardModel.brandType = brand;
+      creditCardModel.brandType = cardBrand.value;
       creditCardModel.cardHolderName = cardHolder;
       creditCardModel.transationalType = 'credit';
       creditCardModel.expirationDate = '$expiryMonth/${expiryParts[1]}';
@@ -279,9 +262,10 @@ class NewCreditCardController extends GetxController {
       creditCardModel.id = docRef.id;
       creditCardModel.cpf = document;
       creditCardModel.phone = phone;
-      creditCardModel.cvv = cvv;
+      creditCardModel.cvv = cvv; // Em produção, não armazenar CVV
       creditCardModel.createdAt = DateTime.now();
       creditCardModel.isDefault = true;
+      creditCardModel.customerId = customerId;
 
       // Verificar cartões existentes para atualizar o padrão
       final existingCards = await _firebaseService.firestore
@@ -347,7 +331,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Remover um cartão - ATUALIZADO PARA USAR EFIPAYSERVICE
+  // Remover um cartão - ATUALIZADO PARA USAR STRIPE
   Future<bool> removeCard(String cardId) async {
     try {
       if (_authController.currentUser.value == null) {
@@ -362,7 +346,8 @@ class NewCreditCardController extends GetxController {
       final cardToRemove = savedCards.firstWhereOrNull((card) => card['id'] == cardId);
       final isDefault = cardToRemove != null && cardToRemove['isDefault'] == true;
 
-      // Não há necessidade de excluir o token no EfiPay, apenas remover do Firestore
+      // Para Stripe, podemos remover o método de pagamento se necessário
+      // Aqui apenas removemos do Firestore
       await _firebaseService.firestore
           .collection('credit_cards')
           .doc(cardId)
@@ -441,7 +426,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Processar pagamento com cartão - ATUALIZADO COM MELHOR TRATAMENTO DE ERROS
+  // Processar pagamento com cartão - ATUALIZADO PARA STRIPE
   Future<bool> processPayment({
     required double amount,
     required String description,
@@ -477,48 +462,18 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
-      // Buscar dados do usuário para o pagamento
-      final userData = await _firebaseService.getUserData(userId);
-      final userDoc = userData.data() as Map<String, dynamic>?;
+      debugPrint('Processando pagamento de R\$ ${amount.toStringAsFixed(2)} via Stripe');
 
-      if (userDoc == null) {
-        Get.snackbar('Erro', 'Dados do usuário não encontrados');
-        return false;
-      }
-
-      debugPrint('Processando pagamento de R\$ ${amount.toStringAsFixed(2)}');
-
-      // Processar pagamento com EFI
-      final paymentResponse = await _efiPayService.createCreditCardPayment(
-        value: amount,
-        cardToken: card['cardId'],
-        name: userDoc['name'] ?? '',
-        cpfCnpj: card['cpf'] ?? userDoc['document'] ?? '',
-        installments: 1,
+      // Processar pagamento com Stripe
+      final paymentResponse = await _stripePaymentService.processCardPayment(
+        context: Get.context!,
+        amount: amount,
         description: description,
+        serviceId: 'manual_${DateTime.now().millisecondsSinceEpoch}',
+        serviceType: 'credit_purchase',
       );
 
-      debugPrint('Resposta do pagamento: ${paymentResponse.toString()}');
-
       if (paymentResponse['success'] == true) {
-        // Registrar o pagamento no Firestore
-        final paymentData = {
-          'userId': userId,
-          'cardId': cardId,
-          'amount': amount,
-          'description': description,
-          'status': 'approved',
-          'paymentMethod': 'credit_card',
-          'cardLastFourDigits': card['lastFourDigits'] ?? '****',
-          'cardBrand': card['brandType'] ?? 'unknown',
-          'efiPaymentId': paymentResponse['data']['charge_id'],
-          'timestamp': DateTime.now(),
-        };
-
-        await _firebaseService.firestore
-            .collection('payments')
-            .add(paymentData);
-
         Get.snackbar(
           'Sucesso',
           'Pagamento realizado com sucesso',
@@ -531,66 +486,25 @@ class NewCreditCardController extends GetxController {
         // Pagamento falhou
         final errorMessage = paymentResponse['error'] as String? ?? 'Erro desconhecido no pagamento';
 
-        // Verificar se é erro de autenticação
-        if (errorMessage.contains('autenticação') ||
-            errorMessage.contains('Faça login')) {
-          Get.snackbar(
-            'Erro de Autenticação',
-            'Sua sessão expirou. Faça login novamente.',
-            backgroundColor: Colors.orange,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        } else {
-          Get.snackbar(
-            'Erro no Pagamento',
-            errorMessage,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        }
-
-        // Registrar a falha no pagamento no Firestore
-        final paymentData = {
-          'userId': userId,
-          'cardId': cardId,
-          'amount': amount,
-          'description': description,
-          'paymentMethod': 'Cartão de Crédito',
-          'cardLastFourDigits': card['lastFourDigits'] ?? '****',
-          'cardBrand': card['brandType'] ?? 'unknown',
-          'status': 'failed',
-          'errorDetails': errorMessage,
-          'timestamp': DateTime.now(),
-        };
-
-        await _firebaseService.firestore
-            .collection('failed_payments')
-            .add(paymentData);
-
+        Get.snackbar(
+          'Erro no Pagamento',
+          errorMessage,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
         return false;
       }
     } catch (e) {
       debugPrint('Erro geral no pagamento: $e');
 
-      if (e.toString().contains('unauthenticated')) {
-        Get.snackbar(
-          'Erro de Autenticação',
-          'Sua sessão expirou. Faça login novamente.',
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      } else {
-        Get.snackbar(
-          'Erro',
-          'Não foi possível processar o pagamento: ${e.toString().split(': ').last}',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      }
+      Get.snackbar(
+        'Erro',
+        'Não foi possível processar o pagamento: ${e.toString().split(': ').last}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
       return false;
     } finally {
       isLoading.value = false;

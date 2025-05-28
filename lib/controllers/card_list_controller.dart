@@ -3,15 +3,15 @@ import 'package:get/get.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/services/efi_payment_service.dart';
+import 'package:oraculum/services/stripe_payment_service.dart';
 
 class CardListController extends GetxController {
   // Serviços injetados
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
 
-  // Novo serviço EFI
-  late EfiPayService _efiPayService;
+  // Novo serviço Stripe
+  late StripePaymentService _stripePaymentService;
 
   // Variáveis observáveis
   final RxList<Map<String, dynamic>> savedCards = <Map<String, dynamic>>[].obs;
@@ -171,7 +171,7 @@ class CardListController extends GetxController {
 
       final card = savedCards[cardIndex];
 
-      // Para o Efi, não precisamos excluir o token do cartão na API
+      // Para o Stripe, não precisamos excluir o token do cartão na API
       // O token é mantido mas podemos remover do nosso banco de dados
 
       // Excluir do Firestore

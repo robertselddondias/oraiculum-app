@@ -11,7 +11,7 @@ import 'package:oraculum/services/gemini_service.dart';
 import 'package:oraculum/services/pagarme_service.dart';
 import 'package:oraculum/services/pagarme_wallet_service.dart';
 import 'package:oraculum/services/payment_service.dart';
-import 'package:oraculum/services/efi_payment_service.dart';
+import 'package:oraculum/services/stripe_payment_service.dart';
 
 class InitialBinding implements Bindings {
   @override
@@ -22,7 +22,7 @@ class InitialBinding implements Bindings {
     Get.put(PaymentService(), permanent: true);
     Get.put(PagarmeWalletService(), permanent: true);
     Get.put(PagarmeService(), permanent: true);
-    Get.put(EfiPayService(), permanent: true);
+    Get.put(StripePaymentService(), permanent: true);
 
     // Base controllers
     Get.put(AuthController(), permanent: true);
