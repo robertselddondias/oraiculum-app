@@ -327,6 +327,10 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
         ),
         SizedBox(height: isSmallScreen ? 12 : 16),
 
+        // Tipo do cartão (Débito ou Crédito)
+        _buildCardTypeSelection(isSmallScreen),
+        SizedBox(height: isSmallScreen ? 12 : 16),
+
         // Número do cartão
         _buildTextField(
           controller: controller.cardNumberController,
@@ -445,6 +449,161 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
             ],
           ),
       ],
+    );
+  }
+
+  // NOVO: Widget para seleção do tipo de cartão
+  Widget _buildCardTypeSelection(bool isSmallScreen) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tipo do Cartão',
+          style: TextStyle(
+            fontSize: isSmallScreen ? 14 : 16,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.primaryColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Se a tela é muito pequena, usar layout vertical
+            if (constraints.maxWidth < 300 || isSmallScreen && constraints.maxWidth < 350) {
+              return Column(
+                children: [
+                  _buildCardTypeOption(
+                    type: 'credit',
+                    title: 'Crédito',
+                    subtitle: 'Compras parceladas',
+                    isSelected: controller.cardType.value == 'credit',
+                    onTap: () => controller.setCardType('credit'),
+                    isSmallScreen: isSmallScreen,
+                    fullWidth: true,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildCardTypeOption(
+                    type: 'debit',
+                    title: 'Débito',
+                    subtitle: 'Desconto na hora',
+                    isSelected: controller.cardType.value == 'debit',
+                    onTap: () => controller.setCardType('debit'),
+                    isSmallScreen: isSmallScreen,
+                    fullWidth: true,
+                  ),
+                ],
+              );
+            } else {
+              // Layout horizontal normal
+              return Row(
+                children: [
+                  Expanded(
+                    child: _buildCardTypeOption(
+                      type: 'credit',
+                      title: 'Crédito',
+                      subtitle: 'Compras parceladas',
+                      isSelected: controller.cardType.value == 'credit',
+                      onTap: () => controller.setCardType('credit'),
+                      isSmallScreen: isSmallScreen,
+                      fullWidth: false,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _buildCardTypeOption(
+                      type: 'debit',
+                      title: 'Débito',
+                      subtitle: 'Desconto na hora',
+                      isSelected: controller.cardType.value == 'debit',
+                      onTap: () => controller.setCardType('debit'),
+                      isSmallScreen: isSmallScreen,
+                      fullWidth: false,
+                    ),
+                  ),
+                ],
+              );
+            }
+          },
+        ),
+      ],
+    );
+  }
+
+  // Helper widget para cada opção de tipo de cartão
+  Widget _buildCardTypeOption({
+    required String type,
+    required String title,
+    required String subtitle,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isSmallScreen,
+    required bool fullWidth,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: fullWidth ? double.infinity : null,
+        padding: EdgeInsets.symmetric(
+          vertical: 12,
+          horizontal: isSmallScreen ? 12 : 16,
+        ),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isSelected
+                ? AppTheme.primaryColor
+                : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(8),
+          color: isSelected
+              ? AppTheme.primaryColor.withOpacity(0.1)
+              : Colors.transparent,
+        ),
+        child: Row(
+          mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+              color: isSelected
+                  ? AppTheme.primaryColor
+                  : Colors.grey.shade600,
+              size: 20,
+            ),
+            SizedBox(width: isSmallScreen ? 6 : 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 13 : 15,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? AppTheme.primaryColor
+                          : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 10 : 11,
+                      color: Colors.grey.shade600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -612,24 +771,26 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
   }
 
   Widget _buildSaveButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 50,
-      child: ElevatedButton(
-        onPressed: _onSavePressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+    return Obx(
+          () => SizedBox(
+        width: double.infinity,
+        height: 50,
+        child: ElevatedButton(
+          onPressed: _onSavePressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            elevation: 2,
           ),
-          elevation: 2,
-        ),
-        child: const Text(
-          'Salvar Cartão',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+          child: Text(
+            'Salvar Cartão ${controller.cardType.value == 'credit' ? 'de Crédito' : 'de Débito'}',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),

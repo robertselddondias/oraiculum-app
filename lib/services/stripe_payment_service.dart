@@ -685,4 +685,430 @@ class StripePaymentService extends GetxService {
       return false;
     }
   }
+
+  /// Criar Payment Method no Stripe
+  Future<Map<String, dynamic>> createPaymentMethod({
+    required String cardNumber,
+    required int expiryMonth,
+    required int expiryYear,
+    required String cvc,
+    required String cardHolderName,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/payment_methods'),
+        headers: _headers,
+        body: {
+          'type': 'card',
+          'card[number]': cardNumber,
+          'card[exp_month]': expiryMonth.toString(),
+          'card[exp_year]': expiryYear.toString(),
+          'card[cvc]': cvc,
+          'billing_details[name]': cardHolderName,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': json.decode(response.body),
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['error']['message'] ?? 'Erro ao criar método de pagamento',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erro na requisição: $e',
+      };
+    }
+  }
+
+  /// Processar pagamento com cartão salvo (sem interação com o usuário)
+  Future<Map<String, dynamic>> processCardPaymentWithSavedCard({
+    required double amount,
+    required String customerId,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+    String? currency = 'brl',
+    Map<String, dynamic>? metadata,
+  }) async {
+    try {
+      isLoading.value = true;
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        return {
+          'success': false,
+          'error': 'Usuário não autenticado',
+        };
+      }
+
+      // 1. Buscar o método de pagamento padrão do customer
+      final paymentMethodsResponse = await getSavedPaymentMethods(customerId);
+
+      if (paymentMethodsResponse.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Nenhum método de pagamento encontrado para este customer',
+        };
+      }
+
+      // Usar o primeiro método de pagamento disponível (ou você pode implementar lógica para escolher o padrão)
+      final paymentMethodId = paymentMethodsResponse.first['id'];
+
+      // 2. Criar Payment Intent
+      final paymentIntentResult = await createPaymentIntent(
+        amount: amount,
+        currency: currency ?? 'brl',
+        customerId: customerId,
+        metadata: {
+          'user_id': userId,
+          'service_id': serviceId,
+          'service_type': serviceType,
+          'description': description,
+          if (metadata != null) ...metadata,
+        },
+      );
+
+      if (!paymentIntentResult['success']) {
+        return paymentIntentResult;
+      }
+
+      final paymentIntentId = paymentIntentResult['data']['id'];
+      final clientSecret = paymentIntentResult['data']['client_secret'];
+
+      // 3. Confirmar Payment Intent com o método de pagamento salvo
+      final confirmResponse = await http.post(
+        Uri.parse('$_baseUrl/payment_intents/$paymentIntentId/confirm'),
+        headers: _headers,
+        body: {
+          'payment_method': paymentMethodId,
+          'return_url': 'https://your-app.com/return', // URL de retorno (pode ser fictícia para apps móveis)
+        },
+      );
+
+      if (confirmResponse.statusCode != 200) {
+        final errorData = json.decode(confirmResponse.body);
+        return {
+          'success': false,
+          'error': errorData['error']['message'] ?? 'Erro ao confirmar pagamento',
+        };
+      }
+
+      final confirmedData = json.decode(confirmResponse.body);
+      final status = confirmedData['status'];
+
+      // 4. Verificar o status do pagamento
+      if (status == 'succeeded') {
+        // Pagamento bem-sucedido
+        final paymentId = await _savePaymentRecord(
+          userId: userId,
+          amount: amount,
+          description: description,
+          serviceId: serviceId,
+          serviceType: serviceType,
+          paymentMethod: 'card',
+          stripePaymentIntentId: paymentIntentId,
+          status: 'succeeded',
+        );
+
+        // Adicionar créditos ao usuário
+        await _addCreditsToUser(userId, amount);
+
+        return {
+          'success': true,
+          'payment_id': paymentId,
+          'payment_intent_id': paymentIntentId,
+          'client_secret': clientSecret,
+          'payment_method_id': paymentMethodId,
+          'status': status,
+        };
+      } else if (status == 'requires_action') {
+        // Requer ação adicional (3D Secure, etc.)
+        return {
+          'success': false,
+          'requires_action': true,
+          'payment_intent_id': paymentIntentId,
+          'client_secret': clientSecret,
+          'error': 'O pagamento requer autenticação adicional',
+        };
+      } else if (status == 'requires_payment_method') {
+        // Método de pagamento foi recusado
+        return {
+          'success': false,
+          'error': 'Método de pagamento recusado. Tente com outro cartão.',
+        };
+      } else {
+        // Outros status de erro
+        return {
+          'success': false,
+          'error': 'Pagamento não foi aprovado. Status: $status',
+        };
+      }
+
+    } catch (e) {
+      debugPrint('Erro ao processar pagamento com cartão salvo: $e');
+      return {
+        'success': false,
+        'error': 'Erro inesperado: $e',
+      };
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Buscar método de pagamento padrão do customer
+  Future<String?> getDefaultPaymentMethod(String customerId) async {
+    try {
+      final paymentMethods = await getSavedPaymentMethods(customerId);
+
+      if (paymentMethods.isNotEmpty) {
+        // Retornar o primeiro método de pagamento
+        // Você pode implementar lógica mais sofisticada para determinar o padrão
+        return paymentMethods.first['id'];
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('Erro ao buscar método de pagamento padrão: $e');
+      return null;
+    }
+  }
+
+  /// Processar pagamento com Payment Sheet (método interativo)
+  Future<Map<String, dynamic>> processInteractiveCardPayment({
+    required BuildContext context,
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+    String? customerId,
+    String? currency = 'brl',
+  }) async {
+    try {
+      isLoading.value = true;
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        return {
+          'success': false,
+          'error': 'Usuário não autenticado',
+        };
+      }
+
+      // 1. Criar Payment Intent
+      final paymentIntentResult = await createPaymentIntent(
+        amount: amount,
+        currency: currency ?? 'brl',
+        customerId: customerId,
+        metadata: {
+          'user_id': userId,
+          'service_id': serviceId,
+          'service_type': serviceType,
+          'description': description,
+        },
+      );
+
+      if (!paymentIntentResult['success']) {
+        return paymentIntentResult;
+      }
+
+      final clientSecret = paymentIntentResult['data']['client_secret'];
+
+      // 2. Inicializar Payment Sheet
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Oraculum',
+          customerId: customerId,
+          style: ThemeMode.system,
+          billingDetails: BillingDetails(
+            email: FirebaseAuth.instance.currentUser?.email,
+          ),
+          allowsDelayedPaymentMethods: false,
+        ),
+      );
+
+      // 3. Apresentar Payment Sheet
+      await Stripe.instance.presentPaymentSheet();
+
+      // 4. Se chegou até aqui, o pagamento foi bem-sucedido
+      final paymentId = await _savePaymentRecord(
+        userId: userId,
+        amount: amount,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+        paymentMethod: 'card',
+        stripePaymentIntentId: paymentIntentResult['data']['id'],
+        status: 'succeeded',
+      );
+
+      // 5. Adicionar créditos ao usuário
+      await _addCreditsToUser(userId, amount);
+
+      return {
+        'success': true,
+        'payment_id': paymentId,
+        'stripe_payment_intent_id': paymentIntentResult['data']['id'],
+      };
+
+    } on StripeException catch (e) {
+      String errorMessage = 'Erro no pagamento';
+
+      switch (e.error.code) {
+        case FailureCode.Canceled:
+          errorMessage = 'Pagamento cancelado pelo usuário';
+          break;
+        case FailureCode.Failed:
+          errorMessage = 'Pagamento falhou';
+          break;
+        case FailureCode.Timeout:
+          errorMessage = 'Timeout na operação';
+          break;
+        default:
+          errorMessage = e.error.localizedMessage ?? 'Erro desconhecido';
+      }
+
+      return {
+        'success': false,
+        'error': errorMessage,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erro inesperado: $e',
+      };
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Verificar status de um Payment Intent
+  Future<Map<String, dynamic>> checkPaymentIntentStatus(String paymentIntentId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/payment_intents/$paymentIntentId'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'data': data,
+          'status': data['status'],
+        };
+      } else {
+        return {
+          'success': false,
+          'error': 'Erro ao verificar status do pagamento: ${response.body}',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erro na requisição: $e',
+      };
+    }
+  }
+
+  /// Cancelar um Payment Intent
+  Future<Map<String, dynamic>> cancelPaymentIntent(String paymentIntentId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/payment_intents/$paymentIntentId/cancel'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': json.decode(response.body),
+        };
+      } else {
+        return {
+          'success': false,
+          'error': 'Erro ao cancelar pagamento: ${response.body}',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erro na requisição: $e',
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> attachPaymentMethodToCustomer({
+    required String paymentMethodId,
+    required String customerId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/payment_methods/$paymentMethodId/attach'),
+        headers: _headers,
+        body: {
+          'customer': customerId,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': json.decode(response.body),
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['error']['message'] ?? 'Erro ao anexar método de pagamento',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erro na requisição: $e',
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> attachPaymentMethodToCustomer({
+    required String paymentMethodId,
+    required String customerId,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/payment_methods/$paymentMethodId/attach'),
+        headers: _headers,
+        body: {
+          'customer': customerId,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+          'data': json.decode(response.body),
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {
+          'success': false,
+          'error': errorData['error']['message'] ?? 'Erro ao anexar método de pagamento',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erro na requisição: $e',
+      };
+    }
+  }
 }

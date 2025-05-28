@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
@@ -12,6 +13,8 @@ class NewCreditCardController extends GetxController {
   // Serviços injetados
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
+
+  final RxString cardType = 'credit'.obs;
 
   // Novo serviço Stripe
   late StripePaymentService _stripePaymentService;
@@ -106,6 +109,11 @@ class NewCreditCardController extends GetxController {
     super.onClose();
   }
 
+  void setCardType(String type) {
+    cardType.value = type;
+    update();
+  }
+
   // Métodos do controlador
   void _onCvvFocusChange() {
     showBackView.value = cvvFocus.hasFocus;
@@ -176,7 +184,8 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Adicionar novo cartão - VERSÃO CORRIGIDA COM STRIPE E SALVAMENTO DO MÉTODO DE PAGAMENTO
+  // Substitua o método addNewCard no NewCreditCardController por esta versão segura:
+
   Future<bool> addNewCard() async {
     if (!formKey.currentState!.validate()) {
       return false;
@@ -195,8 +204,8 @@ class NewCreditCardController extends GetxController {
       final cardNumber = cardNumberController.text.replaceAll(' ', '');
       final cardHolder = cardHolderController.text;
       final expiryParts = expiryDateController.text.split('/');
-      final expiryMonth = expiryParts[0];
-      final expiryYear = '20${expiryParts[1]}'; // Assumindo formato MM/YY
+      final expiryMonth = int.parse(expiryParts[0]);
+      final expiryYear = int.parse('20${expiryParts[1]}'); // Assumindo formato MM/YY
       final cvv = cvvController.text;
       final document = documentController.text.replaceAll(RegExp(r'[.-]'), '');
       final phone = phoneController.text.replaceAll(RegExp(r'[() -]'), '');
@@ -207,7 +216,7 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
-      debugPrint('Iniciando processo de criação de cliente e método de pagamento...');
+      debugPrint('Iniciando processo de criação segura de método de pagamento...');
 
       // Verificar se o usuário já tem um customer no Stripe
       final userData = await _firebaseService.getUserData(userId);
@@ -245,65 +254,136 @@ class NewCreditCardController extends GetxController {
         debugPrint('Novo customer Stripe criado: $customerId');
       }
 
-      // Criar método de pagamento no Stripe usando dados do cartão
-      debugPrint('Criando método de pagamento no Stripe...');
+      // ===== MÉTODO SEGURO: Usar Flutter Stripe SDK =====
+      debugPrint('Criando método de pagamento seguro via SDK...');
 
-      final paymentMethodResponse = await _stripePaymentService.createPaymentMethod(
-        cardNumber: cardNumber,
-        expiryMonth: int.parse(expiryMonth),
-        expiryYear: int.parse(expiryYear),
-        cvc: cvv,
-        cardHolderName: cardHolder,
-      );
+      try {
+        // 1. Criar PaymentMethod usando o SDK (seguro)
+        final paymentMethod = await Stripe.instance.createPaymentMethod(
+          params: PaymentMethodParams.card(
+            paymentMethodData: PaymentMethodData(
+              billingDetails: BillingDetails(
+                name: cardHolder,
+                phone: phone,
+              ),
+            ),
+          ),
+        );
 
-      if (!paymentMethodResponse['success']) {
-        Get.snackbar('Erro', 'Falha ao criar método de pagamento: ${paymentMethodResponse['error']}');
-        return false;
+        debugPrint('✅ PaymentMethod criado com segurança: ${paymentMethod.id}');
+
+        // 2. Anexar método de pagamento ao customer
+        final attachResponse = await _stripePaymentService.attachPaymentMethodToCustomer(
+          paymentMethodId: paymentMethod.id,
+          customerId: customerId,
+        );
+
+        if (!attachResponse['success']) {
+          Get.snackbar('Erro', 'Falha ao vincular cartão: ${attachResponse['error']}');
+          return false;
+        }
+
+        debugPrint('✅ Método de pagamento anexado ao customer com segurança');
+
+        // 3. Obter detalhes do cartão do PaymentMethod
+        final card = paymentMethod.card;
+        final lastFourDigits = card?.last4 ?? '****';
+        final brand = card?.brand?.name ?? 'unknown';
+
+        debugPrint('Salvando cartão no Firestore...');
+
+        // 4. Salvar informações do cartão no Firestore
+        final docRef = _firebaseService.firestore.collection('credit_cards').doc();
+
+        CreditCardUserModel creditCardModel = CreditCardUserModel();
+        creditCardModel.cardId = paymentMethod.id; // ID do PaymentMethod do Stripe
+        creditCardModel.lastFourDigits = lastFourDigits;
+        creditCardModel.brandType = brand;
+        creditCardModel.cardHolderName = cardHolder;
+        creditCardModel.transationalType = cardType.value; // 'credit' ou 'debit'
+        creditCardModel.expirationDate = '$expiryMonth/${expiryParts[1]}';
+        creditCardModel.userId = userId;
+        creditCardModel.id = docRef.id;
+        creditCardModel.cpf = document;
+        creditCardModel.phone = phone;
+        creditCardModel.createdAt = DateTime.now();
+        creditCardModel.isDefault = true;
+        creditCardModel.customerId = customerId;
+
+      } catch (cardException) {
+        // Se falhar com SDK, tentar método alternativo mais detalhado
+        debugPrint('⚠️ Método SDK falhou, tentando abordagem alternativa...');
+
+        // Método alternativo: Criar Setup Intent para coletar dados do cartão
+        final setupIntentResult = await _stripePaymentService.createSetupIntent(
+          customerId: customerId,
+          metadata: {
+            'user_id': userId,
+            'card_holder': cardHolder,
+            'phone': phone,
+          },
+        );
+
+        if (!setupIntentResult['success']) {
+          throw Exception('Falha ao criar Setup Intent: ${setupIntentResult['error']}');
+        }
+
+        final clientSecret = setupIntentResult['data']['client_secret'];
+
+        // Inicializar Payment Sheet para coleta segura
+        await Stripe.instance.initPaymentSheet(
+          paymentSheetParameters: SetupPaymentSheetParameters(
+            setupIntentClientSecret: clientSecret,
+            merchantDisplayName: 'Oraculum',
+            customerId: customerId,
+            customerEphemeralKeySecret: setupIntentResult['data']['ephemeral_key'],
+            style: ThemeMode.system,
+            billingDetails: BillingDetails(
+              name: cardHolder,
+              phone: phone,
+            ),
+          ),
+        );
+
+        // Apresentar Payment Sheet
+        await Stripe.instance.presentPaymentSheet();
+
+        // Se chegou até aqui, a coleta foi bem-sucedida
+        // Buscar o Setup Intent atualizado para obter o Payment Method
+        final updatedSetupIntent = await _stripePaymentService.retrieveSetupIntent(
+          setupIntentResult['data']['id'],
+        );
+
+        if (!updatedSetupIntent['success'] || updatedSetupIntent['data']['payment_method'] == null) {
+          throw Exception('Setup Intent não foi concluído corretamente');
+        }
+
+        final paymentMethodId = updatedSetupIntent['data']['payment_method']['id'];
+        final cardData = updatedSetupIntent['data']['payment_method']['card'];
+
+        debugPrint('✅ PaymentMethod coletado via Payment Sheet: $paymentMethodId');
+
+        // Salvar informações do cartão
+        final docRef = _firebaseService.firestore.collection('credit_cards').doc();
+
+        CreditCardUserModel creditCardModel = CreditCardUserModel();
+        creditCardModel.cardId = paymentMethodId;
+        creditCardModel.lastFourDigits = cardData['last4'] ?? '****';
+        creditCardModel.brandType = cardData['brand'] ?? 'unknown';
+        creditCardModel.cardHolderName = cardHolder;
+        creditCardModel.transationalType = cardType.value;
+        creditCardModel.expirationDate = '$expiryMonth/${expiryParts[1]}';
+        creditCardModel.userId = userId;
+        creditCardModel.id = docRef.id;
+        creditCardModel.cpf = document;
+        creditCardModel.phone = phone;
+        creditCardModel.createdAt = DateTime.now();
+        creditCardModel.isDefault = true;
+        creditCardModel.customerId = customerId;
+
       }
 
-      final paymentMethodId = paymentMethodResponse['data']['id'];
-      debugPrint('✅ Método de pagamento criado: $paymentMethodId');
-
-      // Anexar método de pagamento ao customer
-      final attachResponse = await _stripePaymentService.savePaymentMethod(
-        customerId: customerId,
-        paymentMethodId: paymentMethodId,
-      );
-
-      if (!attachResponse['success']) {
-        Get.snackbar('Erro', 'Falha ao vincular cartão: ${attachResponse['error']}');
-        return false;
-      }
-
-      debugPrint('✅ Método de pagamento anexado ao customer');
-
-      // Obter os detalhes do cartão da resposta do Stripe
-      final paymentMethodData = paymentMethodResponse['data'];
-      final cardDetails = paymentMethodData['card'];
-      final lastFourDigits = cardDetails['last4'];
-      final brand = cardDetails['brand'];
-
-      debugPrint('Salvando cartão no Firestore...');
-
-      // Salvar informações do cartão no Firestore
-      final docRef = _firebaseService.firestore.collection('credit_cards').doc();
-
-      CreditCardUserModel creditCardModel = CreditCardUserModel();
-      creditCardModel.cardId = paymentMethodId; // Usar o ID do método de pagamento do Stripe
-      creditCardModel.lastFourDigits = lastFourDigits;
-      creditCardModel.brandType = brand;
-      creditCardModel.cardHolderName = cardHolder;
-      creditCardModel.transationalType = 'credit';
-      creditCardModel.expirationDate = '$expiryMonth/${expiryParts[1]}';
-      creditCardModel.userId = userId;
-      creditCardModel.id = docRef.id;
-      creditCardModel.cpf = document;
-      creditCardModel.phone = phone;
-      creditCardModel.createdAt = DateTime.now();
-      creditCardModel.isDefault = true;
-      creditCardModel.customerId = customerId;
-
-      // Verificar cartões existentes para atualizar o padrão
+      // 5. Verificar cartões existentes para atualizar o padrão
       final existingCards = await _firebaseService.firestore
           .collection('credit_cards')
           .where('userId', isEqualTo: userId)
@@ -325,22 +405,51 @@ class NewCreditCardController extends GetxController {
 
       debugPrint('Cartão salvo no Firestore com sucesso');
 
-      // Limpar o formulário
+      // 7. Limpar o formulário
       _clearForm();
 
-      // Recarregar cartões
+      // 8. Recarregar cartões
       await loadSavedCards();
 
       Get.snackbar(
         'Sucesso',
-        'Cartão adicionado com sucesso',
+        'Cartão ${cardType.value == 'credit' ? 'de crédito' : 'de débito'} adicionado com sucesso',
         backgroundColor: Colors.green,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
       );
       return true;
+
+    } on StripeException catch (e) {
+      debugPrint('❌ Erro do Stripe: ${e.error.localizedMessage}');
+      debugPrint('❌ Código do erro: ${e.error.code}');
+      debugPrint('❌ Tipo do erro: ${e.error.type}');
+
+      // Tratar o erro específico "Card details not complete"
+      String errorMessage = 'Erro ao processar cartão';
+
+      if (e.error.code == FailureCode.Failed &&
+          e.error.localizedMessage?.contains('Card details not complete') == true) {
+        errorMessage = 'Por favor, preencha todos os campos do cartão corretamente.';
+      } else {
+        // Usar função auxiliar para outros erros
+        errorMessage = _getStripeErrorMessage(
+            e.error.code?.toString(),
+            e.error.localizedMessage
+        );
+      }
+
+      Get.snackbar(
+        'Erro no Cartão',
+        errorMessage,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return false;
+
     } catch (e) {
-      debugPrint('Erro geral ao adicionar cartão: $e');
+      debugPrint('❌ Erro geral ao adicionar cartão: $e');
 
       // Verificar se é erro específico de autenticação
       if (e.toString().contains('unauthenticated') ||
@@ -364,52 +473,6 @@ class NewCreditCardController extends GetxController {
       return false;
     } finally {
       isLoading.value = false;
-    }
-  }
-
-  // Método para criar Payment Method no Stripe
-  Future<Map<String, dynamic>> _createPaymentMethod({
-    required String cardNumber,
-    required int expiryMonth,
-    required int expiryYear,
-    required String cvc,
-    required String cardHolderName,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('https://api.stripe.com/v1/payment_methods'),
-        headers: {
-          'Authorization': 'Bearer sk_test_51RTpqm4TyzboYffkLCT1uIvlITbGX3vgRC6rNnduYStBy2wg99c4DxrraH75S4ATZiPEOdk3KxsYlR8fVQ661CkV00r5Yt8XgO', // Use sua chave secreta do Stripe
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: {
-          'type': 'card',
-          'card[number]': cardNumber,
-          'card[exp_month]': expiryMonth.toString(),
-          'card[exp_year]': expiryYear.toString(),
-          'card[cvc]': cvc,
-          'billing_details[name]': cardHolderName,
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'success': true,
-          'data': data,
-        };
-      } else {
-        final error = json.decode(response.body);
-        return {
-          'success': false,
-          'error': error['error']['message'] ?? 'Erro desconhecido',
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': 'Erro na requisição: $e',
-      };
     }
   }
 
@@ -602,6 +665,7 @@ class NewCreditCardController extends GetxController {
     documentController.clear();
     phoneController.clear();
     cardBrand.value = '';
+    cardType.value = 'credit'; // Reset para crédito como padrão
     showBackView.value = false;
   }
 
