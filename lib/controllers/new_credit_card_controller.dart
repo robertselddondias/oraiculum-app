@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
@@ -174,7 +176,7 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  // Adicionar novo cartão - VERSÃO CORRIGIDA COM STRIPE
+  // Adicionar novo cartão - VERSÃO CORRIGIDA COM STRIPE E SALVAMENTO DO MÉTODO DE PAGAMENTO
   Future<bool> addNewCard() async {
     if (!formKey.currentState!.validate()) {
       return false;
@@ -243,8 +245,43 @@ class NewCreditCardController extends GetxController {
         debugPrint('Novo customer Stripe criado: $customerId');
       }
 
-      // Obter os detalhes do cartão
-      final lastFourDigits = cardNumber.substring(cardNumber.length - 4);
+      // Criar método de pagamento no Stripe usando dados do cartão
+      debugPrint('Criando método de pagamento no Stripe...');
+
+      final paymentMethodResponse = await _stripePaymentService.createPaymentMethod(
+        cardNumber: cardNumber,
+        expiryMonth: int.parse(expiryMonth),
+        expiryYear: int.parse(expiryYear),
+        cvc: cvv,
+        cardHolderName: cardHolder,
+      );
+
+      if (!paymentMethodResponse['success']) {
+        Get.snackbar('Erro', 'Falha ao criar método de pagamento: ${paymentMethodResponse['error']}');
+        return false;
+      }
+
+      final paymentMethodId = paymentMethodResponse['data']['id'];
+      debugPrint('✅ Método de pagamento criado: $paymentMethodId');
+
+      // Anexar método de pagamento ao customer
+      final attachResponse = await _stripePaymentService.savePaymentMethod(
+        customerId: customerId,
+        paymentMethodId: paymentMethodId,
+      );
+
+      if (!attachResponse['success']) {
+        Get.snackbar('Erro', 'Falha ao vincular cartão: ${attachResponse['error']}');
+        return false;
+      }
+
+      debugPrint('✅ Método de pagamento anexado ao customer');
+
+      // Obter os detalhes do cartão da resposta do Stripe
+      final paymentMethodData = paymentMethodResponse['data'];
+      final cardDetails = paymentMethodData['card'];
+      final lastFourDigits = cardDetails['last4'];
+      final brand = cardDetails['brand'];
 
       debugPrint('Salvando cartão no Firestore...');
 
@@ -252,9 +289,9 @@ class NewCreditCardController extends GetxController {
       final docRef = _firebaseService.firestore.collection('credit_cards').doc();
 
       CreditCardUserModel creditCardModel = CreditCardUserModel();
-      creditCardModel.cardId = 'stripe_${docRef.id}'; // Para Stripe, usamos um ID local
+      creditCardModel.cardId = paymentMethodId; // Usar o ID do método de pagamento do Stripe
       creditCardModel.lastFourDigits = lastFourDigits;
-      creditCardModel.brandType = cardBrand.value;
+      creditCardModel.brandType = brand;
       creditCardModel.cardHolderName = cardHolder;
       creditCardModel.transationalType = 'credit';
       creditCardModel.expirationDate = '$expiryMonth/${expiryParts[1]}';
@@ -262,7 +299,6 @@ class NewCreditCardController extends GetxController {
       creditCardModel.id = docRef.id;
       creditCardModel.cpf = document;
       creditCardModel.phone = phone;
-      creditCardModel.cvv = cvv; // Em produção, não armazenar CVV
       creditCardModel.createdAt = DateTime.now();
       creditCardModel.isDefault = true;
       creditCardModel.customerId = customerId;
@@ -328,6 +364,52 @@ class NewCreditCardController extends GetxController {
       return false;
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  // Método para criar Payment Method no Stripe
+  Future<Map<String, dynamic>> _createPaymentMethod({
+    required String cardNumber,
+    required int expiryMonth,
+    required int expiryYear,
+    required String cvc,
+    required String cardHolderName,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://api.stripe.com/v1/payment_methods'),
+        headers: {
+          'Authorization': 'Bearer sk_test_51RTpqm4TyzboYffkLCT1uIvlITbGX3vgRC6rNnduYStBy2wg99c4DxrraH75S4ATZiPEOdk3KxsYlR8fVQ661CkV00r5Yt8XgO', // Use sua chave secreta do Stripe
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'type': 'card',
+          'card[number]': cardNumber,
+          'card[exp_month]': expiryMonth.toString(),
+          'card[exp_year]': expiryYear.toString(),
+          'card[cvc]': cvc,
+          'billing_details[name]': cardHolderName,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'data': data,
+        };
+      } else {
+        final error = json.decode(response.body);
+        return {
+          'success': false,
+          'error': error['error']['message'] ?? 'Erro desconhecido',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'Erro na requisição: $e',
+      };
     }
   }
 
