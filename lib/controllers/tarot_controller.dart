@@ -22,27 +22,42 @@ class TarotController extends GetxController {
 
   RxList<Map<String, dynamic>> savedReadings = <Map<String, dynamic>>[].obs;
 
-  // Controle de jogadas diárias
+  // Controle de jogadas diárias - CORRIGIDO
   RxInt dailyReadingsUsed = 0.obs;
-  RxBool hasFreeReadingToday = true.obs;
+  RxBool hasFreeReadingToday = false.obs; // Iniciar como false até verificar
+  RxBool isDailyStatusLoading = true.obs; // Para mostrar loading enquanto verifica
   final double additionalReadingCost = 10.0; // Custo em créditos para leituras extras
 
   @override
   void onInit() {
     super.onInit();
     loadTarotCards();
-    _checkDailyReadingStatus();
+    _initializeDailyReadingStatus();
+  }
+
+  /// Inicializa e verifica o status das leituras diárias
+  Future<void> _initializeDailyReadingStatus() async {
+    isDailyStatusLoading.value = true;
+    await _checkDailyReadingStatus();
+    isDailyStatusLoading.value = false;
   }
 
   /// Verifica o status das leituras diárias do usuário
   Future<void> _checkDailyReadingStatus() async {
     try {
       final authController = Get.find<AuthController>();
-      if (authController.currentUser.value == null) return;
+      if (authController.currentUser.value == null) {
+        // Se não estiver logado, permitir leitura gratuita
+        hasFreeReadingToday.value = true;
+        dailyReadingsUsed.value = 0;
+        return;
+      }
 
       final userId = authController.currentUser.value!.uid;
       final today = DateTime.now();
-      final todayString = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      final todayString = _formatDateString(today);
+
+      debugPrint('🔍 Verificando leituras diárias para usuário: $userId em $todayString');
 
       // Buscar registro de leituras diárias
       final dailyReadingDoc = await _firebaseService.firestore
@@ -52,51 +67,111 @@ class TarotController extends GetxController {
 
       if (dailyReadingDoc.exists) {
         final data = dailyReadingDoc.data() as Map<String, dynamic>;
-        dailyReadingsUsed.value = data['count'] ?? 0;
-        hasFreeReadingToday.value = dailyReadingsUsed.value == 0;
+        final count = data['count'] ?? 0;
+        final hasUsedFreeReading = data['hasUsedFreeReading'] ?? false;
+
+        dailyReadingsUsed.value = count;
+        hasFreeReadingToday.value = !hasUsedFreeReading;
+
+        debugPrint('📊 Status encontrado - Leituras usadas: $count, Gratuita disponível: ${!hasUsedFreeReading}');
       } else {
-        // Primeiro acesso do dia
+        // Primeiro acesso do dia - usuário tem direito à leitura gratuita
         dailyReadingsUsed.value = 0;
         hasFreeReadingToday.value = true;
+
+        debugPrint('🆕 Primeiro acesso do dia - Leitura gratuita disponível');
+
+        // Criar documento inicial
+        await _createInitialDailyRecord(userId, todayString);
       }
     } catch (e) {
-      debugPrint('Erro ao verificar status de leituras diárias: $e');
+      debugPrint('❌ Erro ao verificar status de leituras diárias: $e');
+      // Em caso de erro, ser conservador e não permitir leitura gratuita
+      hasFreeReadingToday.value = false;
+      dailyReadingsUsed.value = 1;
     }
   }
 
-  /// Incrementa o contador de leituras diárias
-  Future<void> _incrementDailyReadingCount() async {
+  /// Cria o registro inicial do dia
+  Future<void> _createInitialDailyRecord(String userId, String dateString) async {
+    try {
+      await _firebaseService.firestore
+          .collection('daily_tarot_readings')
+          .doc('$userId-$dateString')
+          .set({
+        'userId': userId,
+        'date': dateString,
+        'count': 0,
+        'hasUsedFreeReading': false,
+        'createdAt': DateTime.now(),
+        'readings': [], // Array para armazenar IDs das leituras do dia
+      });
+
+      debugPrint('✅ Registro diário inicial criado');
+    } catch (e) {
+      debugPrint('❌ Erro ao criar registro inicial: $e');
+    }
+  }
+
+  /// Incrementa o contador de leituras diárias e marca leitura gratuita como usada
+  Future<void> _incrementDailyReadingCount({bool isFreeReading = false, String? readingId}) async {
     try {
       final authController = Get.find<AuthController>();
       if (authController.currentUser.value == null) return;
 
       final userId = authController.currentUser.value!.uid;
       final today = DateTime.now();
-      final todayString = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      final todayString = _formatDateString(today);
 
       final docRef = _firebaseService.firestore
           .collection('daily_tarot_readings')
           .doc('$userId-$todayString');
 
-      final currentCount = dailyReadingsUsed.value;
+      // Buscar dados atuais
+      final doc = await docRef.get();
+      final currentData = doc.exists ? doc.data() as Map<String, dynamic> : {};
 
-      await docRef.set({
+      final currentCount = currentData['count'] ?? 0;
+      final hasUsedFree = currentData['hasUsedFreeReading'] ?? false;
+      final readings = List<String>.from(currentData['readings'] ?? []);
+
+      // Adicionar ID da leitura se fornecido
+      if (readingId != null && !readings.contains(readingId)) {
+        readings.add(readingId);
+      }
+
+      // Atualizar dados
+      final updateData = {
         'userId': userId,
         'date': todayString,
         'count': currentCount + 1,
+        'hasUsedFreeReading': isFreeReading ? true : hasUsedFree,
         'lastReading': DateTime.now(),
-      });
+        'readings': readings,
+      };
 
+      await docRef.set(updateData);
+
+      // Atualizar estado local
       dailyReadingsUsed.value = currentCount + 1;
-      hasFreeReadingToday.value = false;
+      if (isFreeReading) {
+        hasFreeReadingToday.value = false;
+      }
+
+      debugPrint('📈 Contador atualizado - Total: ${currentCount + 1}, Gratuita usada: ${isFreeReading ? true : hasUsedFree}');
     } catch (e) {
-      debugPrint('Erro ao incrementar contador de leituras: $e');
+      debugPrint('❌ Erro ao incrementar contador de leituras: $e');
     }
+  }
+
+  /// Formata a data para string no formato YYYY-MM-DD
+  String _formatDateString(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   /// Verifica se o usuário pode fazer uma leitura gratuita
   bool canPerformFreeReading() {
-    return hasFreeReadingToday.value;
+    return hasFreeReadingToday.value && !isDailyStatusLoading.value;
   }
 
   /// Verifica se o usuário tem créditos suficientes para leitura paga
@@ -150,7 +225,6 @@ class TarotController extends GetxController {
             ElevatedButton(
               onPressed: () {
                 Get.back(result: false);
-                // Navegar para tela de adicionar créditos
                 Get.toNamed('/payment-methods');
               },
               child: const Text('Adicionar Créditos'),
@@ -222,7 +296,7 @@ class TarotController extends GetxController {
 
       return true;
     } catch (e) {
-      debugPrint('Erro ao processar pagamento para leitura: $e');
+      debugPrint('❌ Erro ao processar pagamento para leitura: $e');
       Get.snackbar(
         'Erro',
         'Ocorreu um erro ao processar o pagamento: $e',
@@ -236,8 +310,14 @@ class TarotController extends GetxController {
 
   /// Verifica se pode realizar uma leitura (gratuita ou paga)
   Future<bool> canPerformReading() async {
+    // Se ainda está carregando o status, aguardar
+    if (isDailyStatusLoading.value) {
+      await _checkDailyReadingStatus();
+    }
+
     // Se tem leitura gratuita disponível
     if (canPerformFreeReading()) {
+      debugPrint('✅ Leitura gratuita disponível');
       return true;
     }
 
@@ -309,6 +389,9 @@ class TarotController extends GetxController {
     final canPerform = await canPerformReading();
     if (!canPerform) return;
 
+    String? readingId;
+    final isFreeReading = canPerformFreeReading();
+
     try {
       isLoading.value = true;
       final cardNames = selectedCards.map((card) => card.name).toList();
@@ -350,14 +433,49 @@ class TarotController extends GetxController {
       final readingResult = await _geminiService.generateJsonInterpretation(promptForJSON);
       interpretation.value = readingResult;
 
+      // Salvar a leitura automaticamente após sucesso
+      readingId = await _saveReadingInternal(isFreeReading);
+
       // Incrementar contador de leituras após sucesso
-      await _incrementDailyReadingCount();
+      await _incrementDailyReadingCount(
+        isFreeReading: isFreeReading,
+        readingId: readingId,
+      );
+
+      debugPrint('🎯 Leitura realizada com sucesso - Gratuita: $isFreeReading, ID: $readingId');
 
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível realizar a leitura: $e');
     } finally {
       isLoading.value = false;
       update();
+    }
+  }
+
+  /// Salva a leitura internamente (método privado)
+  Future<String?> _saveReadingInternal(bool wasFree) async {
+    try {
+      final authController = Get.find<AuthController>();
+      if (authController.currentUser.value == null) return null;
+
+      final userId = authController.currentUser.value!.uid;
+      final cardIds = selectedCards.map((card) => card.id).toList();
+
+      final readingData = {
+        'userId': userId,
+        'cardIds': cardIds,
+        'interpretation': interpretation.value,
+        'createdAt': DateTime.now(),
+        'wasPaid': !wasFree,
+        'cost': !wasFree ? additionalReadingCost : 0.0,
+        'isFavorite': false,
+      };
+
+      final readingId = await _firebaseService.saveTarotReading(readingData);
+      return readingId;
+    } catch (e) {
+      debugPrint('❌ Erro ao salvar leitura internamente: $e');
+      return null;
     }
   }
 
@@ -384,8 +502,9 @@ class TarotController extends GetxController {
         'cardIds': cardIds,
         'interpretation': interpretation.value,
         'createdAt': DateTime.now(),
-        'wasPaid': !hasFreeReadingToday.value, // Marca se foi uma leitura paga
+        'wasPaid': !hasFreeReadingToday.value,
         'cost': !hasFreeReadingToday.value ? additionalReadingCost : 0.0,
+        'isFavorite': false,
       };
 
       await _firebaseService.saveTarotReading(readingData);
@@ -443,7 +562,7 @@ class TarotController extends GetxController {
     }
   }
 
-// Marcar/desmarcar leitura como favorita
+  // Marcar/desmarcar leitura como favorita
   Future<void> toggleFavoriteReading(String readingId) async {
     try {
       // Encontrar a leitura na lista
@@ -471,7 +590,7 @@ class TarotController extends GetxController {
     }
   }
 
-// Excluir uma leitura salva
+  // Excluir uma leitura salva
   Future<void> deleteReading(String readingId) async {
     try {
       isLoading.value = true;
@@ -496,7 +615,7 @@ class TarotController extends GetxController {
     }
   }
 
-// Obter detalhes de uma leitura específica por ID
+  // Obter detalhes de uma leitura específica por ID
   Future<Map<String, dynamic>?> getReadingById(String readingId) async {
     try {
       // Verificar primeiro na lista local
@@ -523,7 +642,7 @@ class TarotController extends GetxController {
     }
   }
 
-// Buscar uma carta específica por ID
+  // Buscar uma carta específica por ID
   Future<TarotCard?> getCardById(String cardId) async {
     try {
       // Verificar primeiro na lista de cartas carregadas
@@ -542,7 +661,7 @@ class TarotController extends GetxController {
 
       return null;
     } catch (e) {
-      debugPrint('Erro ao buscar carta: $e');
+      debugPrint('❌ Erro ao buscar carta: $e');
       return null;
     }
   }
@@ -555,7 +674,7 @@ class TarotController extends GetxController {
 
       final userId = authController.currentUser.value!.uid;
       final today = DateTime.now();
-      final todayString = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      final todayString = _formatDateString(today);
 
       await _firebaseService.firestore
           .collection('daily_tarot_readings')
@@ -573,8 +692,13 @@ class TarotController extends GetxController {
         snackPosition: SnackPosition.BOTTOM,
       );
     } catch (e) {
-      debugPrint('Erro ao resetar limite diário: $e');
+      debugPrint('❌ Erro ao resetar limite diário: $e');
     }
+  }
+
+  /// Atualizar status diário (chamado quando o usuário faz login)
+  Future<void> updateDailyStatus() async {
+    await _checkDailyReadingStatus();
   }
 
   /// Obter estatísticas de uso das leituras de tarô
@@ -620,7 +744,7 @@ class TarotController extends GetxController {
         'canReadFreeToday': hasFreeReadingToday.value,
       };
     } catch (e) {
-      debugPrint('Erro ao obter estatísticas: $e');
+      debugPrint('❌ Erro ao obter estatísticas: $e');
       return {};
     }
   }
