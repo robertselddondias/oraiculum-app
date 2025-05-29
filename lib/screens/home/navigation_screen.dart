@@ -119,11 +119,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 activeIcon: Icon(Icons.grid_view),
                 label: 'Tarot',
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.people_outline),
-                activeIcon: Icon(Icons.people),
-                label: 'Médiuns',
-              ),
+              // BottomNavigationBarItem(
+              //   icon: Icon(Icons.people_outline),
+              //   activeIcon: Icon(Icons.people),
+              //   label: 'Médiuns',
+              // ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),
                 activeIcon: Icon(Icons.person),

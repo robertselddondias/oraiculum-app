@@ -182,8 +182,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       const SizedBox(height: 24),
                       _buildDailyHoroscope(isSmallScreen),
                       const SizedBox(height: 24),
-                      _buildFeaturedMediums(isSmallScreen),
-                      const SizedBox(height: 24),
+                      // _buildFeaturedMediums(isSmallScreen),
+                      // const SizedBox(height: 24),
                       _buildPromotionalBanner(isSmallScreen),
                       // Garantir espaço no final da página
                       const SizedBox(height: 24),
@@ -531,13 +531,13 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         'color': const Color(0xFFFF9D8A),
         'route': AppRoutes.tarotReading,
       },
-      {
-        'title': 'Médiuns',
-        'subtitle': 'Consultas ao vivo',
-        'icon': Icons.people,
-        'color': const Color(0xFF8E78FF),
-        'route': AppRoutes.mediumsList,
-      },
+      // {
+      //   'title': 'Médiuns',
+      //   'subtitle': 'Consultas ao vivo',
+      //   'icon': Icons.people,
+      //   'color': const Color(0xFF8E78FF),
+      //   'route': AppRoutes.mediumsList,
+      // },
       {
         'title': 'Mapa Astral',
         'subtitle': 'Análise completa',

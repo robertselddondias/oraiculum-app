@@ -257,6 +257,8 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             return Column(
               children: [
                 _buildAppBar(isSmallScreen),
+                // Adicionar widget de status das leituras diárias
+                _buildDailyReadingStatus(isSmallScreen),
                 Expanded(
                   child: _readingPerformed.value
                       ? _buildReadingResult(isSmallScreen, padding, screenHeight)
@@ -270,6 +272,80 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
         ),
       ),
     );
+  }
+
+  Widget _buildDailyReadingStatus(bool isSmallScreen) {
+    return Obx(() {
+      final hasFreeReading = _controller.hasFreeReadingToday.value;
+      final readingsUsed = _controller.dailyReadingsUsed.value;
+
+      return Container(
+        margin: EdgeInsets.symmetric(
+          horizontal: isSmallScreen ? 16.0 : 20.0,
+          vertical: 8.0,
+        ),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasFreeReading ? Colors.green.withOpacity(0.5) : Colors.orange.withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              hasFreeReading ? Icons.casino : Icons.account_balance_wallet,
+              color: hasFreeReading ? Colors.green : Colors.orange,
+              size: isSmallScreen ? 20 : 24,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hasFreeReading ? 'Leitura Gratuita Disponível' : 'Leitura Gratuita Usada',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isSmallScreen ? 14 : 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    hasFreeReading
+                        ? 'Você pode fazer 1 leitura gratuita hoje'
+                        : 'Leituras extras custam ${_controller.additionalReadingCost.toStringAsFixed(0)} créditos',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: isSmallScreen ? 12 : 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!hasFreeReading)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Usadas: $readingsUsed',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: isSmallScreen ? 10 : 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1, end: 0);
+    });
   }
 
   Widget _buildAppBar(bool isSmallScreen) {
@@ -378,7 +454,6 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
 
   Widget _buildCardsDeck(bool isSmallScreen, double screenHeight) {
     final instructionFontSize = isSmallScreen ? 16.0 : 18.0;
-    final subtitleFontSize = isSmallScreen ? 14.0 : 16.0;
     final cardScale = min(screenHeight / 800, 1.2);
 
     return Stack(
@@ -956,48 +1031,89 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
   }
 
   Widget _buildPerformReadingButton(bool isSmallScreen) {
-    return Padding(
-      padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF6C63FF).withOpacity(0.3),
-              blurRadius: 10,
-              spreadRadius: 0,
-              offset: const Offset(0, 4),
+    return Obx(() {
+      final hasFreeReading = _controller.hasFreeReadingToday.value;
+      final canAffordPaid = _controller.canPerformPaidReading();
+
+      // Determinar texto e cor do botão
+      String buttonText;
+      Color buttonColor;
+      IconData buttonIcon;
+
+      if (hasFreeReading) {
+        buttonText = 'Interpretar Cartas - Grátis';
+        buttonColor = const Color(0xFF6C63FF);
+        buttonIcon = Icons.psychology;
+      } else if (canAffordPaid) {
+        buttonText = 'Interpretar Cartas - ${_controller.additionalReadingCost.toStringAsFixed(0)} Créditos';
+        buttonColor = Colors.orange;
+        buttonIcon = Icons.account_balance_wallet;
+      } else {
+        buttonText = 'Créditos Insuficientes';
+        buttonColor = Colors.grey;
+        buttonIcon = Icons.block;
+      }
+
+      return Padding(
+        padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+        child: Column(
+          children: [
+            // Botão principal
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: buttonColor.withOpacity(0.3),
+                    blurRadius: 10,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: (hasFreeReading || canAffordPaid) ? _performReading : null,
+                icon: Icon(buttonIcon),
+                label: Text(buttonText),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: buttonColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+              ),
             ),
+
+            // Informação adicional se não tiver créditos
+            if (!hasFreeReading && !canAffordPaid) ...[
+              const SizedBox(height: 12),
+              TextButton.icon(
+                onPressed: () => Get.toNamed('/payment-methods'),
+                icon: const Icon(Icons.add_card, size: 20),
+                label: const Text('Adicionar Créditos'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           ],
         ),
-        child: ElevatedButton.icon(
-          onPressed: _performReading,
-          icon: const Icon(Icons.psychology),
-          label: const Text('Interpretar Cartas'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF6C63FF),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 0,
-          ),
-        ),
-      ),
-    ).animate().fadeIn(
-      duration: const Duration(milliseconds: 600),
-    ).scaleXY(
-      begin: 0.95,
-      end: 1.0,
-      duration: const Duration(milliseconds: 600),
-    );
+      ).animate().fadeIn(
+        duration: const Duration(milliseconds: 600),
+      ).scaleXY(
+        begin: 0.95,
+        end: 1.0,
+        duration: const Duration(milliseconds: 600),
+      );
+    });
   }
 
   Widget _buildReadingResult(bool isSmallScreen, double padding, double screenHeight) {
     final titleSize = isSmallScreen ? 18.0 : 22.0;
-    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
 
     return Stack(
       children: [

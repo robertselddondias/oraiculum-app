@@ -294,16 +294,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final textSize = isSmallScreen ? 14.0 : 16.0;
 
     final menuItems = [
-      {
-        'title': 'Meus Agendamentos',
-        'icon': Icons.calendar_today,
-        'onTap': () {
-          // Implementar navegação para agendamentos
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Navegando para agendamentos...')),
-          );
-        },
-      },
+      // {
+      //   'title': 'Meus Agendamentos',
+      //   'icon': Icons.calendar_today,
+      //   'onTap': () {
+      //     // Implementar navegação para agendamentos
+      //     ScaffoldMessenger.of(context).showSnackBar(
+      //       const SnackBar(content: Text('Navegando para agendamentos...')),
+      //     );
+      //   },
+      // },
       {
         'title': 'Leituras Favoritas',
         'icon': Icons.favorite,
@@ -314,11 +314,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'icon': Icons.receipt_long,
         'onTap': () => Get.toNamed(AppRoutes.paymentHistory),
       },
-      {
-        'title': 'Métodos de Pagamento',
-        'icon': Icons.payment,
-        'onTap': () => Get.toNamed(AppRoutes.creditcardList),
-      },
+      // {
+      //   'title': 'Métodos de Pagamento',
+      //   'icon': Icons.payment,
+      //   'onTap': () => Get.toNamed(AppRoutes.creditcardList),
+      // },
       {
         'title': 'Configurações',
         'icon': Icons.settings,

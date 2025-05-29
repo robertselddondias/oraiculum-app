@@ -70,7 +70,6 @@ class AppRoutes {
     GetPage(name: settings, page: () => const SettingsScreen()),
     GetPage(name: paymentMethods, page: () => const PaymentMethodsScreen()),
     GetPage(name: paymentHistory, page: () => const PaymentHistoryScreen()),
-    GetPage(name: creditcardList, page: () => const CreditCardListScreen()),
     GetPage(
       name: savedReading,
       page: () => const SavedReadingDetailScreen(),

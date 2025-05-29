@@ -24,7 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    // _isDarkMode = Theme.of(context).brightness == Brightness.dark;
   }
 
   void _showChangePasswordDialog() {
@@ -201,11 +201,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: _showChangePasswordDialog,
             ),
             _buildSettingItem(
-              icon: Icons.credit_card,
-              title: 'Métodos de Pagamento',
-              onTap: () => Get.toNamed(AppRoutes.paymentMethods),
-            ),
-            _buildSettingItem(
               icon: Icons.receipt_long,
               title: 'Histórico de Pagamentos',
               onTap: () => Get.toNamed(AppRoutes.paymentHistory),
@@ -326,53 +321,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const Divider(height: 8),
-            ListTile(
-              leading: Icon(
-                Icons.language,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              title: const Text('Idioma'),
-              subtitle: Text(_selectedLanguage),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () {
-                // Mostrar diálogo de seleção de idioma
-                showDialog(
-                  context: context,
-                  builder: (context) => SimpleDialog(
-                    title: const Text('Selecione o Idioma'),
-                    children: [
-                      SimpleDialogOption(
-                        onPressed: () {
-                          setState(() {
-                            _selectedLanguage = 'Português';
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Português'),
-                      ),
-                      SimpleDialogOption(
-                        onPressed: () {
-                          setState(() {
-                            _selectedLanguage = 'English';
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('English'),
-                      ),
-                      SimpleDialogOption(
-                        onPressed: () {
-                          setState(() {
-                            _selectedLanguage = 'Español';
-                          });
-                          Navigator.pop(context);
-                        },
-                        child: const Text('Español'),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+            // ListTile(
+            //   leading: Icon(
+            //     Icons.language,
+            //     color: Theme.of(context).colorScheme.primary,
+            //   ),
+            //   title: const Text('Idioma'),
+            //   subtitle: Text(_selectedLanguage),
+            //   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+            //   onTap: () {
+            //     // Mostrar diálogo de seleção de idioma
+            //     showDialog(
+            //       context: context,
+            //       builder: (context) => SimpleDialog(
+            //         title: const Text('Selecione o Idioma'),
+            //         children: [
+            //           SimpleDialogOption(
+            //             onPressed: () {
+            //               setState(() {
+            //                 _selectedLanguage = 'Português';
+            //               });
+            //               Navigator.pop(context);
+            //             },
+            //             child: const Text('Português'),
+            //           ),
+            //           SimpleDialogOption(
+            //             onPressed: () {
+            //               setState(() {
+            //                 _selectedLanguage = 'English';
+            //               });
+            //               Navigator.pop(context);
+            //             },
+            //             child: const Text('English'),
+            //           ),
+            //           SimpleDialogOption(
+            //             onPressed: () {
+            //               setState(() {
+            //                 _selectedLanguage = 'Español';
+            //               });
+            //               Navigator.pop(context);
+            //             },
+            //             child: const Text('Español'),
+            //           ),
+            //         ],
+            //       ),
+            //     );
+            //   },
+            // ),
           ],
         ),
       ),
@@ -466,7 +461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 showDialog(
                   context: context,
                   builder: (context) => AlertDialog(
-                    title: const Text('Astral Connect'),
+                    title: const Text('Oraculum'),
                     content: const Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,12 +469,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text('Versão 1.0.0'),
                         SizedBox(height: 16),
                         Text(
-                          'Astral Connect é um aplicativo de astrologia, tarô e consultas com médiuns para ajudar você a se conectar com o universo.',
+                          'Oraculum é um aplicativo de astrologia, tarô e consultas com médiuns para ajudar você a se conectar com o universo.',
                           style: TextStyle(height: 1.5),
                         ),
                         SizedBox(height: 16),
                         Text(
-                          '© 2025 Astral Connect. Todos os direitos reservados.',
+                          '© 2025 Oraculum. Todos os direitos reservados.',
                           style: TextStyle(fontSize: 12),
                         ),
                       ],
