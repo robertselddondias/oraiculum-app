@@ -875,14 +875,16 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
                 color: Colors.red,
               ),
             ),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.amber,
+            Transform.translate(
+              offset: const Offset(-5, 0),  // Use Transform.translate em vez de margin negativo
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.amber,
+                ),
               ),
-              margin: const EdgeInsets.only(left: -5),
             ),
           ],
         );
@@ -970,14 +972,16 @@ class AddCreditCardScreen extends GetView<NewCreditCardController> {
                   color: Colors.red,
                 ),
               ),
-              Container(
-                width: 12,
-                height: 12,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.amber,
+              Transform.translate(
+                offset: const Offset(-3, 0),  // Use Transform.translate em vez de margin negativo
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.amber,
+                  ),
                 ),
-                margin: const EdgeInsets.only(left: -3),
               ),
             ],
           ),
