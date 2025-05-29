@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
@@ -15,7 +12,7 @@ class NewCreditCardController extends GetxController {
   // ===========================================
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
-  late StripePaymentService _stripePaymentService;
+  final StripePaymentService _stripePaymentService = Get.find<StripePaymentService>();
 
   // ===========================================
   // CONTROLADORES DE FORMULÁRIO
@@ -73,8 +70,6 @@ class NewCreditCardController extends GetxController {
   final RxBool showBackView = false.obs;
   final RxString cardBrand = ''.obs;
   final RxList<Map<String, dynamic>> savedCards = <Map<String, dynamic>>[].obs;
-  final RxBool isCardValid = false.obs;
-  final RxString validationMessage = ''.obs;
 
   // Chave para o formulário
   final formKey = GlobalKey<FormState>();
@@ -82,13 +77,7 @@ class NewCreditCardController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-
-    _stripePaymentService = Get.find<StripePaymentService>();
-
-    // Adicionar listeners
     _setupListeners();
-
-    // Carregar cartões salvos
     loadSavedCards();
   }
 
@@ -107,19 +96,11 @@ class NewCreditCardController extends GetxController {
   void _setupListeners() {
     cvvFocus.addListener(_onCvvFocusChange);
     cardNumberController.addListener(_updateCardBrand);
-    cardNumberController.addListener(_validateCardNumber);
-    expiryDateController.addListener(_validateExpiryDate);
-    cvvController.addListener(_validateCvv);
-    cardHolderController.addListener(_validateCardHolder);
   }
 
   void _removeListeners() {
     cvvFocus.removeListener(_onCvvFocusChange);
     cardNumberController.removeListener(_updateCardBrand);
-    cardNumberController.removeListener(_validateCardNumber);
-    expiryDateController.removeListener(_validateExpiryDate);
-    cvvController.removeListener(_validateCvv);
-    cardHolderController.removeListener(_validateCardHolder);
   }
 
   void _disposeControllers() {
@@ -138,77 +119,6 @@ class NewCreditCardController extends GetxController {
     cvvFocus.dispose();
     documentFocus.dispose();
     phoneFocus.dispose();
-  }
-
-  // ===========================================
-  // MÉTODOS DE VALIDAÇÃO EM TEMPO REAL
-  // ===========================================
-
-  void _validateCardNumber() {
-    final cardNumber = cardNumberController.text.replaceAll(' ', '');
-
-    if (cardNumber.isEmpty) {
-      isCardValid.value = false;
-      validationMessage.value = '';
-      return;
-    }
-
-    if (cardNumber.length < 16) {
-      isCardValid.value = false;
-      validationMessage.value = 'Número incompleto';
-      return;
-    }
-
-    if (!validateCardLuhn(cardNumber)) {
-      isCardValid.value = false;
-      validationMessage.value = 'Número inválido';
-      return;
-    }
-
-    isCardValid.value = true;
-    validationMessage.value = 'Cartão válido';
-  }
-
-  void _validateExpiryDate() {
-    final expiry = expiryDateController.text;
-
-    if (expiry.isEmpty) return;
-
-    if (expiry.length == 5) {
-      final parts = expiry.split('/');
-      if (parts.length == 2) {
-        final month = int.tryParse(parts[0]);
-        final year = int.tryParse('20${parts[1]}');
-
-        if (month == null || year == null || month < 1 || month > 12) {
-          validationMessage.value = 'Data inválida';
-          return;
-        }
-
-        final now = DateTime.now();
-        final cardDate = DateTime(year, month);
-        if (cardDate.isBefore(DateTime(now.year, now.month))) {
-          validationMessage.value = 'Cartão expirado';
-          return;
-        }
-
-        validationMessage.value = 'Data válida';
-      }
-    }
-  }
-
-  void _validateCvv() {
-    final cvv = cvvController.text;
-    if (cvv.length >= 3) {
-      validationMessage.value = 'CVV válido';
-    }
-  }
-
-  void _validateCardHolder() {
-    final holder = cardHolderController.text.trim();
-    if (holder.length >= 3) {
-      validationMessage.value = 'Nome válido';
-    }
   }
 
   // ===========================================
@@ -384,7 +294,7 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
-      debugPrint('Criando cartão com dados do formulário...');
+      debugPrint('Criando cartão com Stripe...');
 
       // 1. Obter ou criar customer no Stripe
       final customerId = await _getOrCreateStripeCustomer(userId, cardData);
@@ -393,8 +303,16 @@ class NewCreditCardController extends GetxController {
         return false;
       }
 
-      // 2. Criar PaymentMethod diretamente via API
-      final paymentMethodResult = await _createPaymentMethodDirectly(cardData);
+      // 2. Criar PaymentMethod via Stripe
+      final paymentMethodResult = await _stripePaymentService.createPaymentMethod(
+        cardNumber: cardData['cardNumber'],
+        expiryMonth: cardData['expiryMonth'].toString(),
+        expiryYear: cardData['expiryYear'].toString(),
+        cvc: cardData['cvv'],
+        cardHolderName: cardData['cardHolder'],
+        phone: cardData['phone'],
+      );
+
       if (!paymentMethodResult['success']) {
         Get.snackbar('Erro', paymentMethodResult['error']);
         return false;
@@ -406,7 +324,11 @@ class NewCreditCardController extends GetxController {
       debugPrint('✅ PaymentMethod criado: $paymentMethodId');
 
       // 3. Anexar método de pagamento ao customer
-      final attachResult = await _attachPaymentMethodToCustomer(paymentMethodId, customerId);
+      final attachResult = await _stripePaymentService.attachPaymentMethodToCustomer(
+        paymentMethodId: paymentMethodId,
+        customerId: customerId,
+      );
+
       if (!attachResult['success']) {
         Get.snackbar('Erro', 'Falha ao vincular cartão: ${attachResult['error']}');
         return false;
@@ -439,139 +361,12 @@ class NewCreditCardController extends GetxController {
 
       return false;
 
-    } on StripeException catch (e) {
-      debugPrint('❌ Erro do Stripe: ${e.error.localizedMessage}');
-
-      Get.snackbar(
-        'Erro no Cartão',
-        _getStripeErrorMessage(e.error.code?.toString(), e.error.localizedMessage),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return false;
     } catch (e) {
       debugPrint('❌ Erro geral ao adicionar cartão: $e');
       _handleGeneralError(e);
       return false;
     } finally {
       isLoading.value = false;
-    }
-  }
-
-  /// Criar PaymentMethod diretamente via API REST com os dados do formulário
-  Future<Map<String, dynamic>> _createPaymentMethodDirectly(Map<String, dynamic> cardData) async {
-    try {
-      debugPrint('Criando PaymentMethod com dados do formulário');
-      debugPrint('Número do cartão: ${cardData['cardNumber'].substring(0, 4)}****');
-      debugPrint('Titular: ${cardData['cardHolder']}');
-      debugPrint('Expiração: ${cardData['expiryMonth']}/${cardData['expiryYear']}');
-
-      final url = 'https://api.stripe.com/v1/payment_methods';
-      final headers = {
-        'Authorization': 'Bearer sk_test_51RTpqm4TyzboYffkLCT1uIvlITbGX3vgRC6rNnduYStBy2wg99c4DxrraH75S4ATZiPEOdk3KxsYlR8fVQ661CkV00r5Yt8XgO',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      final body = {
-        'type': 'card',
-        'card[number]': cardData['cardNumber'],
-        'card[exp_month]': cardData['expiryMonth'].toString(),
-        'card[exp_year]': cardData['expiryYear'].toString(),
-        'card[cvc]': cardData['cvv'],
-        'billing_details[name]': cardData['cardHolder'],
-        'billing_details[phone]': cardData['phone'],
-        'billing_details[address][country]': 'BR',
-      };
-
-      debugPrint('Enviando requisição para Stripe...');
-      final response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: body,
-      );
-
-      debugPrint('Status da resposta: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        debugPrint('✅ PaymentMethod criado com sucesso: ${data['id']}');
-
-        return {
-          'success': true,
-          'data': {
-            'id': data['id'],
-            'card': {
-              'last4': data['card']['last4'],
-              'brand': data['card']['brand'],
-              'exp_month': data['card']['exp_month'],
-              'exp_year': data['card']['exp_year'],
-            }
-          }
-        };
-      } else {
-        final errorData = json.decode(response.body);
-        final errorMessage = errorData['error']['message'] ?? 'Erro desconhecido';
-        debugPrint('❌ Erro na API: $errorMessage');
-
-        return {
-          'success': false,
-          'error': errorMessage
-        };
-      }
-
-    } catch (e) {
-      debugPrint('❌ Erro na requisição: $e');
-      return {
-        'success': false,
-        'error': 'Erro ao processar cartão: $e'
-      };
-    }
-  }
-
-  /// Anexar PaymentMethod ao Customer
-  Future<Map<String, dynamic>> _attachPaymentMethodToCustomer(String paymentMethodId, String customerId) async {
-    try {
-      debugPrint('Anexando PaymentMethod $paymentMethodId ao Customer $customerId');
-
-      final url = 'https://api.stripe.com/v1/payment_methods/$paymentMethodId/attach';
-      final headers = {
-        'Authorization': 'Bearer sk_test_51RTpqm4TyzboYffkLCT1uIvlITbGX3vgRC6rNnduYStBy2wg99c4DxrraH75S4ATZiPEOdk3KxsYlR8fVQ661CkV00r5Yt8XgO',
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      final body = {
-        'customer': customerId,
-      };
-
-      final response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        debugPrint('✅ PaymentMethod anexado com sucesso');
-        return {
-          'success': true,
-          'data': json.decode(response.body),
-        };
-      } else {
-        final errorData = json.decode(response.body);
-        final errorMessage = errorData['error']['message'] ?? 'Erro ao anexar cartão';
-        debugPrint('❌ Erro ao anexar: $errorMessage');
-
-        return {
-          'success': false,
-          'error': errorMessage,
-        };
-      }
-    } catch (e) {
-      debugPrint('❌ Erro na requisição de anexar: $e');
-      return {
-        'success': false,
-        'error': 'Erro na requisição: $e',
-      };
     }
   }
 
@@ -641,22 +436,6 @@ class NewCreditCardController extends GetxController {
       return customerId;
     } catch (e) {
       debugPrint('Erro ao obter/criar customer: $e');
-      return '';
-    }
-  }
-
-  /// Obter Customer ID do Stripe do usuário atual
-  Future<String> _getStripeCustomerId() async {
-    try {
-      final userId = _authController.currentUser.value?.uid ?? '';
-      if (userId.isEmpty) return '';
-
-      final userData = await _firebaseService.getUserData(userId);
-      final userDoc = userData.data() as Map<String, dynamic>?;
-
-      return userDoc?['stripeCustomerId'] ?? '';
-    } catch (e) {
-      debugPrint('Erro ao obter Customer ID: $e');
       return '';
     }
   }
@@ -811,89 +590,6 @@ class NewCreditCardController extends GetxController {
   }
 
   // ===========================================
-  // PROCESSAMENTO DE PAGAMENTOS
-  // ===========================================
-
-  Future<bool> processPayment({
-    required double amount,
-    required String description,
-    String? cardId,
-  }) async {
-    try {
-      if (_authController.currentUser.value == null) {
-        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
-        return false;
-      }
-
-      isLoading.value = true;
-      final userId = _authController.currentUser.value!.uid;
-
-      // Buscar cartão a ser usado
-      Map<String, dynamic>? selectedCard;
-      if (cardId != null) {
-        selectedCard = savedCards.firstWhereOrNull((card) => card['id'] == cardId);
-      } else {
-        selectedCard = getDefaultCard();
-      }
-
-      if (selectedCard == null) {
-        Get.snackbar('Erro', 'Nenhum cartão encontrado');
-        return false;
-      }
-
-      final customerId = selectedCard['customerId'];
-      if (customerId == null || customerId.isEmpty) {
-        Get.snackbar('Erro', 'ID do cliente não encontrado');
-        return false;
-      }
-
-      debugPrint('Processando pagamento de R\$ ${amount.toStringAsFixed(2)}');
-
-      // Processar pagamento com Stripe
-      final paymentResponse = await _stripePaymentService.processCardPaymentWithSavedCard(
-        amount: amount,
-        customerId: customerId,
-        description: description,
-        serviceId: 'manual_${DateTime.now().millisecondsSinceEpoch}',
-        serviceType: 'credit_purchase',
-      );
-
-      if (paymentResponse['success'] == true) {
-        Get.snackbar(
-          'Sucesso',
-          'Pagamento realizado com sucesso',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return true;
-      } else {
-        final errorMessage = paymentResponse['error'] as String? ?? 'Erro desconhecido';
-        Get.snackbar(
-          'Erro no Pagamento',
-          errorMessage,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return false;
-      }
-    } catch (e) {
-      debugPrint('Erro no pagamento: $e');
-      Get.snackbar(
-        'Erro',
-        'Não foi possível processar o pagamento: $e',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  // ===========================================
   // MÉTODOS AUXILIARES
   // ===========================================
 
@@ -907,8 +603,6 @@ class NewCreditCardController extends GetxController {
     cardBrand.value = '';
     cardType.value = 'credit';
     showBackView.value = false;
-    isCardValid.value = false;
-    validationMessage.value = '';
   }
 
   bool validateCardLuhn(String cardNumber) {
@@ -956,210 +650,9 @@ class NewCreditCardController extends GetxController {
     }
   }
 
-  String getCardBrandName(String brand) {
-    switch (brand.toLowerCase()) {
-      case 'visa':
-        return 'Visa';
-      case 'mastercard':
-        return 'Mastercard';
-      case 'amex':
-        return 'American Express';
-      case 'elo':
-        return 'Elo';
-      case 'hipercard':
-        return 'Hipercard';
-      case 'diners':
-        return 'Diners Club';
-      default:
-        return 'Cartão';
-    }
-  }
-
-  Color getCardBrandColor(String brand) {
-    switch (brand.toLowerCase()) {
-      case 'visa':
-        return Colors.blue;
-      case 'mastercard':
-        return Colors.red;
-      case 'amex':
-        return Colors.indigo;
-      case 'elo':
-        return Colors.green;
-      case 'hipercard':
-        return Colors.orange;
-      case 'diners':
-        return Colors.blueGrey;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  String formatCardNumber(String cardNumber) {
-    cardNumber = cardNumber.replaceAll(' ', '');
-    if (cardNumber.length <= 4) return cardNumber;
-
-    // Formato padrão: **** **** **** 1234
-    if (cardNumber.length >= 16) {
-      final lastFour = cardNumber.substring(cardNumber.length - 4);
-      return '**** **** **** $lastFour';
-    }
-
-    return cardNumber;
-  }
-
-  String formatExpiryDate(String month, String year) {
-    final formattedMonth = month.padLeft(2, '0');
-    final formattedYear = year.length == 2 ? year : year.substring(2);
-    return '$formattedMonth/$formattedYear';
-  }
-
   // ===========================================
-  // TRATAMENTO DE ERROS
+  // VALIDAÇÃO DE FORMULÁRIO
   // ===========================================
-
-  String _getStripeErrorMessage(String? errorCode, String? errorMessage) {
-    switch (errorCode?.toLowerCase()) {
-      case 'card_declined':
-        return 'Cartão recusado. Verifique os dados ou tente outro cartão.';
-      case 'expired_card':
-        return 'Cartão expirado. Use um cartão válido.';
-      case 'incorrect_cvc':
-        return 'CVV incorreto. Verifique o código de segurança.';
-      case 'processing_error':
-        return 'Erro no processamento. Tente novamente.';
-      case 'incorrect_number':
-        return 'Número do cartão incorreto.';
-      case 'invalid_expiry_month':
-        return 'Mês de expiração inválido.';
-      case 'invalid_expiry_year':
-        return 'Ano de expiração inválido.';
-      case 'invalid_cvc':
-        return 'CVV inválido.';
-      case 'card_not_supported':
-        return 'Tipo de cartão não suportado.';
-      case 'currency_not_supported':
-        return 'Moeda não suportada.';
-      case 'duplicate_transaction':
-        return 'Transação duplicada detectada.';
-      case 'fraudulent':
-        return 'Transação bloqueada por segurança.';
-      case 'generic_decline':
-        return 'Cartão recusado pelo banco.';
-      case 'insufficient_funds':
-        return 'Saldo insuficiente.';
-      case 'invalid_account':
-        return 'Conta inválida.';
-      case 'lost_card':
-        return 'Cartão reportado como perdido.';
-      case 'merchant_blacklist':
-        return 'Transação não permitida.';
-      case 'new_account_information_available':
-        return 'Informações da conta foram atualizadas. Tente novamente.';
-      case 'no_action_taken':
-        return 'Nenhuma ação foi tomada pelo banco.';
-      case 'not_permitted':
-        return 'Transação não permitida.';
-      case 'pickup_card':
-        return 'Entre em contato com seu banco.';
-      case 'pin_try_exceeded':
-        return 'Muitas tentativas de PIN. Tente mais tarde.';
-      case 'restricted_card':
-        return 'Cartão com restrições.';
-      case 'revocation_of_all_authorizations':
-        return 'Todas as autorizações foram revogadas.';
-      case 'revocation_of_authorization':
-        return 'Autorização revogada.';
-      case 'security_violation':
-        return 'Violação de segurança detectada.';
-      case 'service_not_allowed':
-        return 'Serviço não permitido para este cartão.';
-      case 'stolen_card':
-        return 'Cartão reportado como roubado.';
-      case 'stop_payment_order':
-        return 'Ordem de parada de pagamento.';
-      case 'testmode_decline':
-        return 'Cartão de teste recusado.';
-      case 'transaction_not_allowed':
-        return 'Transação não permitida.';
-      case 'try_again_later':
-        return 'Tente novamente mais tarde.';
-      case 'withdrawal_count_limit_exceeded':
-        return 'Limite de transações excedido.';
-      default:
-        return errorMessage ?? 'Erro ao processar cartão. Tente novamente.';
-    }
-  }
-
-  void _handleGeneralError(dynamic error) {
-    String errorMessage = 'Não foi possível adicionar o cartão';
-
-    if (error.toString().contains('unauthenticated') ||
-        error.toString().contains('permission-denied')) {
-      errorMessage = 'Sua sessão expirou. Faça login novamente.';
-      Get.snackbar(
-        'Erro de Autenticação',
-        errorMessage,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } else if (error.toString().contains('network')) {
-      errorMessage = 'Erro de conexão. Verifique sua internet.';
-      Get.snackbar(
-        'Erro de Conexão',
-        errorMessage,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } else {
-      Get.snackbar(
-        'Erro',
-        '$errorMessage: ${error.toString().split(': ').last}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
-  }
-
-  // ===========================================
-  // MÉTODOS DE VALIDAÇÃO AVANÇADA
-  // ===========================================
-
-  bool isValidCPF(String cpf) {
-    cpf = cpf.replaceAll(RegExp(r'[^0-9]'), '');
-
-    if (cpf.length != 11) return false;
-
-    // Verificar se todos os dígitos são iguais
-    if (cpf.split('').every((digit) => digit == cpf[0])) return false;
-
-    // Calcular primeiro dígito verificador
-    int sum = 0;
-    for (int i = 0; i < 9; i++) {
-      sum += int.parse(cpf[i]) * (10 - i);
-    }
-    int remainder = sum % 11;
-    int firstDigit = remainder < 2 ? 0 : 11 - remainder;
-
-    if (int.parse(cpf[9]) != firstDigit) return false;
-
-    // Calcular segundo dígito verificador
-    sum = 0;
-    for (int i = 0; i < 10; i++) {
-      sum += int.parse(cpf[i]) * (11 - i);
-    }
-    remainder = sum % 11;
-    int secondDigit = remainder < 2 ? 0 : 11 - remainder;
-
-    return int.parse(cpf[10]) == secondDigit;
-  }
-
-  bool isValidPhone(String phone) {
-    phone = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    return phone.length >= 10 && phone.length <= 11;
-  }
 
   String? validateCardNumberField(String? value) {
     if (value == null || value.isEmpty) {
@@ -1187,7 +680,6 @@ class NewCreditCardController extends GetxController {
       return 'Nome muito curto';
     }
 
-    // Verificar se contém pelo menos nome e sobrenome
     if (!value.trim().contains(' ')) {
       return 'Digite nome e sobrenome';
     }
@@ -1262,6 +754,77 @@ class NewCreditCardController extends GetxController {
     return null;
   }
 
+  bool isValidCPF(String cpf) {
+    cpf = cpf.replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (cpf.length != 11) return false;
+
+    // Verificar se todos os dígitos são iguais
+    if (cpf.split('').every((digit) => digit == cpf[0])) return false;
+
+    // Calcular primeiro dígito verificador
+    int sum = 0;
+    for (int i = 0; i < 9; i++) {
+      sum += int.parse(cpf[i]) * (10 - i);
+    }
+    int remainder = sum % 11;
+    int firstDigit = remainder < 2 ? 0 : 11 - remainder;
+
+    if (int.parse(cpf[9]) != firstDigit) return false;
+
+    // Calcular segundo dígito verificador
+    sum = 0;
+    for (int i = 0; i < 10; i++) {
+      sum += int.parse(cpf[i]) * (11 - i);
+    }
+    remainder = sum % 11;
+    int secondDigit = remainder < 2 ? 0 : 11 - remainder;
+
+    return int.parse(cpf[10]) == secondDigit;
+  }
+
+  bool isValidPhone(String phone) {
+    phone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    return phone.length >= 10 && phone.length <= 11;
+  }
+
+  // ===========================================
+  // TRATAMENTO DE ERROS
+  // ===========================================
+
+  void _handleGeneralError(dynamic error) {
+    String errorMessage = 'Não foi possível adicionar o cartão';
+
+    if (error.toString().contains('unauthenticated') ||
+        error.toString().contains('permission-denied')) {
+      errorMessage = 'Sua sessão expirou. Faça login novamente.';
+      Get.snackbar(
+        'Erro de Autenticação',
+        errorMessage,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } else if (error.toString().contains('network')) {
+      errorMessage = 'Erro de conexão. Verifique sua internet.';
+      Get.snackbar(
+        'Erro de Conexão',
+        errorMessage,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    } else {
+      Get.snackbar(
+        'Erro',
+        '$errorMessage: ${error.toString().split(': ').last}',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }
+  }
+
   // ===========================================
   // MÉTODOS DE UTILIDADE
   // ===========================================
@@ -1275,62 +838,4 @@ class NewCreditCardController extends GetxController {
   bool get hasCards => savedCards.isNotEmpty;
 
   bool get hasDefaultCard => savedCards.any((card) => card['isDefault'] == true);
-
-  List<Map<String, dynamic>> get activeCards =>
-      savedCards.where((card) => !isCardExpired(card)).toList();
-
-  List<Map<String, dynamic>> get expiredCards =>
-      savedCards.where((card) => isCardExpired(card)).toList();
-
-  List<Map<String, dynamic>> getCardsByBrand(String brand) =>
-      savedCards.where((card) => card['brand'] == brand).toList();
-
-  Map<String, int> get cardBrandCounts {
-    final counts = <String, int>{};
-    for (final card in savedCards) {
-      final brand = card['brand'] as String;
-      counts[brand] = (counts[brand] ?? 0) + 1;
-    }
-    return counts;
-  }
-
-  // Método para testar conectividade com Stripe
-  Future<bool> testStripeConnection() async {
-    try {
-      // Tentar criar um customer de teste
-      final result = await _stripePaymentService.createCustomer(
-        email: 'test@test.com',
-        name: 'Test User',
-        metadata: {'test': 'true'},
-      );
-
-      if (result['success']) {
-        debugPrint('✅ Conexão com Stripe OK');
-        return true;
-      } else {
-        debugPrint('❌ Falha na conexão com Stripe: ${result['error']}');
-        return false;
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao testar conexão com Stripe: $e');
-      return false;
-    }
-  }
-
-  // Método para debug - mostrar informações do cartão
-  void debugCardInfo(String cardId) {
-    final card = savedCards.firstWhereOrNull((c) => c['id'] == cardId);
-    if (card != null) {
-      debugPrint('=== CARD DEBUG INFO ===');
-      debugPrint('ID: ${card['id']}');
-      debugPrint('Last 4: ${card['lastFourDigits']}');
-      debugPrint('Brand: ${card['brand']}');
-      debugPrint('Holder: ${card['cardHolder']}');
-      debugPrint('Type: ${card['cardType']}');
-      debugPrint('Default: ${card['isDefault']}');
-      debugPrint('Expired: ${isCardExpired(card)}');
-      debugPrint('Customer ID: ${card['customerId']}');
-      debugPrint('======================');
-    }
-  }
 }
