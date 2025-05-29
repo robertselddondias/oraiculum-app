@@ -8,9 +8,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:oraculum/services/firebase_service.dart';
 
 class StripePaymentService extends GetxService {
-  // ===========================================
-  // CONFIGURAÇÕES STRIPE
-  // ===========================================
   static const String _publishableKey = 'pk_test_51RTpqm4TyzboYffk5IRBTmwEqPvKtBftyepU82rkCK5j0Bh6TYJ7Ld6e9lqvxoJoNe1xefeE58iFS2Igwvsfnc5q00R2Aztn0o';
   static const String _secretKey = 'sk_test_51RTpqm4TyzboYffkLCT1uIvlITbGX3vgRC6rNnduYStBy2wg99c4DxrraH75S4ATZiPEOdk3KxsYlR8fVQ661CkV00r5Yt8XgO';
   static const String _baseUrl = 'https://api.stripe.com/v1';
@@ -24,29 +21,17 @@ class StripePaymentService extends GetxService {
     await _initializeStripe();
   }
 
-  // ===========================================
-  // INICIALIZAÇÃO DA SDK
-  // ===========================================
-
   Future<void> _initializeStripe() async {
     try {
       debugPrint('🔄 Inicializando Flutter Stripe SDK...');
-
       Stripe.publishableKey = _publishableKey;
       Stripe.merchantIdentifier = 'merchant.com.oraculum.app';
-
-      // Configurações adicionais
       await Stripe.instance.applySettings();
-
       debugPrint('✅ Flutter Stripe SDK inicializado com sucesso');
     } catch (e) {
       debugPrint('❌ Erro ao inicializar Stripe SDK: $e');
     }
   }
-
-  // ===========================================
-  // HEADERS PARA REQUISIÇÕES À API
-  // ===========================================
 
   Map<String, String> get _headers => {
     'Authorization': 'Bearer $_secretKey',
@@ -54,11 +39,6 @@ class StripePaymentService extends GetxService {
     'Stripe-Version': '2023-10-16',
   };
 
-  // ===========================================
-  // GESTÃO DE CLIENTES
-  // ===========================================
-
-  /// Criar ou obter cliente existente
   Future<String?> _getOrCreateCustomer({
     required String userId,
     required String email,
@@ -66,7 +46,6 @@ class StripePaymentService extends GetxService {
     String? phone,
   }) async {
     try {
-      // Verificar se já existe um customer ID salvo
       final userData = await _firebaseService.getUserData(userId);
       final userDoc = userData.data() as Map<String, dynamic>?;
 
@@ -74,7 +53,6 @@ class StripePaymentService extends GetxService {
         return userDoc!['stripeCustomerId'];
       }
 
-      // Criar novo customer
       final body = {
         'email': email,
         if (name != null) 'name': name,
@@ -92,7 +70,6 @@ class StripePaymentService extends GetxService {
         final data = json.decode(response.body);
         final customerId = data['id'];
 
-        // Salvar customer ID no perfil do usuário
         await _firebaseService.updateUserData(userId, {
           'stripeCustomerId': customerId,
         });
@@ -108,11 +85,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  // ===========================================
-  // PAGAMENTO COM CARTÃO (NOVA COMPRA)
-  // ===========================================
-
-  /// Processar pagamento com cartão usando a tela nativa da SDK
   Future<Map<String, dynamic>> processCardPayment({
     required double amount,
     required String description,
@@ -132,7 +104,6 @@ class StripePaymentService extends GetxService {
 
       final user = FirebaseAuth.instance.currentUser!;
 
-      // 1. Obter ou criar customer
       final customerId = await _getOrCreateCustomer(
         userId: userId,
         email: user.email!,
@@ -143,7 +114,6 @@ class StripePaymentService extends GetxService {
         return {'success': false, 'error': 'Falha ao criar cliente'};
       }
 
-      // 2. Criar Payment Intent
       final paymentIntentResult = await _createPaymentIntent(
         amount: amount,
         currency: currency!,
@@ -162,7 +132,6 @@ class StripePaymentService extends GetxService {
       final clientSecret = paymentIntentResult['client_secret'];
       final paymentIntentId = paymentIntentResult['payment_intent_id'];
 
-      // 3. Inicializar Payment Sheet
       await Stripe.instance.initPaymentSheet(
         paymentSheetParameters: SetupPaymentSheetParameters(
           paymentIntentClientSecret: clientSecret,
@@ -173,20 +142,22 @@ class StripePaymentService extends GetxService {
           billingDetails: const BillingDetails(
             address: Address(
               country: 'BR',
+              line2: '',
+              line1: '',
+              state: '',
+              postalCode: '',
+              city: ''
             ),
           ),
           style: ThemeMode.system,
         ),
       );
 
-      // 4. Apresentar Payment Sheet
       await Stripe.instance.presentPaymentSheet();
 
-      // 5. Verificar resultado
       final paymentResult = await _checkPaymentIntentStatus(paymentIntentId);
 
       if (paymentResult['status'] == 'succeeded') {
-        // Salvar transação no Firebase
         final transactionId = await _savePaymentTransaction(
           userId: userId,
           amount: amount,
@@ -198,10 +169,8 @@ class StripePaymentService extends GetxService {
           status: 'succeeded',
         );
 
-        // Adicionar créditos ao usuário
         await _addCreditsToUser(userId, amount);
 
-        // Se foi salvo um cartão, adicionar aos salvos
         if (saveCard) {
           await _saveCardFromPaymentIntent(userId, customerId, paymentIntentId);
         }
@@ -226,11 +195,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  // ===========================================
-  // PAGAMENTO COM CARTÃO SALVO
-  // ===========================================
-
-  /// Processar pagamento com cartão salvo
   Future<Map<String, dynamic>> processPaymentWithSavedCard({
     required String paymentMethodId,
     required double amount,
@@ -248,7 +212,6 @@ class StripePaymentService extends GetxService {
         return {'success': false, 'error': 'Usuário não autenticado'};
       }
 
-      // 1. Criar Payment Intent
       final paymentIntentResult = await _createPaymentIntent(
         amount: amount,
         currency: currency!,
@@ -265,11 +228,9 @@ class StripePaymentService extends GetxService {
 
       final paymentIntentId = paymentIntentResult['payment_intent_id'];
 
-      // 2. Confirmar pagamento
       final confirmResult = await _confirmPaymentIntent(paymentIntentId);
 
       if (confirmResult['status'] == 'succeeded') {
-        // Salvar transação
         final transactionId = await _savePaymentTransaction(
           userId: userId,
           amount: amount,
@@ -281,7 +242,6 @@ class StripePaymentService extends GetxService {
           status: 'succeeded',
         );
 
-        // Adicionar créditos
         await _addCreditsToUser(userId, amount);
 
         return {
@@ -290,14 +250,12 @@ class StripePaymentService extends GetxService {
           'payment_intent_id': paymentIntentId,
         };
       } else if (confirmResult['status'] == 'requires_action') {
-        // Requer autenticação 3D Secure
         try {
           final paymentIntent = await Stripe.instance.handleNextAction(
             confirmResult['client_secret'],
           );
 
           if (paymentIntent.status == PaymentIntentsStatus.Succeeded) {
-            // Pagamento bem-sucedido após autenticação
             final transactionId = await _savePaymentTransaction(
               userId: userId,
               amount: amount,
@@ -332,20 +290,14 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  // ===========================================
-  // APPLE PAY
-  // ===========================================
-
-  /// Verificar se Apple Pay está disponível
   Future<bool> isApplePaySupported() async {
     try {
-      return await Stripe.instance.isApplePaySupported();
+      return true;//await Stripe.instance.isApplePaySupported();
     } catch (e) {
       return false;
     }
   }
 
-  /// Processar pagamento com Apple Pay
   Future<Map<String, dynamic>> processApplePayPayment({
     required double amount,
     required String description,
@@ -362,12 +314,10 @@ class StripePaymentService extends GetxService {
         return {'success': false, 'error': 'Usuário não autenticado'};
       }
 
-      // Verificar suporte
       if (!await isApplePaySupported()) {
         return {'success': false, 'error': 'Apple Pay não está disponível'};
       }
 
-      // Criar Payment Intent
       final paymentIntentResult = await _createPaymentIntent(
         amount: amount,
         currency: currency!,
@@ -384,18 +334,15 @@ class StripePaymentService extends GetxService {
       final clientSecret = paymentIntentResult['client_secret'];
       final paymentIntentId = paymentIntentResult['payment_intent_id'];
 
-      // Configurar Apple Pay
-      await Stripe.instance.confirmApplePayPayment(
-        clientSecret,
-        const ApplePayParams(
-          currencyCode: 'BRL',
-          countryCode: 'BR',
-          merchantDisplayName: 'Oraculum',
-          merchantIdentifier: 'merchant.com.oraculum.app',
-        ),
-      );
+      // await Stripe.instance.confirmApplePayPayment(
+      //   clientSecret,
+      //   const ApplePayParams(
+      //     currencyCode: 'BRL',
+      //     merchantCountryCode: 'BR',
+      //     cartItems: [],
+      //   ),
+      // );
 
-      // Verificar resultado
       final paymentResult = await _checkPaymentIntentStatus(paymentIntentId);
 
       if (paymentResult['status'] == 'succeeded') {
@@ -432,11 +379,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  // ===========================================
-  // GOOGLE PAY
-  // ===========================================
-
-  /// Verificar se Google Pay está disponível
   Future<bool> isGooglePaySupported() async {
     try {
       return await Stripe.instance.isGooglePaySupported(
@@ -447,7 +389,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  /// Processar pagamento com Google Pay
   Future<Map<String, dynamic>> processGooglePayPayment({
     required double amount,
     required String description,
@@ -464,12 +405,10 @@ class StripePaymentService extends GetxService {
         return {'success': false, 'error': 'Usuário não autenticado'};
       }
 
-      // Verificar suporte
       if (!await isGooglePaySupported()) {
         return {'success': false, 'error': 'Google Pay não está disponível'};
       }
 
-      // Criar Payment Intent
       final paymentIntentResult = await _createPaymentIntent(
         amount: amount,
         currency: currency!,
@@ -486,17 +425,14 @@ class StripePaymentService extends GetxService {
       final clientSecret = paymentIntentResult['client_secret'];
       final paymentIntentId = paymentIntentResult['payment_intent_id'];
 
-      // Inicializar Google Pay
       await Stripe.instance.initGooglePay(
         GooglePayInitParams(
-          testEnv: true, // Mudar para false em produção
+          testEnv: true,
           merchantName: 'Oraculum',
           countryCode: 'BR',
-          currencyCode: 'BRL',
         ),
       );
 
-      // Apresentar Google Pay
       await Stripe.instance.presentGooglePay(
         PresentGooglePayParams(
           clientSecret: clientSecret,
@@ -504,7 +440,6 @@ class StripePaymentService extends GetxService {
         ),
       );
 
-      // Verificar resultado
       final paymentResult = await _checkPaymentIntentStatus(paymentIntentId);
 
       if (paymentResult['status'] == 'succeeded') {
@@ -541,11 +476,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  // ===========================================
-  // PIX (VIA STRIPE)
-  // ===========================================
-
-  /// Criar pagamento PIX
   Future<Map<String, dynamic>> createPixPayment({
     required double amount,
     required String description,
@@ -583,7 +513,6 @@ class StripePaymentService extends GetxService {
         final data = json.decode(response.body);
         final paymentIntentId = data['id'];
 
-        // Confirmar para gerar QR Code PIX
         final confirmResponse = await http.post(
           Uri.parse('$_baseUrl/payment_intents/$paymentIntentId/confirm'),
           headers: _headers,
@@ -601,7 +530,6 @@ class StripePaymentService extends GetxService {
             pixQrCode = confirmedData['next_action']['pix_display_qr_code']['data'];
           }
 
-          // Salvar transação como pendente
           final transactionId = await _savePaymentTransaction(
             userId: userId,
             amount: amount,
@@ -636,11 +564,86 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  // ===========================================
-  // GESTÃO DE CARTÕES SALVOS
-  // ===========================================
+  Future<Map<String, dynamic>> setupCardForFutureUse() async {
+    try {
+      isLoading.value = true;
+      debugPrint('🔄 Configurando cartão para uso futuro');
 
-  /// Obter cartões salvos do usuário
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        return {'success': false, 'error': 'Usuário não autenticado'};
+      }
+
+      final user = FirebaseAuth.instance.currentUser!;
+
+      final customerId = await _getOrCreateCustomer(
+        userId: userId,
+        email: user.email!,
+        name: user.displayName,
+      );
+
+      if (customerId == null) {
+        return {'success': false, 'error': 'Falha ao criar cliente'};
+      }
+
+      final setupIntentResult = await _createSetupIntent(
+        customerId: customerId,
+        userId: userId,
+      );
+
+      if (!setupIntentResult['success']) {
+        return setupIntentResult;
+      }
+
+      final clientSecret = setupIntentResult['client_secret'];
+      final setupIntentId = setupIntentResult['setup_intent_id'];
+
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          setupIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Oraculum',
+          customerId: customerId,
+          customerEphemeralKeySecret: await _createEphemeralKey(customerId),
+          billingDetails: const BillingDetails(
+            address: Address(
+              country: 'BR',
+              city: 'SP',
+              postalCode: '03334-040',
+              line1: 'Endereco teste',
+              state: 'SP',
+              line2: ''
+            ),
+          ),
+          style: ThemeMode.system,
+        ),
+      );
+
+      await Stripe.instance.presentPaymentSheet();
+
+      final setupResult = await _checkSetupIntentStatus(setupIntentId);
+
+      if (setupResult['status'] == 'succeeded') {
+        await _saveCardFromSetupIntent(userId, customerId, setupIntentId);
+
+        return {
+          'success': true,
+          'setup_intent_id': setupIntentId,
+        };
+      }
+
+      return {'success': false, 'error': 'Não foi possível adicionar o cartão'};
+
+    } on StripeException catch (e) {
+      debugPrint('❌ Erro Stripe Setup: ${e.error.localizedMessage}');
+      return {'success': false, 'error': e.error.localizedMessage ?? 'Erro ao adicionar cartão'};
+    } catch (e) {
+      debugPrint('❌ Erro geral Setup: $e');
+      return {'success': false, 'error': 'Erro inesperado: $e'};
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getSavedCards(String userId) async {
     try {
       final cardsSnapshot = await _firebaseService.firestore
@@ -653,7 +656,14 @@ class StripePaymentService extends GetxService {
         final data = doc.data();
         return {
           'id': doc.id,
-          ...data,
+          'stripePaymentMethodId': data['stripePaymentMethodId'],
+          'last4': data['last4'],
+          'brand': data['brand'],
+          'expMonth': data['expMonth'],
+          'expYear': data['expYear'],
+          'isDefault': data['isDefault'] ?? false,
+          'cardHolderName': data['cardHolderName'],
+          'createdAt': data['createdAt'],
         };
       }).toList();
     } catch (e) {
@@ -662,16 +672,25 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  /// Remover cartão salvo
   Future<bool> removeCard(String userId, String cardId) async {
     try {
-      // Remover do Stripe
+      final cardDoc = await _firebaseService.firestore
+          .collection('user_payment_methods')
+          .doc(cardId)
+          .get();
+
+      if (!cardDoc.exists) {
+        return false;
+      }
+
+      final cardData = cardDoc.data() as Map<String, dynamic>;
+      final stripePaymentMethodId = cardData['stripePaymentMethodId'];
+
       await http.post(
-        Uri.parse('$_baseUrl/payment_methods/$cardId/detach'),
+        Uri.parse('$_baseUrl/payment_methods/$stripePaymentMethodId/detach'),
         headers: _headers,
       );
 
-      // Remover do Firebase
       await _firebaseService.firestore
           .collection('user_payment_methods')
           .doc(cardId)
@@ -684,11 +703,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  // ===========================================
-  // MÉTODOS AUXILIARES DA API
-  // ===========================================
-
-  /// Criar Payment Intent
   Future<Map<String, dynamic>> _createPaymentIntent({
     required double amount,
     required String currency,
@@ -736,7 +750,39 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  /// Confirmar Payment Intent
+  Future<Map<String, dynamic>> _createSetupIntent({
+    required String customerId,
+    required String userId,
+  }) async {
+    try {
+      final body = {
+        'customer': customerId,
+        'usage': 'off_session',
+        'metadata[user_id]': userId,
+      };
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/setup_intents'),
+        headers: _headers,
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'setup_intent_id': data['id'],
+          'client_secret': data['client_secret'],
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {'success': false, 'error': errorData['error']['message']};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erro ao criar Setup Intent: $e'};
+    }
+  }
+
   Future<Map<String, dynamic>> _confirmPaymentIntent(String paymentIntentId) async {
     try {
       final response = await http.post(
@@ -760,7 +806,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  /// Verificar status do Payment Intent
   Future<Map<String, dynamic>> _checkPaymentIntentStatus(String paymentIntentId) async {
     try {
       final response = await http.get(
@@ -783,7 +828,28 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  /// Criar Ephemeral Key para customer
+  Future<Map<String, dynamic>> _checkSetupIntentStatus(String setupIntentId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/setup_intents/$setupIntentId'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'status': data['status'],
+          'data': data,
+        };
+      }
+
+      return {'success': false, 'error': 'Erro ao verificar status do setup'};
+    } catch (e) {
+      return {'success': false, 'error': 'Erro na verificação do setup: $e'};
+    }
+  }
+
   Future<String?> _createEphemeralKey(String customerId) async {
     try {
       final response = await http.post(
@@ -807,11 +873,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  // ===========================================
-  // MÉTODOS AUXILIARES DO FIREBASE
-  // ===========================================
-
-  /// Salvar transação no Firebase
   Future<String> _savePaymentTransaction({
     required String userId,
     required double amount,
@@ -850,7 +911,6 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  /// Adicionar créditos ao usuário
   Future<void> _addCreditsToUser(String userId, double amount) async {
     try {
       final userDoc = await _firebaseService.firestore
@@ -872,20 +932,712 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  /// Salvar cartão do Payment Intent
   Future<void> _saveCardFromPaymentIntent(String userId, String customerId, String paymentIntentId) async {
     try {
-      // Buscar Payment Intent para obter o Payment Method
       final paymentIntentData = await _checkPaymentIntentStatus(paymentIntentId);
 
       if (paymentIntentData['success']) {
         final paymentMethodId = paymentIntentData['data']['payment_method'];
 
         if (paymentMethodId != null) {
-          // Buscar detalhes do Payment Method
           final pmResponse = await http.get(
             Uri.parse('$_baseUrl/payment_methods/$paymentMethodId'),
             headers: _headers,
           );
 
-          if
+          if (pmResponse.statusCode == 200) {
+            final pmData = json.decode(pmResponse.body);
+            final cardData = pmData['card'];
+
+            await _firebaseService.firestore
+                .collection('user_payment_methods')
+                .add({
+              'userId': userId,
+              'customerId': customerId,
+              'stripePaymentMethodId': paymentMethodId,
+              'type': 'card',
+              'brand': cardData['brand'],
+              'last4': cardData['last4'],
+              'expMonth': cardData['exp_month'],
+              'expYear': cardData['exp_year'],
+              'cardHolderName': cardData['holder_name'] ?? '',
+              'isDefault': false,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+            debugPrint('✅ Cartão salvo do Payment Intent');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao salvar cartão do Payment Intent: $e');
+    }
+  }
+
+  Future<void> _saveCardFromSetupIntent(String userId, String customerId, String setupIntentId) async {
+    try {
+      final setupIntentData = await _checkSetupIntentStatus(setupIntentId);
+
+      if (setupIntentData['success']) {
+        final paymentMethodId = setupIntentData['data']['payment_method'];
+
+        if (paymentMethodId != null) {
+          final pmResponse = await http.get(
+            Uri.parse('$_baseUrl/payment_methods/$paymentMethodId'),
+            headers: _headers,
+          );
+
+          if (pmResponse.statusCode == 200) {
+            final pmData = json.decode(pmResponse.body);
+            final cardData = pmData['card'];
+
+            final existingCards = await getSavedCards(userId);
+            final isFirstCard = existingCards.isEmpty;
+
+            await _firebaseService.firestore
+                .collection('user_payment_methods')
+                .add({
+              'userId': userId,
+              'customerId': customerId,
+              'stripePaymentMethodId': paymentMethodId,
+              'type': 'card',
+              'brand': cardData['brand'],
+              'last4': cardData['last4'],
+              'expMonth': cardData['exp_month'],
+              'expYear': cardData['exp_year'],
+              'cardHolderName': cardData['holder_name'] ?? '',
+              'isDefault': isFirstCard,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+
+            debugPrint('✅ Cartão salvo do Setup Intent');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao salvar cartão do Setup Intent: $e');
+    }
+  }
+
+  Future<Map<String, bool>> checkAvailableFeatures() async {
+    try {
+      final features = <String, bool>{};
+
+      features['apple_pay'] = await isApplePaySupported();
+      features['google_pay'] = await isGooglePaySupported();
+      features['card_payments'] = true;
+      features['pix'] = true;
+      features['save_cards'] = true;
+
+      return features;
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar recursos: $e');
+      return {
+        'card_payments': true,
+        'apple_pay': false,
+        'google_pay': false,
+        'pix': true,
+        'save_cards': true,
+      };
+    }
+  }
+
+  String detectCardBrand(String cardNumber) {
+    final cleanNumber = cardNumber.replaceAll(RegExp(r'\D'), '');
+
+    if (cleanNumber.isEmpty) return '';
+
+    if (cleanNumber.startsWith('4')) {
+      return 'visa';
+    }
+
+    if (cleanNumber.startsWith(RegExp(r'^5[1-5]')) ||
+        cleanNumber.startsWith(RegExp(r'^2[2-7]'))) {
+      return 'mastercard';
+    }
+
+    if (cleanNumber.startsWith(RegExp(r'^3[47]'))) {
+      return 'amex';
+    }
+
+    if (cleanNumber.startsWith(RegExp(r'^3[0689]'))) {
+      return 'diners';
+    }
+
+    if (cleanNumber.startsWith('6011') ||
+        cleanNumber.startsWith(RegExp(r'^65'))) {
+      return 'discover';
+    }
+
+    if (cleanNumber.startsWith(RegExp(r'^(4011|4312|4389|4514|4573|6362|6363)'))) {
+      return 'elo';
+    }
+
+    return 'unknown';
+  }
+
+  Future<Map<String, dynamic>> getPaymentStats(String userId) async {
+    try {
+      final paymentsSnapshot = await _firebaseService.firestore
+          .collection('payments')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final payments = paymentsSnapshot.docs.map((doc) => doc.data()).toList();
+
+      double totalAmount = 0;
+      int successfulPayments = 0;
+      int failedPayments = 0;
+      final methodCounts = <String, int>{};
+
+      for (final payment in payments) {
+        final amount = (payment['amount'] ?? 0.0) as num;
+        final status = payment['status'] as String? ?? '';
+        final method = payment['paymentMethod'] as String? ?? '';
+
+        totalAmount += amount.toDouble();
+
+        if (status == 'succeeded') {
+          successfulPayments++;
+        } else {
+          failedPayments++;
+        }
+
+        methodCounts[method] = (methodCounts[method] ?? 0) + 1;
+      }
+
+      return {
+        'totalAmount': totalAmount,
+        'totalTransactions': payments.length,
+        'successfulPayments': successfulPayments,
+        'failedPayments': failedPayments,
+        'successRate': payments.isNotEmpty
+            ? (successfulPayments / payments.length) * 100
+            : 0.0,
+        'methodCounts': methodCounts,
+      };
+    } catch (e) {
+      debugPrint('❌ Erro ao obter estatísticas: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> generateTransactionReport({
+    required String userId,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      var query = _firebaseService.firestore
+          .collection('payments')
+          .where('userId', isEqualTo: userId);
+
+      if (startDate != null) {
+        query = query.where('createdAt', isGreaterThanOrEqualTo: startDate.toIso8601String());
+      }
+
+      if (endDate != null) {
+        query = query.where('createdAt', isLessThanOrEqualTo: endDate.toIso8601String());
+      }
+
+      final snapshot = await query.get();
+      final transactions = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          ...data,
+        };
+      }).toList();
+
+      return {
+        'transactions': transactions,
+        'period': {
+          'start': startDate?.toIso8601String(),
+          'end': endDate?.toIso8601String(),
+        },
+        'summary': await getPaymentStats(userId),
+      };
+    } catch (e) {
+      debugPrint('❌ Erro ao gerar relatório: $e');
+      return {};
+    }
+  }
+
+  Future<Map<String, dynamic>> getUserPaymentSettings(String userId) async {
+    try {
+      final settingsDoc = await _firebaseService.firestore
+          .collection('user_payment_settings')
+          .doc(userId)
+          .get();
+
+      if (settingsDoc.exists) {
+        return settingsDoc.data() as Map<String, dynamic>;
+      }
+
+      return {
+        'defaultPaymentMethod': null,
+        'saveCards': true,
+        'notifications': {
+          'paymentSuccess': true,
+          'paymentFailed': true,
+          'lowCredits': true,
+        },
+        'autoRecharge': false,
+        'autoRechargeThreshold': 10.0,
+        'autoRechargeAmount': 50.0,
+      };
+    } catch (e) {
+      debugPrint('❌ Erro ao obter configurações: $e');
+      return {};
+    }
+  }
+
+  Future<bool> updateUserPaymentSettings(String userId, Map<String, dynamic> settings) async {
+    try {
+      await _firebaseService.firestore
+          .collection('user_payment_settings')
+          .doc(userId)
+          .set(settings, SetOptions(merge: true));
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar configurações: $e');
+      return false;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> checkExpiringCards(String userId) async {
+    try {
+      final cards = await getSavedCards(userId);
+      final expiringCards = <Map<String, dynamic>>[];
+      final now = DateTime.now();
+      final threeMonthsFromNow = now.add(const Duration(days: 90));
+
+      for (final card in cards) {
+        final expMonth = card['expMonth'] as int;
+        final expYear = card['expYear'] as int;
+        final cardExpiry = DateTime(expYear, expMonth + 1, 0);
+
+        if (cardExpiry.isBefore(threeMonthsFromNow)) {
+          expiringCards.add({
+            ...card,
+            'expiryDate': cardExpiry,
+            'daysUntilExpiry': cardExpiry.difference(now).inDays,
+          });
+        }
+      }
+
+      return expiringCards;
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar cartões expirando: $e');
+      return [];
+    }
+  }
+
+  Future<void> processWebhook(Map<String, dynamic> event) async {
+    try {
+      final eventType = event['type'] as String;
+      final eventData = event['data']['object'] as Map<String, dynamic>;
+
+      switch (eventType) {
+        case 'payment_intent.succeeded':
+          await _handlePaymentIntentSucceeded(eventData);
+          break;
+        case 'payment_intent.payment_failed':
+          await _handlePaymentIntentFailed(eventData);
+          break;
+        case 'payment_method.attached':
+          await _handlePaymentMethodAttached(eventData);
+          break;
+        case 'customer.subscription.created':
+          await _handleSubscriptionCreated(eventData);
+          break;
+        default:
+          debugPrint('⚠️ Evento não tratado: $eventType');
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao processar webhook: $e');
+    }
+  }
+
+  Future<void> _handlePaymentIntentSucceeded(Map<String, dynamic> data) async {
+    try {
+      final paymentIntentId = data['id'];
+      final userId = data['metadata']?['user_id'];
+
+      if (userId != null) {
+        final paymentsSnapshot = await _firebaseService.firestore
+            .collection('payments')
+            .where('stripePaymentIntentId', isEqualTo: paymentIntentId)
+            .limit(1)
+            .get();
+
+        if (paymentsSnapshot.docs.isNotEmpty) {
+          await paymentsSnapshot.docs.first.reference.update({
+            'status': 'succeeded',
+            'completedAt': FieldValue.serverTimestamp(),
+          });
+        }
+
+        debugPrint('✅ Payment Intent succeeded processado: $paymentIntentId');
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao tratar Payment Intent succeeded: $e');
+    }
+  }
+
+  Future<void> _handlePaymentIntentFailed(Map<String, dynamic> data) async {
+    try {
+      final paymentIntentId = data['id'];
+      final userId = data['metadata']?['user_id'];
+
+      if (userId != null) {
+        final paymentsSnapshot = await _firebaseService.firestore
+            .collection('payments')
+            .where('stripePaymentIntentId', isEqualTo: paymentIntentId)
+            .limit(1)
+            .get();
+
+        if (paymentsSnapshot.docs.isNotEmpty) {
+          await paymentsSnapshot.docs.first.reference.update({
+            'status': 'failed',
+            'failedAt': FieldValue.serverTimestamp(),
+            'failureReason': data['last_payment_error']?['message'],
+          });
+        }
+
+        debugPrint('✅ Payment Intent failed processado: $paymentIntentId');
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao tratar Payment Intent failed: $e');
+    }
+  }
+
+  Future<void> _handlePaymentMethodAttached(Map<String, dynamic> data) async {
+    try {
+      final customerId = data['customer'];
+      debugPrint('✅ Payment Method attached para customer: $customerId');
+    } catch (e) {
+      debugPrint('❌ Erro ao tratar Payment Method attached: $e');
+    }
+  }
+
+  Future<void> _handleSubscriptionCreated(Map<String, dynamic> data) async {
+    try {
+      final subscriptionId = data['id'];
+      final customerId = data['customer'];
+      debugPrint('✅ Subscription created: $subscriptionId para customer: $customerId');
+    } catch (e) {
+      debugPrint('❌ Erro ao tratar Subscription created: $e');
+    }
+  }
+
+  Future<bool> testConnection() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/balance'),
+        headers: _headers,
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('❌ Erro no teste de conexão: $e');
+      return false;
+    }
+  }
+
+  Future<void> clearTestData(String userId) async {
+    try {
+      final paymentsSnapshot = await _firebaseService.firestore
+          .collection('payments')
+          .where('userId', isEqualTo: userId)
+          .where('stripePaymentIntentId', arrayContains: 'pi_test_')
+          .get();
+
+      for (final doc in paymentsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      final cardsSnapshot = await _firebaseService.firestore
+          .collection('user_payment_methods')
+          .where('userId', isEqualTo: userId)
+          .where('stripePaymentMethodId', arrayContains: 'pm_test_')
+          .get();
+
+      for (final doc in cardsSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      debugPrint('✅ Dados de teste limpos para usuário: $userId');
+    } catch (e) {
+      debugPrint('❌ Erro ao limpar dados de teste: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> getAccountInfo() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/account'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'data': {
+            'id': data['id'],
+            'display_name': data['display_name'],
+            'country': data['country'],
+            'default_currency': data['default_currency'],
+            'charges_enabled': data['charges_enabled'],
+            'payouts_enabled': data['payouts_enabled'],
+          }
+        };
+      }
+
+      return {'success': false, 'error': 'Falha ao obter informações da conta'};
+    } catch (e) {
+      debugPrint('❌ Erro ao obter informações da conta: $e');
+      return {'success': false, 'error': 'Erro: $e'};
+    }
+  }
+
+  bool validateCardNumber(String cardNumber) {
+    final cleanNumber = cardNumber.replaceAll(RegExp(r'\D'), '');
+
+    if (cleanNumber.length < 13 || cleanNumber.length > 19) {
+      return false;
+    }
+
+    int sum = 0;
+    bool alternate = false;
+
+    for (int i = cleanNumber.length - 1; i >= 0; i--) {
+      int digit = int.parse(cleanNumber[i]);
+
+      if (alternate) {
+        digit *= 2;
+        if (digit > 9) {
+          digit = (digit % 10) + 1;
+        }
+      }
+
+      sum += digit;
+      alternate = !alternate;
+    }
+
+    return sum % 10 == 0;
+  }
+
+  bool validateExpiryDate(String expiry) {
+    if (expiry.length != 5 || !expiry.contains('/')) {
+      return false;
+    }
+
+    final parts = expiry.split('/');
+    if (parts.length != 2) {
+      return false;
+    }
+
+    final month = int.tryParse(parts[0]);
+    final year = int.tryParse('20${parts[1]}');
+
+    if (month == null || year == null || month < 1 || month > 12) {
+      return false;
+    }
+
+    final now = DateTime.now();
+    final cardDate = DateTime(year, month);
+
+    return cardDate.isAfter(DateTime(now.year, now.month));
+  }
+
+  bool validateCVV(String cvv, String cardBrand) {
+    final requiredLength = cardBrand == 'amex' ? 4 : 3;
+    return cvv.length == requiredLength && RegExp(r'^\d+').hasMatch(cvv);
+  }
+
+  String formatCardNumber(String input) {
+    final cleanInput = input.replaceAll(RegExp(r'\D'), '');
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < cleanInput.length; i++) {
+      if (i > 0 && i % 4 == 0) {
+        buffer.write(' ');
+      }
+      buffer.write(cleanInput[i]);
+    }
+
+    return buffer.toString();
+  }
+
+  Widget getCardBrandIcon(String brand, {double size = 24}) {
+    switch (brand.toLowerCase()) {
+      case 'visa':
+        return Container(
+          width: size * 1.5,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.blue.shade800,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Center(
+            child: Text(
+              'VISA',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: size * 0.4,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      case 'mastercard':
+        return SizedBox(
+          width: size * 1.5,
+          height: size,
+          child: Stack(
+            children: [
+              Positioned(
+                left: 0,
+                child: Container(
+                  width: size * 0.6,
+                  height: size * 0.6,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 0,
+                child: Container(
+                  width: size * 0.6,
+                  height: size * 0.6,
+                  decoration: const BoxDecoration(
+                    color: Colors.orange,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      case 'amex':
+        return Container(
+          width: size * 1.5,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.blue.shade900,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Center(
+            child: Text(
+              'AMEX',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: size * 0.35,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      case 'elo':
+        return Container(
+          width: size * 1.5,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.yellow.shade700,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Center(
+            child: Text(
+              'ELO',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: size * 0.4,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        );
+      default:
+        return Icon(
+          Icons.credit_card,
+          size: size,
+          color: Colors.grey,
+        );
+    }
+  }
+
+  Color getCardBrandColor(String brand) {
+    switch (brand.toLowerCase()) {
+      case 'visa':
+        return Colors.blue.shade800;
+      case 'mastercard':
+        return Colors.red.shade700;
+      case 'amex':
+        return Colors.blue.shade900;
+      case 'elo':
+        return Colors.yellow.shade700;
+      case 'diners':
+        return Colors.grey.shade700;
+      case 'discover':
+        return Colors.orange.shade700;
+      default:
+        return Colors.grey.shade600;
+    }
+  }
+
+  int convertToCents(double amount) {
+    return (amount * 100).round();
+  }
+
+  double convertFromCents(int cents) {
+    return cents / 100.0;
+  }
+
+  String formatCurrency(double amount, {String currency = 'BRL'}) {
+    switch (currency.toUpperCase()) {
+      case 'BRL':
+        return 'R\$ ${amount.toStringAsFixed(2).replaceAll('.', ',')}';
+      case 'USD':
+        return '\${amount.toStringAsFixed(2)}';
+      case 'EUR':
+        return '€${amount.toStringAsFixed(2)}';
+      default:
+        return '${amount.toStringAsFixed(2)} $currency';
+    }
+  }
+
+  String generateTransactionId() {
+    return 'txn_${DateTime.now().millisecondsSinceEpoch}_${(1000 + (999 * (DateTime.now().microsecond / 1000000))).round()}';
+  }
+
+  bool get isTestEnvironment => _secretKey.contains('test');
+
+  String get webhookUrl => 'https://your-backend.com/stripe/webhook';
+
+  void logPaymentAttempt({
+    required String method,
+    required double amount,
+    required String userId,
+    String? error,
+  }) {
+    final logData = {
+      'timestamp': DateTime.now().toIso8601String(),
+      'method': method,
+      'amount': amount,
+      'userId': userId,
+      'success': error == null,
+      if (error != null) 'error': error,
+    };
+
+    debugPrint('💳 Payment Log: ${json.encode(logData)}');
+  }
+
+  void dispose() {
+    debugPrint('🧹 StripePaymentService disposed');
+  }
+}

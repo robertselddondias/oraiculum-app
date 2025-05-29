@@ -14,10 +14,14 @@ dependencies:
   get: ^4.6.6
 
   # UI Components & Animations
-  cupertino_icons: ^1.0.6
-  flutter_animate: ^4.5.0
-  cached_network_image: ^3.3.1
-  google_fonts: ^6.2.1
+  cupertino_icons: ^1.0.2
+  google_fonts: ^6.1.0
+  flutter_animate: ^4.3.0
+  cached_network_image: ^3.3.0
+  fluttertoast: ^8.2.2
+  smooth_page_indicator: ^1.1.0
+  lottie: ^2.6.0
+  fui_kit: ^2.0.0
 
   # Input Formatting & Validation
   mask_text_input_formatter: ^2.9.0
@@ -33,13 +37,12 @@ dependencies:
   http: ^1.2.1
 
   # Firebase
-  firebase_core: ^2.31.0
-  firebase_auth: ^4.19.4
-  firebase_storage: ^11.7.4
-  cloud_firestore: ^4.17.2
-  firebase_messaging: ^14.9.1
-  firebase_crashlytics: ^3.5.4
-  firebase_analytics: ^10.10.4
+  firebase_core: ^3.13.0
+  cloud_firestore: ^5.6.5
+  firebase_auth: ^5.3.2
+  firebase_analytics: ^11.4.4
+  firebase_crashlytics: ^4.3.4
+  firebase_storage: ^12.3.6
 
   # Payments - STRIPE SDK
   flutter_stripe: ^11.5.0
@@ -48,7 +51,7 @@ dependencies:
   device_info_plus: ^10.1.0
   package_info_plus: ^8.0.0
   url_launcher: ^6.2.6
-  share_plus: ^9.0.0
+  share_plus: ^11.0.0
   permission_handler: ^11.3.1
 
   # Local Storage & Utils
@@ -89,11 +92,7 @@ flutter:
   assets:
     - assets/images/
     - assets/images/zodiac/
-    - assets/images/cards/
-    - assets/images/mediums/
     - assets/icons/
-    - assets/animations/
-    - assets/sounds/
 
   # Fonts
   fonts:
@@ -107,9 +106,6 @@ flutter:
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 700
 
-    - family: Mystical
-      fonts:
-        - asset: assets/fonts/Mystical-Regular.ttf
 
 # Platform-specific configurations
 flutter_platforms:
