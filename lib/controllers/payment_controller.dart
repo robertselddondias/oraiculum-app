@@ -10,31 +10,66 @@ class PaymentController extends GetxController {
   final PaymentService _paymentService = Get.find<PaymentService>();
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final AuthController _authController = Get.find<AuthController>();
+  final StripePaymentService _stripeService = Get.find<StripePaymentService>();
 
-  // Serviço Stripe
-  late StripePaymentService _stripePaymentService;
-
+  // Estados observáveis
   RxBool isLoading = false.obs;
   RxList<Map<String, dynamic>> paymentHistory = <Map<String, dynamic>>[].obs;
+  RxList<Map<String, dynamic>> savedCards = <Map<String, dynamic>>[].obs;
   RxDouble userCredits = 0.0.obs;
+  RxMap<String, bool> availablePaymentMethods = <String, bool>{}.obs;
 
   @override
   void onInit() {
     super.onInit();
-
-    _stripePaymentService = Get.find<StripePaymentService>();
+    _initializePaymentMethods();
 
     if (_authController.isLoggedIn) {
       loadUserCredits();
+      loadSavedCards();
     }
 
     // Observer para atualizar quando o usuário fizer login
     ever(_authController.currentUser, (_) {
       if (_authController.isLoggedIn) {
         loadUserCredits();
+        loadSavedCards();
+      } else {
+        _clearUserData();
       }
     });
   }
+
+  // ===========================================
+  // INICIALIZAÇÃO
+  // ===========================================
+
+  Future<void> _initializePaymentMethods() async {
+    try {
+      final features = await _stripeService.checkAvailableFeatures();
+      availablePaymentMethods.value = features;
+    } catch (e) {
+      debugPrint('Erro ao verificar métodos disponíveis: $e');
+      // Definir padrões se houver erro
+      availablePaymentMethods.value = {
+        'card_payments': true,
+        'apple_pay': false,
+        'google_pay': false,
+        'pix': true,
+        'save_cards': true,
+      };
+    }
+  }
+
+  void _clearUserData() {
+    userCredits.value = 0.0;
+    paymentHistory.clear();
+    savedCards.clear();
+  }
+
+  // ===========================================
+  // GERENCIAMENTO DE CRÉDITOS
+  // ===========================================
 
   Future<void> loadUserCredits() async {
     try {
@@ -63,7 +98,6 @@ class PaymentController extends GetxController {
         } else if (data['credits'] is int) {
           credits = (data['credits'] as int).toDouble();
         } else {
-          // Tentar converter para double se for outro tipo
           try {
             credits = double.parse(data['credits'].toString());
           } catch (e) {
@@ -85,9 +119,469 @@ class PaymentController extends GetxController {
       );
     } finally {
       isLoading.value = false;
-      update();
     }
   }
+
+  // ===========================================
+  // PAGAMENTOS COM CARTÃO NOVO
+  // ===========================================
+
+  /// Processar pagamento com cartão novo usando tela nativa da SDK
+  Future<String> processCardPayment({
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+    bool saveCard = true,
+  }) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
+        return '';
+      }
+
+      isLoading.value = true;
+
+      final result = await _stripeService.processCardPayment(
+        amount: amount,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+        saveCard: saveCard,
+      );
+
+      if (result['success']) {
+        await loadUserCredits();
+        if (saveCard) {
+          await loadSavedCards();
+        }
+
+        Get.snackbar(
+          'Sucesso',
+          'Pagamento de R\$ ${amount.toStringAsFixed(2)} realizado com sucesso!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+
+        return result['transaction_id'] ?? result['payment_intent_id'];
+      } else {
+        Get.snackbar(
+          'Erro no Pagamento',
+          result['error'] ?? 'Falha no processamento',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return '';
+      }
+    } catch (e) {
+      debugPrint('Erro no pagamento com cartão: $e');
+      Get.snackbar(
+        'Erro',
+        'Falha inesperada no pagamento',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return '';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // PAGAMENTOS COM CARTÃO SALVO
+  // ===========================================
+
+  /// Processar pagamento com cartão salvo
+  Future<String> processPaymentWithSavedCard({
+    required String paymentMethodId,
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+  }) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
+        return '';
+      }
+
+      isLoading.value = true;
+
+      final result = await _stripeService.processPaymentWithSavedCard(
+        paymentMethodId: paymentMethodId,
+        amount: amount,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+      );
+
+      if (result['success']) {
+        await loadUserCredits();
+
+        Get.snackbar(
+          'Sucesso',
+          'Pagamento de R\$ ${amount.toStringAsFixed(2)} realizado com sucesso!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+
+        return result['transaction_id'] ?? result['payment_intent_id'];
+      } else {
+        Get.snackbar(
+          'Erro no Pagamento',
+          result['error'] ?? 'Falha no processamento',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return '';
+      }
+    } catch (e) {
+      debugPrint('Erro no pagamento com cartão salvo: $e');
+      Get.snackbar(
+        'Erro',
+        'Falha inesperada no pagamento',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return '';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // APPLE PAY
+  // ===========================================
+
+  /// Processar pagamento com Apple Pay
+  Future<String> processApplePayPayment({
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+  }) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
+        return '';
+      }
+
+      // Verificar se Apple Pay está disponível
+      if (!availablePaymentMethods['apple_pay']!) {
+        Get.snackbar(
+          'Indisponível',
+          'Apple Pay não está disponível neste dispositivo',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return '';
+      }
+
+      isLoading.value = true;
+
+      final result = await _stripeService.processApplePayPayment(
+        amount: amount,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+      );
+
+      if (result['success']) {
+        await loadUserCredits();
+
+        Get.snackbar(
+          'Sucesso',
+          'Pagamento Apple Pay de R\$ ${amount.toStringAsFixed(2)} realizado!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+
+        return result['transaction_id'] ?? result['payment_intent_id'];
+      } else {
+        Get.snackbar(
+          'Erro Apple Pay',
+          result['error'] ?? 'Falha no Apple Pay',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return '';
+      }
+    } catch (e) {
+      debugPrint('Erro no Apple Pay: $e');
+      Get.snackbar(
+        'Erro',
+        'Falha no Apple Pay',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return '';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // GOOGLE PAY
+  // ===========================================
+
+  /// Processar pagamento com Google Pay
+  Future<String> processGooglePayPayment({
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+  }) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
+        return '';
+      }
+
+      // Verificar se Google Pay está disponível
+      if (!availablePaymentMethods['google_pay']!) {
+        Get.snackbar(
+          'Indisponível',
+          'Google Pay não está disponível neste dispositivo',
+          backgroundColor: Colors.orange,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return '';
+      }
+
+      isLoading.value = true;
+
+      final result = await _stripeService.processGooglePayPayment(
+        amount: amount,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+      );
+
+      if (result['success']) {
+        await loadUserCredits();
+
+        Get.snackbar(
+          'Sucesso',
+          'Pagamento Google Pay de R\$ ${amount.toStringAsFixed(2)} realizado!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+
+        return result['transaction_id'] ?? result['payment_intent_id'];
+      } else {
+        Get.snackbar(
+          'Erro Google Pay',
+          result['error'] ?? 'Falha no Google Pay',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return '';
+      }
+    } catch (e) {
+      debugPrint('Erro no Google Pay: $e');
+      Get.snackbar(
+        'Erro',
+        'Falha no Google Pay',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return '';
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // PIX
+  // ===========================================
+
+  /// Processar pagamento com PIX
+  Future<Map<String, dynamic>> processPixPayment({
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+  }) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para realizar um pagamento');
+        return {'success': false, 'error': 'Usuário não logado'};
+      }
+
+      isLoading.value = true;
+
+      final result = await _stripeService.createPixPayment(
+        amount: amount,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+      );
+
+      if (result['success']) {
+        Get.snackbar(
+          'PIX Gerado',
+          'QR Code PIX criado! Complete o pagamento para receber os créditos.',
+          backgroundColor: Colors.blue,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+
+        return {
+          'success': true,
+          'transaction_id': result['transaction_id'],
+          'payment_intent_id': result['payment_intent_id'],
+          'pix_qr_code': result['pix_qr_code'],
+        };
+      } else {
+        Get.snackbar(
+          'Erro PIX',
+          result['error'] ?? 'Falha ao gerar PIX',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return result;
+      }
+    } catch (e) {
+      debugPrint('Erro no PIX: $e');
+      Get.snackbar(
+        'Erro',
+        'Falha no PIX',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return {'success': false, 'error': 'Falha no PIX: $e'};
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // GERENCIAMENTO DE CARTÕES SALVOS
+  // ===========================================
+
+  /// Carregar cartões salvos do usuário
+  Future<void> loadSavedCards() async {
+    try {
+      if (_authController.currentUser.value == null) return;
+
+      isLoading.value = true;
+      final userId = _authController.currentUser.value!.uid;
+
+      final cards = await _stripeService.getSavedCards(userId);
+      savedCards.value = cards;
+    } catch (e) {
+      debugPrint('Erro ao carregar cartões salvos: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Adicionar novo cartão sem cobrança
+  Future<bool> addNewCard() async {
+    try {
+      if (_authController.currentUser.value == null) {
+        Get.snackbar('Erro', 'Você precisa estar logado para adicionar um cartão');
+        return false;
+      }
+
+      isLoading.value = true;
+
+      final result = await _stripeService.setupCardForFutureUse();
+
+      if (result['success']) {
+        await loadSavedCards();
+
+        Get.snackbar(
+          'Sucesso',
+          'Cartão adicionado com sucesso!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Erro',
+          result['error'] ?? 'Falha ao adicionar cartão',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Erro ao adicionar cartão: $e');
+      Get.snackbar(
+        'Erro',
+        'Falha ao adicionar cartão',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// Remover cartão salvo
+  Future<bool> removeCard(String cardId) async {
+    try {
+      if (_authController.currentUser.value == null) return false;
+
+      isLoading.value = true;
+      final userId = _authController.currentUser.value!.uid;
+
+      final success = await _stripeService.removeCard(userId, cardId);
+
+      if (success) {
+        await loadSavedCards();
+
+        Get.snackbar(
+          'Sucesso',
+          'Cartão removido com sucesso',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return true;
+      } else {
+        Get.snackbar(
+          'Erro',
+          'Não foi possível remover o cartão',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Erro ao remover cartão: $e');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // HISTÓRICO DE PAGAMENTOS
+  // ===========================================
 
   Future<void> loadPaymentHistory() async {
     try {
@@ -105,7 +599,6 @@ class PaymentController extends GetxController {
       isLoading.value = true;
       final userId = _authController.currentUser.value!.uid;
 
-      // Usando o método do PaymentService
       final payments = await _paymentService.getUserPaymentHistory(userId);
       paymentHistory.value = payments;
     } catch (e) {
@@ -119,11 +612,14 @@ class PaymentController extends GetxController {
       );
     } finally {
       isLoading.value = false;
-      update();
     }
   }
 
-  // Método genérico para processamento de pagamento
+  // ===========================================
+  // MÉTODO GENÉRICO DE PAGAMENTO
+  // ===========================================
+
+  /// Método genérico para processamento de pagamento
   Future<String> processPayment({
     required BuildContext context,
     required String description,
@@ -131,710 +627,97 @@ class PaymentController extends GetxController {
     required String serviceId,
     required String serviceType,
     required String paymentMethod,
+    String? specificCardId,
   }) async {
     try {
-      isLoading.value = true;
-
       String paymentId = '';
 
       // Direcionar para o método de pagamento apropriado
       switch (paymentMethod.toLowerCase()) {
-        case 'google pay':
-          paymentId = await processPaymentWithGooglePay(
-            context: context,
-            description: description,
-            amount: amount,
-            serviceId: serviceId,
-            serviceType: serviceType,
-          );
-          break;
-
-        case 'apple pay':
-          paymentId = await processPaymentWithApplePay(
-            context: context,
-            description: description,
-            amount: amount,
-            serviceId: serviceId,
-            serviceType: serviceType,
-          );
-          break;
-
+        case 'card':
         case 'cartão de crédito':
-          paymentId = await processPaymentWithCreditCard(
-            description: description,
+        case 'credit_card':
+          if (specificCardId != null) {
+            paymentId = await processPaymentWithSavedCard(
+              paymentMethodId: specificCardId,
+              amount: amount,
+              description: description,
+              serviceId: serviceId,
+              serviceType: serviceType,
+            );
+          } else {
+            paymentId = await processCardPayment(
+              amount: amount,
+              description: description,
+              serviceId: serviceId,
+              serviceType: serviceType,
+              saveCard: true,
+            );
+          }
+          break;
+
+        case 'apple_pay':
+        case 'apple pay':
+          paymentId = await processApplePayPayment(
             amount: amount,
+            description: description,
+            serviceId: serviceId,
+            serviceType: serviceType,
+          );
+          break;
+
+        case 'google_pay':
+        case 'google pay':
+          paymentId = await processGooglePayPayment(
+            amount: amount,
+            description: description,
             serviceId: serviceId,
             serviceType: serviceType,
           );
           break;
 
         case 'pix':
-          paymentId = await processPaymentWithPix(
-            description: description,
+          final pixResult = await processPixPayment(
             amount: amount,
+            description: description,
             serviceId: serviceId,
             serviceType: serviceType,
+          );
+          paymentId = pixResult['success'] ? pixResult['transaction_id'] ?? '' : '';
+          break;
+
+        case 'credits':
+        case 'créditos':
+          paymentId = await processPaymentWithCredits(
+            _authController.currentUser.value!.uid,
+            amount,
+            description,
+            serviceId,
+            serviceType,
           );
           break;
 
         default:
-          throw Exception('Método de pagamento não suportado');
+          throw Exception('Método de pagamento não suportado: $paymentMethod');
       }
 
-      if (paymentId.isEmpty) {
-        throw Exception('Falha ao processar o pagamento');
-      }
-
-      await loadUserCredits();
       return paymentId;
     } catch (e) {
       debugPrint('Erro ao processar pagamento: $e');
-      throw Exception('Falha ao processar pagamento: $e');
-    } finally {
-      isLoading.value = false;
-      update();
-    }
-  }
-
-  // Salvar transação no Firestore
-  Future<String> _saveTransactionRecord({
-    required String userId,
-    required double amount,
-    required String description,
-    required String serviceId,
-    required String serviceType,
-    required String paymentMethod,
-    required String status,
-    String? stripePaymentIntentId,
-    String? cardLastFourDigits,
-    String? cardBrand,
-    String? errorDetails,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      final transactionData = {
-        'userId': userId,
-        'amount': amount,
-        'description': description,
-        'serviceId': serviceId,
-        'serviceType': serviceType,
-        'paymentMethod': paymentMethod,
-        'status': status,
-        'timestamp': FieldValue.serverTimestamp(),
-        'createdAt': DateTime.now().toIso8601String(),
-        if (stripePaymentIntentId != null) 'stripePaymentIntentId': stripePaymentIntentId,
-        if (cardLastFourDigits != null) 'cardLastFourDigits': cardLastFourDigits,
-        if (cardBrand != null) 'cardBrand': cardBrand,
-        if (errorDetails != null) 'errorDetails': errorDetails,
-        if (additionalData != null) ...additionalData,
-      };
-
-      final docRef = await _firebaseService.firestore
-          .collection('payments')
-          .add(transactionData);
-
-      debugPrint('✅ Transação salva: ${docRef.id} - Status: $status');
-      return docRef.id;
-    } catch (e) {
-      debugPrint('❌ Erro ao salvar transação: $e');
-      rethrow;
-    }
-  }
-
-  // Buscar cartão padrão do usuário
-  Future<Map<String, dynamic>?> _getDefaultCard(String userId) async {
-    try {
-      final cardsSnapshot = await _firebaseService.firestore
-          .collection('credit_cards')
-          .where('userId', isEqualTo: userId)
-          .where('isDefault', isEqualTo: true)
-          .limit(1)
-          .get();
-
-      if (cardsSnapshot.docs.isNotEmpty) {
-        final cardData = cardsSnapshot.docs.first.data();
-        return {
-          'id': cardsSnapshot.docs.first.id,
-          ...cardData,
-        };
-      }
-
-      // Se não há cartão padrão, pegar o primeiro disponível
-      final allCardsSnapshot = await _firebaseService.firestore
-          .collection('credit_cards')
-          .where('userId', isEqualTo: userId)
-          .limit(1)
-          .get();
-
-      if (allCardsSnapshot.docs.isNotEmpty) {
-        final cardData = allCardsSnapshot.docs.first.data();
-        return {
-          'id': allCardsSnapshot.docs.first.id,
-          ...cardData,
-        };
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint('Erro ao buscar cartão padrão: $e');
-      return null;
-    }
-  }
-
-  // Buscar cartão específico
-  Future<Map<String, dynamic>?> _getCard(String userId, String cardId) async {
-    try {
-      final cardDoc = await _firebaseService.firestore
-          .collection('credit_cards')
-          .doc(cardId)
-          .get();
-
-      if (cardDoc.exists && cardDoc.data()?['userId'] == userId) {
-        return {
-          'id': cardDoc.id,
-          ...cardDoc.data()!,
-        };
-      }
-
-      return null;
-    } catch (e) {
-      debugPrint('Erro ao buscar cartão: $e');
-      return null;
-    }
-  }
-
-  Future<String> processPaymentWithGooglePay({
-    required BuildContext context,
-    required String description,
-    required double amount,
-    required String serviceId,
-    required String serviceType,
-  }) async {
-    try {
-      isLoading.value = true;
-
-      if (_authController.currentUser.value == null) {
-        Get.snackbar(
-          'Erro',
-          'Você precisa estar logado para realizar um pagamento',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-
-      final userId = _authController.currentUser.value!.uid;
-
-      // Salvar transação como pendente
-      final transactionId = await _saveTransactionRecord(
-        userId: userId,
-        amount: amount,
-        description: description,
-        serviceId: serviceId,
-        serviceType: serviceType,
-        paymentMethod: 'Google Pay',
-        status: 'pending',
-      );
-
-      // Usar PaymentService existente para Google Pay
-      final paymentId = await _paymentService.payWithGooglePay(
-        amount: amount,
-        userId: userId,
-        serviceId: serviceId,
-        serviceType: serviceType,
-        description: description,
-        context: context,
-      );
-
-      if (paymentId != null) {
-        // Atualizar transação como aprovada
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'status': 'approved',
-          'externalPaymentId': paymentId,
-          'completedAt': FieldValue.serverTimestamp(),
-        });
-
-        await loadUserCredits();
-
-        Get.snackbar(
-          'Sucesso',
-          'Pagamento aprovado! Seus créditos foram atualizados',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return transactionId;
-      } else {
-        // Atualizar transação como falha
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'status': 'failed',
-          'errorDetails': 'Pagamento não foi aprovado pelo Google Pay',
-          'failedAt': FieldValue.serverTimestamp(),
-        });
-
-        Get.snackbar(
-          'Erro',
-          'O pagamento não foi aprovado',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-    } catch (e) {
-      debugPrint('Erro ao processar pagamento com Google Pay: $e');
       Get.snackbar(
         'Erro',
-        'Falha ao processar o pagamento: ${e.toString().split(': ').last}',
+        'Falha ao processar pagamento: ${e.toString().split(': ').last}',
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
       );
       return '';
-    } finally {
-      isLoading.value = false;
-      update();
     }
   }
 
-  Future<String> processPaymentWithApplePay({
-    required BuildContext context,
-    required String description,
-    required double amount,
-    required String serviceId,
-    required String serviceType,
-  }) async {
-    try {
-      isLoading.value = true;
-
-      if (_authController.currentUser.value == null) {
-        Get.snackbar(
-          'Erro',
-          'Você precisa estar logado para realizar um pagamento',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-
-      final userId = _authController.currentUser.value!.uid;
-
-      // Salvar transação como pendente
-      final transactionId = await _saveTransactionRecord(
-        userId: userId,
-        amount: amount,
-        description: description,
-        serviceId: serviceId,
-        serviceType: serviceType,
-        paymentMethod: 'Apple Pay',
-        status: 'pending',
-      );
-
-      // Usar PaymentService existente para Apple Pay
-      final paymentId = await _paymentService.payWithApplePay(
-        amount: amount,
-        userId: userId,
-        serviceId: serviceId,
-        serviceType: serviceType,
-        description: description,
-        context: context,
-      );
-
-      if (paymentId != null) {
-        // Atualizar transação como aprovada
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'status': 'approved',
-          'externalPaymentId': paymentId,
-          'completedAt': FieldValue.serverTimestamp(),
-        });
-
-        await loadUserCredits();
-
-        Get.snackbar(
-          'Sucesso',
-          'Pagamento aprovado! Seus créditos foram atualizados',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return transactionId;
-      } else {
-        // Atualizar transação como falha
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'status': 'failed',
-          'errorDetails': 'Pagamento não foi aprovado pelo Apple Pay',
-          'failedAt': FieldValue.serverTimestamp(),
-        });
-
-        Get.snackbar(
-          'Erro',
-          'O pagamento não foi aprovado',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-    } catch (e) {
-      debugPrint('Erro ao processar pagamento com Apple Pay: $e');
-      Get.snackbar(
-        'Erro',
-        'Falha ao processar o pagamento: ${e.toString().split(': ').last}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return '';
-    } finally {
-      isLoading.value = false;
-      update();
-    }
-  }
-
-  // MÉTODO ATUALIZADO: Processamento de pagamento com PIX via Stripe
-  Future<String> processPaymentWithPix({
-    required String description,
-    required double amount,
-    required String serviceId,
-    required String serviceType,
-  }) async {
-    try {
-      isLoading.value = true;
-
-      if (_authController.currentUser.value == null) {
-        Get.snackbar(
-          'Erro',
-          'Você precisa estar logado para realizar um pagamento',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-
-      final userId = _authController.currentUser.value!.uid;
-
-      // Salvar transação como pendente
-      final transactionId = await _saveTransactionRecord(
-        userId: userId,
-        amount: amount,
-        description: description,
-        serviceId: serviceId,
-        serviceType: serviceType,
-        paymentMethod: 'PIX',
-        status: 'pending',
-      );
-
-      // Usar Stripe para criar pagamento PIX
-      final pixResponse = await _stripePaymentService.createPixPayment(
-        amount: amount,
-        description: description,
-        serviceId: serviceId,
-        serviceType: serviceType,
-      );
-
-      if (pixResponse['success']) {
-        // Atualizar transação com dados do PIX
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'stripePaymentIntentId': pixResponse['stripe_payment_intent_id'],
-          'additionalData': {
-            'pixQrCode': pixResponse['pix_qr_code'],
-            'createdAt': DateTime.now().toIso8601String(),
-          },
-        });
-
-        Get.snackbar(
-          'PIX Gerado',
-          'QR Code PIX criado com sucesso! Complete o pagamento para receber os créditos.',
-          backgroundColor: Colors.blue,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-
-        return transactionId;
-      } else {
-        // Atualizar transação como falha
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'status': 'failed',
-          'errorDetails': pixResponse['error'],
-          'failedAt': FieldValue.serverTimestamp(),
-        });
-
-        Get.snackbar(
-          'Erro',
-          'Falha ao gerar PIX: ${pixResponse['error']}',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-    } catch (e) {
-      debugPrint('Erro ao processar pagamento com Pix: $e');
-      Get.snackbar(
-        'Erro',
-        'Falha ao processar o pagamento: ${e.toString().split(': ').last}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return '';
-    } finally {
-      isLoading.value = false;
-      update();
-    }
-  }
-
-  // MÉTODO PRINCIPAL: Processamento de pagamento com cartão cadastrado
-  Future<String> processPaymentWithCreditCard({
-    required String description,
-    required double amount,
-    required String serviceId,
-    required String serviceType,
-    String? specificCardId,
-  }) async {
-    try {
-      isLoading.value = true;
-
-      if (_authController.currentUser.value == null) {
-        Get.snackbar(
-          'Erro',
-          'Você precisa estar logado para realizar um pagamento',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-
-      final userId = _authController.currentUser.value!.uid;
-
-      // Buscar cartão (específico ou padrão)
-      Map<String, dynamic>? cardData;
-      if (specificCardId != null) {
-        cardData = await _getCard(userId, specificCardId);
-      } else {
-        cardData = await _getDefaultCard(userId);
-      }
-
-      if (cardData == null) {
-        Get.snackbar(
-          'Erro',
-          'Nenhum cartão encontrado para realizar o pagamento. Adicione um cartão primeiro.',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-
-      // Verificar se o cartão está expirado
-      if (_isCardExpired(cardData)) {
-        Get.snackbar(
-          'Erro',
-          'O cartão selecionado está expirado. Adicione um novo cartão.',
-          backgroundColor: Colors.orange,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return '';
-      }
-
-      debugPrint('💳 Processando pagamento com cartão: **** ${cardData['lastFourDigits']}');
-
-      // Salvar transação como pendente
-      final transactionId = await _saveTransactionRecord(
-        userId: userId,
-        amount: amount,
-        description: description,
-        serviceId: serviceId,
-        serviceType: serviceType,
-        paymentMethod: 'Cartão de Crédito',
-        status: 'pending',
-        cardLastFourDigits: cardData['lastFourDigits'],
-        cardBrand: cardData['brandType'],
-        additionalData: {
-          'cardId': cardData['id'],
-          'cardHolderName': cardData['cardHolderName'],
-        },
-      );
-
-      try {
-        // Buscar dados do usuário para o Stripe
-        final userData = await _firebaseService.getUserData(userId);
-        final userDoc = userData.data() as Map<String, dynamic>?;
-
-        if (userDoc == null) {
-          throw Exception('Dados do usuário não encontrados');
-        }
-
-        // Verificar se temos o customer ID do Stripe
-        String? customerId = userDoc['stripeCustomerId'];
-        if (customerId == null) {
-          throw Exception('Customer ID do Stripe não encontrado. Recadastre o cartão.');
-        }
-
-        debugPrint('💳 Processando pagamento para customer: $customerId');
-
-        // Usar o método do StripePaymentService para processar pagamento com cartão salvo
-        final paymentResponse = await _stripePaymentService.processCardPaymentWithSavedCard(
-          amount: amount,
-          customerId: customerId,
-          description: description,
-          serviceId: serviceId,
-          serviceType: serviceType,
-          metadata: {
-            'user_id': userId,
-            'transaction_id': transactionId,
-            'card_last_four': cardData['lastFourDigits'],
-          },
-        );
-
-        if (paymentResponse['success']) {
-          // Pagamento bem-sucedido
-          await _firebaseService.firestore
-              .collection('payments')
-              .doc(transactionId)
-              .update({
-            'status': 'approved',
-            'stripePaymentIntentId': paymentResponse['payment_intent_id'],
-            'completedAt': FieldValue.serverTimestamp(),
-            'additionalData': {
-              'clientSecret': paymentResponse['client_secret'],
-              'paymentMethodId': paymentResponse['payment_method_id'],
-              'stripeStatus': paymentResponse['status'],
-              'processedAt': DateTime.now().toIso8601String(),
-            },
-          });
-
-          // Adicionar créditos ao usuário
-          final creditsAdded = await _paymentService.updateUserCredits(userId, amount);
-          if (!creditsAdded) {
-            debugPrint('⚠️ Falha ao adicionar créditos, mas pagamento foi processado');
-          }
-
-          await loadUserCredits();
-
-          Get.snackbar(
-            'Sucesso',
-            'Pagamento de R\$ ${amount.toStringAsFixed(2)} realizado com sucesso!',
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-
-          debugPrint('✅ Pagamento processado com sucesso: $transactionId');
-          return transactionId;
-        } else if (paymentResponse['requires_action'] == true) {
-          // Requer ação adicional (3D Secure)
-          await _firebaseService.firestore
-              .collection('payments')
-              .doc(transactionId)
-              .update({
-            'status': 'requires_action',
-            'stripePaymentIntentId': paymentResponse['payment_intent_id'] ?? '',
-            'additionalData': {
-              'clientSecret': paymentResponse['client_secret'],
-              'requiresAction': true,
-              'processedAt': DateTime.now().toIso8601String(),
-            },
-          });
-
-          Get.snackbar(
-            'Ação Necessária',
-            'Seu cartão requer autenticação adicional. Use o método interativo para completar o pagamento.',
-            backgroundColor: Colors.orange,
-            colorText: Colors.white,
-            snackPosition: SnackPosition.BOTTOM,
-          );
-
-          return '';
-        } else {
-          // Pagamento falhou
-          throw Exception(paymentResponse['error']);
-        }
-
-      } catch (stripeError) {
-        debugPrint('❌ Erro no processamento Stripe: $stripeError');
-
-        // Atualizar transação como falha
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'status': 'failed',
-          'errorDetails': stripeError.toString(),
-          'failedAt': FieldValue.serverTimestamp(),
-        });
-
-        Get.snackbar(
-          'Erro no Pagamento',
-          'Falha no processamento: ${stripeError.toString().split(': ').last}',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-
-        return '';
-      }
-
-    } catch (e) {
-      debugPrint('❌ Erro geral no pagamento com cartão: $e');
-      Get.snackbar(
-        'Erro',
-        'Falha ao processar o pagamento: ${e.toString().split(': ').last}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return '';
-    } finally {
-      isLoading.value = false;
-      update();
-    }
-  }
-
-  // Verificar se o cartão está expirado
-  bool _isCardExpired(Map<String, dynamic> cardData) {
-    try {
-      final expirationDate = cardData['expirationDate'] as String?;
-      if (expirationDate == null) return false;
-
-      final parts = expirationDate.split('/');
-      if (parts.length != 2) return false;
-
-      final month = int.parse(parts[0]);
-      final year = int.parse(parts[1].length == 2 ? '20${parts[1]}' : parts[1]);
-
-      final now = DateTime.now();
-      final cardExpiryDate = DateTime(year, month + 1, 0); // Último dia do mês
-
-      return cardExpiryDate.isBefore(now);
-    } catch (e) {
-      debugPrint('Erro ao verificar expiração do cartão: $e');
-      return false; // Em caso de erro, assumir que não está expirado
-    }
-  }
+  // ===========================================
+  // PAGAMENTO COM CRÉDITOS
+  // ===========================================
 
   Future<bool> checkUserCredits(String userId, double requiredAmount) async {
     try {
@@ -855,18 +738,6 @@ class PaymentController extends GetxController {
     try {
       isLoading.value = true;
 
-      // Salvar transação como pendente
-      final transactionId = await _saveTransactionRecord(
-        userId: userId,
-        amount: amount,
-        description: description,
-        serviceId: serviceId,
-        serviceType: serviceType,
-        paymentMethod: 'Créditos',
-        status: 'pending',
-      );
-
-      // Usar o método do PaymentService
       final paymentId = await _paymentService.processPaymentWithCredits(
         userId,
         amount,
@@ -876,16 +747,6 @@ class PaymentController extends GetxController {
       );
 
       if (paymentId.isNotEmpty) {
-        // Atualizar transação como aprovada
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'status': 'approved',
-          'externalPaymentId': paymentId,
-          'completedAt': FieldValue.serverTimestamp(),
-        });
-
         await loadUserCredits();
 
         Get.snackbar(
@@ -896,18 +757,15 @@ class PaymentController extends GetxController {
           snackPosition: SnackPosition.BOTTOM,
         );
 
-        return transactionId;
+        return paymentId;
       } else {
-        // Atualizar transação como falha
-        await _firebaseService.firestore
-            .collection('payments')
-            .doc(transactionId)
-            .update({
-          'status': 'failed',
-          'errorDetails': 'Falha no processamento com créditos',
-          'failedAt': FieldValue.serverTimestamp(),
-        });
-
+        Get.snackbar(
+          'Erro',
+          'Falha no processamento com créditos',
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
         return '';
       }
     } catch (e) {
@@ -922,346 +780,238 @@ class PaymentController extends GetxController {
       return '';
     } finally {
       isLoading.value = false;
-      update();
     }
   }
 
-  Future<bool> addCredits(double amount) async {
+  // ===========================================
+  // ANÁLISES E RELATÓRIOS
+  // ===========================================
+
+  /// Obter estatísticas de pagamento
+  Future<Map<String, dynamic>> getPaymentStats() async {
     try {
-      if (_authController.currentUser.value == null) {
-        Get.snackbar(
-          'Erro',
-          'Você precisa estar logado para adicionar créditos',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.BOTTOM,
-        );
-        return false;
-      }
-
-      // Usar o método de pagamento com cartão cadastrado
-      final result = await processPaymentWithCreditCard(
-        description: 'Compra de créditos - R\$ ${amount.toStringAsFixed(2)}',
-        amount: amount,
-        serviceId: 'credits_${DateTime.now().millisecondsSinceEpoch}',
-        serviceType: 'credit_purchase',
-      );
-
-      return result.isNotEmpty;
-    } catch (e) {
-      debugPrint('Erro ao adicionar créditos: $e');
-      Get.snackbar(
-        'Erro',
-        'Falha ao adicionar créditos: ${e.toString().split(': ').last}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return false;
-    }
-  }
-
-  Future<bool> removeCredits(double amount) async {
-    // Garantir que o valor seja positivo antes de remover
-    amount = amount.abs();
-    return await _paymentService.updateUserCredits(_authController.currentUser.value!.uid, -amount);
-  }
-
-  // MÉTODOS AUXILIARES PARA GERENCIAMENTO DE TRANSAÇÕES
-
-  /// Buscar transação por ID
-  Future<Map<String, dynamic>?> getTransactionById(String transactionId) async {
-    try {
-      final doc = await _firebaseService.firestore
-          .collection('payments')
-          .doc(transactionId)
-          .get();
-
-      if (doc.exists) {
-        return {
-          'id': doc.id,
-          ...doc.data()!,
-        };
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Erro ao buscar transação: $e');
-      return null;
-    }
-  }
-
-  /// Atualizar status de uma transação
-  Future<bool> updateTransactionStatus(String transactionId, String newStatus, {String? errorDetails}) async {
-    try {
-      final updateData = {
-        'status': newStatus,
-        'updatedAt': FieldValue.serverTimestamp(),
-      };
-
-      if (errorDetails != null) {
-        updateData['errorDetails'] = errorDetails;
-      }
-
-      if (newStatus == 'approved') {
-        updateData['completedAt'] = FieldValue.serverTimestamp();
-      } else if (newStatus == 'failed') {
-        updateData['failedAt'] = FieldValue.serverTimestamp();
-      }
-
-      await _firebaseService.firestore
-          .collection('payments')
-          .doc(transactionId)
-          .update(updateData);
-
-      debugPrint('✅ Status da transação $transactionId atualizado para: $newStatus');
-      return true;
-    } catch (e) {
-      debugPrint('❌ Erro ao atualizar status da transação: $e');
-      return false;
-    }
-  }
-
-  /// Buscar transações por status
-  Future<List<Map<String, dynamic>>> getTransactionsByStatus(String status) async {
-    try {
-      if (_authController.currentUser.value == null) return [];
+      if (_authController.currentUser.value == null) return {};
 
       final userId = _authController.currentUser.value!.uid;
-      final snapshot = await _firebaseService.firestore
-          .collection('payments')
-          .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: status)
-          .orderBy('timestamp', descending: true)
-          .get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          ...data,
-          // Converter Timestamp para DateTime se necessário
-          'timestamp': data['timestamp'] != null
-              ? (data['timestamp'] as Timestamp).toDate()
-              : DateTime.now(),
-        };
-      }).toList();
+      return await _stripeService.getPaymentStats(userId);
     } catch (e) {
-      debugPrint('Erro ao buscar transações por status: $e');
-      return [];
+      debugPrint('Erro ao obter estatísticas: $e');
+      return {};
     }
   }
 
-  /// Buscar transações pendentes
-  Future<List<Map<String, dynamic>>> getPendingTransactions() async {
-    return await getTransactionsByStatus('pending');
-  }
-
-  /// Buscar transações aprovadas
-  Future<List<Map<String, dynamic>>> getApprovedTransactions() async {
-    return await getTransactionsByStatus('approved');
-  }
-
-  /// Buscar transações falhadas
-  Future<List<Map<String, dynamic>>> getFailedTransactions() async {
-    return await getTransactionsByStatus('failed');
-  }
-
-  /// Estatísticas de transações do usuário
-  Future<Map<String, dynamic>> getTransactionStats() async {
+  /// Gerar relatório de transações
+  Future<Map<String, dynamic>> generateTransactionReport({
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     try {
-      if (_authController.currentUser.value == null) {
-        return {
-          'total': 0,
-          'approved': 0,
-          'pending': 0,
-          'failed': 0,
-          'totalAmount': 0.0,
-          'approvedAmount': 0.0,
-        };
-      }
+      if (_authController.currentUser.value == null) return {};
 
       final userId = _authController.currentUser.value!.uid;
-      final snapshot = await _firebaseService.firestore
-          .collection('payments')
-          .where('userId', isEqualTo: userId)
-          .get();
-
-      int total = 0;
-      int approved = 0;
-      int pending = 0;
-      int failed = 0;
-      double totalAmount = 0.0;
-      double approvedAmount = 0.0;
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final status = data['status'] as String? ?? '';
-        final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-
-        total++;
-        totalAmount += amount;
-
-        switch (status) {
-          case 'approved':
-            approved++;
-            approvedAmount += amount;
-            break;
-          case 'pending':
-            pending++;
-            break;
-          case 'failed':
-            failed++;
-            break;
-        }
-      }
-
-      return {
-        'total': total,
-        'approved': approved,
-        'pending': pending,
-        'failed': failed,
-        'totalAmount': totalAmount,
-        'approvedAmount': approvedAmount,
-      };
+      return await _stripeService.generateTransactionReport(
+        userId: userId,
+        startDate: startDate,
+        endDate: endDate,
+      );
     } catch (e) {
-      debugPrint('Erro ao calcular estatísticas: $e');
-      return {
-        'total': 0,
-        'approved': 0,
-        'pending': 0,
-        'failed': 0,
-        'totalAmount': 0.0,
-        'approvedAmount': 0.0,
-      };
+      debugPrint('Erro ao gerar relatório: $e');
+      return {};
     }
   }
 
-  /// Reprocessar transação falhada
-  Future<String> retryFailedTransaction(String transactionId) async {
+  // ===========================================
+  // CONFIGURAÇÕES E PREFERÊNCIAS
+  // ===========================================
+
+  /// Obter configurações de pagamento
+  Future<Map<String, dynamic>> getPaymentSettings() async {
     try {
-      final transaction = await getTransactionById(transactionId);
-      if (transaction == null) {
-        Get.snackbar('Erro', 'Transação não encontrada');
-        return '';
-      }
+      if (_authController.currentUser.value == null) return {};
 
-      if (transaction['status'] != 'failed') {
-        Get.snackbar('Erro', 'Apenas transações falhadas podem ser reprocessadas');
-        return '';
-      }
-
-      // Reprocessar usando os dados originais
-      return await processPaymentWithCreditCard(
-        description: transaction['description'],
-        amount: (transaction['amount'] as num).toDouble(),
-        serviceId: transaction['serviceId'],
-        serviceType: transaction['serviceType'],
-      );
+      final userId = _authController.currentUser.value!.uid;
+      return await _stripeService.getUserPaymentSettings(userId);
     } catch (e) {
-      debugPrint('Erro ao reprocessar transação: $e');
-      Get.snackbar(
-        'Erro',
-        'Não foi possível reprocessar a transação: ${e.toString().split(': ').last}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return '';
+      debugPrint('Erro ao obter configurações: $e');
+      return {};
     }
   }
 
-  /// Cancelar transação pendente
-  Future<bool> cancelPendingTransaction(String transactionId) async {
-    try {
-      final transaction = await getTransactionById(transactionId);
-      if (transaction == null) {
-        Get.snackbar('Erro', 'Transação não encontrada');
-        return false;
-      }
-
-      if (transaction['status'] != 'pending') {
-        Get.snackbar('Erro', 'Apenas transações pendentes podem ser canceladas');
-        return false;
-      }
-
-      // Atualizar status para cancelado
-      await _firebaseService.firestore
-          .collection('payments')
-          .doc(transactionId)
-          .update({
-        'status': 'cancelled',
-        'cancelledAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
-      Get.snackbar(
-        'Sucesso',
-        'Transação cancelada com sucesso',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-
-      return true;
-    } catch (e) {
-      debugPrint('Erro ao cancelar transação: $e');
-      Get.snackbar(
-        'Erro',
-        'Não foi possível cancelar a transação: ${e.toString().split(': ').last}',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return false;
-    }
-  }
-
-  /// Verificar se há transações pendentes
-  Future<bool> hasPendingTransactions() async {
+  /// Atualizar configurações de pagamento
+  Future<bool> updatePaymentSettings(Map<String, dynamic> settings) async {
     try {
       if (_authController.currentUser.value == null) return false;
 
       final userId = _authController.currentUser.value!.uid;
-      final snapshot = await _firebaseService.firestore
-          .collection('payments')
-          .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: 'pending')
-          .limit(1)
-          .get();
-
-      return snapshot.docs.isNotEmpty;
+      return await _stripeService.updateUserPaymentSettings(userId, settings);
     } catch (e) {
-      debugPrint('Erro ao verificar transações pendentes: $e');
+      debugPrint('Erro ao atualizar configurações: $e');
       return false;
     }
   }
 
-  /// Limpar transações antigas (apenas falhadas com mais de 30 dias)
-  Future<void> cleanupOldFailedTransactions() async {
+  // ===========================================
+  // NOTIFICAÇÕES E ALERTAS
+  // ===========================================
+
+  /// Verificar cartões próximos do vencimento
+  Future<List<Map<String, dynamic>>> checkExpiringCards() async {
+    try {
+      if (_authController.currentUser.value == null) return [];
+
+      final userId = _authController.currentUser.value!.uid;
+      return await _stripeService.checkExpiringCards(userId);
+    } catch (e) {
+      debugPrint('Erro ao verificar cartões expirando: $e');
+      return [];
+    }
+  }
+
+  /// Processar webhook do Stripe
+  Future<void> processStripeWebhook(Map<String, dynamic> event) async {
+    try {
+      await _stripeService.processWebhook(event);
+
+      // Atualizar dados locais se necessário
+      if (_authController.isLoggedIn) {
+        final eventType = event['type'];
+        if (eventType == 'payment_intent.succeeded' ||
+            eventType == 'invoice.payment_succeeded') {
+          await loadUserCredits();
+          await loadPaymentHistory();
+        }
+      }
+    } catch (e) {
+      debugPrint('Erro ao processar webhook: $e');
+    }
+  }
+
+  // ===========================================
+  // MÉTODOS DE UTILIDADE
+  // ===========================================
+
+  /// Verificar se um método de pagamento está disponível
+  bool isPaymentMethodAvailable(String method) {
+    return availablePaymentMethods[method] ?? false;
+  }
+
+  /// Obter lista de métodos de pagamento disponíveis
+  List<Map<String, dynamic>> getAvailablePaymentMethods() {
+    final methods = <Map<String, dynamic>>[];
+
+    if (availablePaymentMethods['card_payments'] == true) {
+      methods.add({
+        'id': 'card',
+        'name': 'Cartão de Crédito/Débito',
+        'icon': Icons.credit_card,
+        'description': 'Pague com seu cartão',
+        'available': true,
+      });
+    }
+
+    if (availablePaymentMethods['apple_pay'] == true) {
+      methods.add({
+        'id': 'apple_pay',
+        'name': 'Apple Pay',
+        'icon': Icons.apple,
+        'description': 'Pagamento rápido e seguro',
+        'available': true,
+      });
+    }
+
+    if (availablePaymentMethods['google_pay'] == true) {
+      methods.add({
+        'id': 'google_pay',
+        'name': 'Google Pay',
+        'icon': Icons.account_balance_wallet,
+        'description': 'Pagamento rápido e seguro',
+        'available': true,
+      });
+    }
+
+    if (availablePaymentMethods['pix'] == true) {
+      methods.add({
+        'id': 'pix',
+        'name': 'PIX',
+        'icon': Icons.qr_code,
+        'description': 'Pagamento instantâneo',
+        'available': true,
+      });
+    }
+
+    if (userCredits.value > 0) {
+      methods.add({
+        'id': 'credits',
+        'name': 'Créditos',
+        'icon': Icons.account_balance_wallet,
+        'description': 'Usar créditos da conta (R\$ ${userCredits.value.toStringAsFixed(2)})',
+        'available': true,
+      });
+    }
+
+    return methods;
+  }
+
+  /// Testar conectividade com Stripe
+  Future<bool> testStripeConnection() async {
+    try {
+      return await _stripeService.testConnection();
+    } catch (e) {
+      debugPrint('Erro ao testar conexão: $e');
+      return false;
+    }
+  }
+
+  /// Limpar dados de teste
+  Future<void> clearTestData() async {
     try {
       if (_authController.currentUser.value == null) return;
 
       final userId = _authController.currentUser.value!.uid;
-      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+      await _stripeService.clearTestData(userId);
 
-      final snapshot = await _firebaseService.firestore
-          .collection('payments')
-          .where('userId', isEqualTo: userId)
-          .where('status', isEqualTo: 'failed')
-          .where('timestamp', isLessThan: Timestamp.fromDate(thirtyDaysAgo))
-          .get();
+      // Recarregar dados
+      await loadUserCredits();
+      await loadSavedCards();
+      await loadPaymentHistory();
 
-      final batch = _firebaseService.firestore.batch();
-      for (var doc in snapshot.docs) {
-        batch.delete(doc.reference);
-      }
-
-      if (snapshot.docs.isNotEmpty) {
-        await batch.commit();
-        debugPrint('✅ ${snapshot.docs.length} transações antigas removidas');
-      }
+      Get.snackbar(
+        'Sucesso',
+        'Dados de teste limpos',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
     } catch (e) {
-      debugPrint('Erro ao limpar transações antigas: $e');
+      debugPrint('Erro ao limpar dados de teste: $e');
     }
+  }
+
+  // ===========================================
+  // GETTERS DE CONVENIÊNCIA
+  // ===========================================
+
+  bool get hasCards => savedCards.isNotEmpty;
+  bool get hasCredits => userCredits.value > 0;
+  bool get canUseApplePay => availablePaymentMethods['apple_pay'] == true;
+  bool get canUseGooglePay => availablePaymentMethods['google_pay'] == true;
+  bool get canUsePix => availablePaymentMethods['pix'] == true;
+  bool get canSaveCards => availablePaymentMethods['save_cards'] == true;
+
+  Map<String, dynamic>? get defaultCard {
+    try {
+      return savedCards.firstWhere((card) => card['isDefault'] == true);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int get totalTransactions => paymentHistory.length;
+
+  double get totalSpent {
+    return paymentHistory.fold(0.0, (sum, payment) {
+      final amount = payment['amount'] as num? ?? 0;
+      return sum + amount.toDouble();
+    });
   }
 }

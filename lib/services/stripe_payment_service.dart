@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,329 +18,228 @@ class StripePaymentService extends GetxService {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final RxBool isLoading = false.obs;
 
-  // Token de acesso (gerado via autenticação das duas chaves)
-  String? _accessToken;
-  DateTime? _tokenExpiry;
-
   @override
   Future<void> onInit() async {
     super.onInit();
-    await _authenticate();
+    await _initializeStripe();
   }
 
   // ===========================================
-  // AUTENTICAÇÃO COM TOKEN DE ACESSO
+  // INICIALIZAÇÃO DA SDK
   // ===========================================
 
-  /// Autenticar usando as duas chaves para obter token de acesso
-  Future<bool> _authenticate() async {
+  Future<void> _initializeStripe() async {
     try {
-      debugPrint('🔐 Autenticando com Stripe...');
+      debugPrint('🔄 Inicializando Flutter Stripe SDK...');
 
-      // Para o Stripe, o token de acesso é a própria secret key com Basic Auth
-      // Vamos validar as credenciais fazendo uma chamada de teste
-      final response = await http.get(
-        Uri.parse('$_baseUrl/account'),
-        headers: _getHeaders(),
-      );
+      Stripe.publishableKey = _publishableKey;
+      Stripe.merchantIdentifier = 'merchant.com.oraculum.app';
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        _accessToken = _secretKey; // A secret key é nosso token de acesso
-        _tokenExpiry = DateTime.now().add(const Duration(hours: 1)); // Token válido por 1 hora
+      // Configurações adicionais
+      await Stripe.instance.applySettings();
 
-        debugPrint('✅ Autenticação Stripe OK - Conta: ${data['display_name']}');
-        return true;
-      } else {
-        debugPrint('❌ Falha na autenticação Stripe: ${response.statusCode}');
-        return false;
-      }
+      debugPrint('✅ Flutter Stripe SDK inicializado com sucesso');
     } catch (e) {
-      debugPrint('❌ Erro na autenticação: $e');
-      return false;
+      debugPrint('❌ Erro ao inicializar Stripe SDK: $e');
     }
   }
 
-  /// Verificar se o token ainda é válido
-  bool _isTokenValid() {
-    return _accessToken != null &&
-        _tokenExpiry != null &&
-        DateTime.now().isBefore(_tokenExpiry!);
-  }
-
-  /// Renovar token se necessário
-  Future<void> _ensureValidToken() async {
-    if (!_isTokenValid()) {
-      await _authenticate();
-    }
-  }
-
-  /// Headers com autenticação
-  Map<String, String> _getHeaders() {
-    return {
-      'Authorization': 'Bearer $_secretKey',
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Stripe-Version': '2023-10-16', // Versão da API
-    };
-  }
-
   // ===========================================
-  // GERENCIAMENTO DE CLIENTES
+  // HEADERS PARA REQUISIÇÕES À API
   // ===========================================
 
-  /// Criar cliente na Stripe
-  Future<Map<String, dynamic>> createCustomer({
+  Map<String, String> get _headers => {
+    'Authorization': 'Bearer $_secretKey',
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Stripe-Version': '2023-10-16',
+  };
+
+  // ===========================================
+  // GESTÃO DE CLIENTES
+  // ===========================================
+
+  /// Criar ou obter cliente existente
+  Future<String?> _getOrCreateCustomer({
+    required String userId,
     required String email,
     String? name,
     String? phone,
-    Map<String, dynamic>? metadata,
   }) async {
     try {
-      await _ensureValidToken();
-      debugPrint('🔄 Criando customer na Stripe para: $email');
+      // Verificar se já existe um customer ID salvo
+      final userData = await _firebaseService.getUserData(userId);
+      final userDoc = userData.data() as Map<String, dynamic>?;
 
+      if (userDoc?['stripeCustomerId'] != null) {
+        return userDoc!['stripeCustomerId'];
+      }
+
+      // Criar novo customer
       final body = {
         'email': email,
         if (name != null) 'name': name,
         if (phone != null) 'phone': phone,
-        if (metadata != null)
-          ...metadata.map((key, value) => MapEntry('metadata[$key]', value.toString())),
+        'metadata[user_id]': userId,
       };
 
       final response = await http.post(
         Uri.parse('$_baseUrl/customers'),
-        headers: _getHeaders(),
+        headers: _headers,
         body: body,
       );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        debugPrint('✅ Customer criado: ${data['id']}');
-        return {'success': true, 'data': data};
-      } else {
-        final errorData = json.decode(response.body);
-        debugPrint('❌ Erro ao criar customer: ${errorData['error']['message']}');
-        return {'success': false, 'error': errorData['error']['message']};
+        final customerId = data['id'];
+
+        // Salvar customer ID no perfil do usuário
+        await _firebaseService.updateUserData(userId, {
+          'stripeCustomerId': customerId,
+        });
+
+        debugPrint('✅ Customer criado: $customerId');
+        return customerId;
       }
+
+      return null;
     } catch (e) {
-      debugPrint('❌ Erro na requisição de criar customer: $e');
-      return {'success': false, 'error': 'Erro na requisição: $e'};
+      debugPrint('❌ Erro ao criar/obter customer: $e');
+      return null;
     }
   }
 
   // ===========================================
-  // MÉTODOS DE PAGAMENTO SEGUROS
+  // PAGAMENTO COM CARTÃO (NOVA COMPRA)
   // ===========================================
 
-  /*
-   * IMPORTANTE - SEGURANÇA PCI:
-   *
-   * O Stripe não permite envio direto de dados de cartão para a API por questões de segurança.
-   * Este fluxo usa tokenização para manter a conformidade PCI:
-   *
-   * 1. Criar token do cartão (dados sensíveis → token seguro)
-   * 2. Usar token para criar PaymentMethod
-   * 3. Anexar PaymentMethod ao Customer
-   *
-   * ALTERNATIVAS RECOMENDADAS:
-   * - Stripe Elements (JavaScript) - mais seguro
-   * - Flutter Stripe SDK - integração nativa
-   * - Stripe Payment Links - sem código
-   */
-
-  /// Criar token de cartão (primeiro passo seguro)
-  Future<Map<String, dynamic>> createCardToken({
-    required String cardNumber,
-    required String expiryMonth,
-    required String expiryYear,
-    required String cvc,
-    required String cardHolderName,
-    String? phone,
-  }) async {
-    try {
-      await _ensureValidToken();
-      debugPrint('🔄 Criando token de cartão na Stripe');
-
-      final body = {
-        'card[number]': cardNumber,
-        'card[exp_month]': expiryMonth,
-        'card[exp_year]': expiryYear,
-        'card[cvc]': cvc,
-        'card[name]': cardHolderName,
-        'card[address_country]': 'BR',
-      };
-
-      final response = await http.post(
-        Uri.parse('$_baseUrl/tokens'),
-        headers: _getHeaders(),
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        debugPrint('✅ Token de cartão criado: ${data['id']}');
-        return {'success': true, 'data': data};
-      } else {
-        final errorData = json.decode(response.body);
-        return {'success': false, 'error': errorData['error']['message']};
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao criar token: $e');
-      return {'success': false, 'error': 'Erro ao processar cartão: $e'};
-    }
-  }
-
-  /// Criar PaymentMethod usando token de cartão (seguro)
-  Future<Map<String, dynamic>> createPaymentMethodFromToken({
-    required String cardToken,
-    required String cardHolderName,
-    String? phone,
-  }) async {
-    try {
-      await _ensureValidToken();
-      debugPrint('🔄 Criando PaymentMethod a partir do token');
-
-      final body = {
-        'type': 'card',
-        'card[token]': cardToken,
-        'billing_details[name]': cardHolderName,
-        if (phone != null) 'billing_details[phone]': phone,
-        'billing_details[address][country]': 'BR',
-      };
-
-      final response = await http.post(
-        Uri.parse('$_baseUrl/payment_methods'),
-        headers: _getHeaders(),
-        body: body,
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        debugPrint('✅ PaymentMethod criado: ${data['id']}');
-        return {'success': true, 'data': data};
-      } else {
-        final errorData = json.decode(response.body);
-        return {'success': false, 'error': errorData['error']['message']};
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao criar PaymentMethod: $e');
-      return {'success': false, 'error': 'Erro ao processar cartão: $e'};
-    }
-  }
-
-  /// Método completo para criar PaymentMethod (tokenização + criação)
-  Future<Map<String, dynamic>> createPaymentMethod({
-    required String cardNumber,
-    required String expiryMonth,
-    required String expiryYear,
-    required String cvc,
-    required String cardHolderName,
-    String? phone,
-  }) async {
-    try {
-      debugPrint('🔄 Iniciando processo seguro de criação de PaymentMethod');
-
-      // 1. Primeiro criar o token do cartão
-      final tokenResult = await createCardToken(
-        cardNumber: cardNumber,
-        expiryMonth: expiryMonth,
-        expiryYear: expiryYear,
-        cvc: cvc,
-        cardHolderName: cardHolderName,
-        phone: phone,
-      );
-
-      if (!tokenResult['success']) {
-        return tokenResult; // Retorna o erro do token
-      }
-
-      final cardToken = tokenResult['data']['id'];
-      debugPrint('✅ Token criado, agora criando PaymentMethod');
-
-      // 2. Usar o token para criar o PaymentMethod
-      final paymentMethodResult = await createPaymentMethodFromToken(
-        cardToken: cardToken,
-        cardHolderName: cardHolderName,
-        phone: phone,
-      );
-
-      return paymentMethodResult;
-
-    } catch (e) {
-      debugPrint('❌ Erro no processo completo: $e');
-      return {'success': false, 'error': 'Erro ao processar cartão: $e'};
-    }
-  }
-
-  /// Anexar PaymentMethod ao Customer
-  Future<Map<String, dynamic>> attachPaymentMethodToCustomer({
-    required String paymentMethodId,
-    required String customerId,
-  }) async {
-    try {
-      await _ensureValidToken();
-      debugPrint('🔄 Anexando PaymentMethod ao Customer');
-
-      final response = await http.post(
-        Uri.parse('$_baseUrl/payment_methods/$paymentMethodId/attach'),
-        headers: _getHeaders(),
-        body: {'customer': customerId},
-      );
-
-      if (response.statusCode == 200) {
-        debugPrint('✅ PaymentMethod anexado com sucesso');
-        return {'success': true, 'data': json.decode(response.body)};
-      } else {
-        final errorData = json.decode(response.body);
-        return {'success': false, 'error': errorData['error']['message']};
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao anexar PaymentMethod: $e');
-      return {'success': false, 'error': 'Erro na requisição: $e'};
-    }
-  }
-
-  /// Obter métodos de pagamento salvos do cliente
-  Future<List<Map<String, dynamic>>> getSavedPaymentMethods(String customerId) async {
-    try {
-      await _ensureValidToken();
-      debugPrint('🔄 Buscando PaymentMethods do customer: $customerId');
-
-      final response = await http.get(
-        Uri.parse('$_baseUrl/customers/$customerId/payment_methods?type=card'),
-        headers: _getHeaders(),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final paymentMethods = List<Map<String, dynamic>>.from(data['data']);
-        debugPrint('✅ Encontrados ${paymentMethods.length} PaymentMethods');
-        return paymentMethods;
-      } else {
-        debugPrint('❌ Erro ao buscar PaymentMethods: ${response.body}');
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao buscar métodos de pagamento: $e');
-    }
-    return [];
-  }
-
-  // ===========================================
-  // PAYMENT INTENTS E PROCESSAMENTO
-  // ===========================================
-
-  /// Criar e processar pagamento com cartão salvo
-  Future<Map<String, dynamic>> processCardPaymentWithSavedCard({
+  /// Processar pagamento com cartão usando a tela nativa da SDK
+  Future<Map<String, dynamic>> processCardPayment({
     required double amount,
-    required String customerId,
     required String description,
     required String serviceId,
     required String serviceType,
     String? currency = 'brl',
-    Map<String, dynamic>? metadata,
+    bool saveCard = true,
   }) async {
     try {
-      await _ensureValidToken();
+      isLoading.value = true;
+      debugPrint('🔄 Iniciando pagamento com cartão');
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        return {'success': false, 'error': 'Usuário não autenticado'};
+      }
+
+      final user = FirebaseAuth.instance.currentUser!;
+
+      // 1. Obter ou criar customer
+      final customerId = await _getOrCreateCustomer(
+        userId: userId,
+        email: user.email!,
+        name: user.displayName,
+      );
+
+      if (customerId == null) {
+        return {'success': false, 'error': 'Falha ao criar cliente'};
+      }
+
+      // 2. Criar Payment Intent
+      final paymentIntentResult = await _createPaymentIntent(
+        amount: amount,
+        currency: currency!,
+        customerId: saveCard ? customerId : null,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+        userId: userId,
+        setupFutureUsage: saveCard ? 'off_session' : null,
+      );
+
+      if (!paymentIntentResult['success']) {
+        return paymentIntentResult;
+      }
+
+      final clientSecret = paymentIntentResult['client_secret'];
+      final paymentIntentId = paymentIntentResult['payment_intent_id'];
+
+      // 3. Inicializar Payment Sheet
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          paymentIntentClientSecret: clientSecret,
+          merchantDisplayName: 'Oraculum',
+          customerId: customerId,
+          customerEphemeralKeySecret: await _createEphemeralKey(customerId),
+          allowsDelayedPaymentMethods: true,
+          billingDetails: const BillingDetails(
+            address: Address(
+              country: 'BR',
+            ),
+          ),
+          style: ThemeMode.system,
+        ),
+      );
+
+      // 4. Apresentar Payment Sheet
+      await Stripe.instance.presentPaymentSheet();
+
+      // 5. Verificar resultado
+      final paymentResult = await _checkPaymentIntentStatus(paymentIntentId);
+
+      if (paymentResult['status'] == 'succeeded') {
+        // Salvar transação no Firebase
+        final transactionId = await _savePaymentTransaction(
+          userId: userId,
+          amount: amount,
+          description: description,
+          serviceId: serviceId,
+          serviceType: serviceType,
+          paymentIntentId: paymentIntentId,
+          paymentMethod: 'card',
+          status: 'succeeded',
+        );
+
+        // Adicionar créditos ao usuário
+        await _addCreditsToUser(userId, amount);
+
+        // Se foi salvo um cartão, adicionar aos salvos
+        if (saveCard) {
+          await _saveCardFromPaymentIntent(userId, customerId, paymentIntentId);
+        }
+
+        return {
+          'success': true,
+          'transaction_id': transactionId,
+          'payment_intent_id': paymentIntentId,
+        };
+      }
+
+      return {'success': false, 'error': 'Pagamento não foi completado'};
+
+    } on StripeException catch (e) {
+      debugPrint('❌ Erro Stripe: ${e.error.localizedMessage}');
+      return {'success': false, 'error': e.error.localizedMessage ?? 'Erro no pagamento'};
+    } catch (e) {
+      debugPrint('❌ Erro geral: $e');
+      return {'success': false, 'error': 'Erro inesperado: $e'};
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // PAGAMENTO COM CARTÃO SALVO
+  // ===========================================
+
+  /// Processar pagamento com cartão salvo
+  Future<Map<String, dynamic>> processPaymentWithSavedCard({
+    required String paymentMethodId,
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+    String? currency = 'brl',
+  }) async {
+    try {
       isLoading.value = true;
       debugPrint('🔄 Processando pagamento com cartão salvo');
 
@@ -348,92 +248,302 @@ class StripePaymentService extends GetxService {
         return {'success': false, 'error': 'Usuário não autenticado'};
       }
 
-      // 1. Buscar método de pagamento padrão
-      final paymentMethods = await getSavedPaymentMethods(customerId);
-      if (paymentMethods.isEmpty) {
-        return {'success': false, 'error': 'Nenhum método de pagamento encontrado'};
-      }
-
-      final paymentMethodId = paymentMethods.first['id'];
-      debugPrint('💳 Usando PaymentMethod: $paymentMethodId');
-
-      // 2. Criar Payment Intent
-      final amountInCents = (amount * 100).round();
-      final body = {
-        'amount': amountInCents.toString(),
-        'currency': currency!.toLowerCase(),
-        'customer': customerId,
-        'payment_method': paymentMethodId,
-        'confirmation_method': 'manual',
-        'confirm': 'true',
-        'description': description,
-        'metadata[user_id]': userId,
-        'metadata[service_id]': serviceId,
-        'metadata[service_type]': serviceType,
-        if (metadata != null)
-          ...metadata.map((key, value) => MapEntry('metadata[$key]', value.toString())),
-      };
-
-      final response = await http.post(
-        Uri.parse('$_baseUrl/payment_intents'),
-        headers: _getHeaders(),
-        body: body,
+      // 1. Criar Payment Intent
+      final paymentIntentResult = await _createPaymentIntent(
+        amount: amount,
+        currency: currency!,
+        paymentMethodId: paymentMethodId,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+        userId: userId,
       );
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final status = data['status'];
-        final paymentIntentId = data['id'];
-
-        debugPrint('✅ PaymentIntent criado: $paymentIntentId - Status: $status');
-
-        if (status == 'succeeded') {
-          // Pagamento aprovado
-          final paymentId = await _savePaymentRecord(
-            userId: userId,
-            amount: amount,
-            description: description,
-            serviceId: serviceId,
-            serviceType: serviceType,
-            stripePaymentIntentId: paymentIntentId,
-            status: 'succeeded',
-          );
-
-          await _addCreditsToUser(userId, amount);
-
-          return {
-            'success': true,
-            'payment_id': paymentId,
-            'payment_intent_id': paymentIntentId,
-            'payment_method_id': paymentMethodId,
-            'status': status,
-          };
-        } else if (status == 'requires_action') {
-          return {
-            'success': false,
-            'requires_action': true,
-            'payment_intent_id': paymentIntentId,
-            'client_secret': data['client_secret'],
-            'error': 'O pagamento requer autenticação adicional',
-          };
-        } else {
-          return {
-            'success': false,
-            'error': 'Pagamento não foi aprovado. Status: $status',
-          };
-        }
-      } else {
-        final errorData = json.decode(response.body);
-        return {'success': false, 'error': errorData['error']['message']};
+      if (!paymentIntentResult['success']) {
+        return paymentIntentResult;
       }
 
+      final paymentIntentId = paymentIntentResult['payment_intent_id'];
+
+      // 2. Confirmar pagamento
+      final confirmResult = await _confirmPaymentIntent(paymentIntentId);
+
+      if (confirmResult['status'] == 'succeeded') {
+        // Salvar transação
+        final transactionId = await _savePaymentTransaction(
+          userId: userId,
+          amount: amount,
+          description: description,
+          serviceId: serviceId,
+          serviceType: serviceType,
+          paymentIntentId: paymentIntentId,
+          paymentMethod: 'saved_card',
+          status: 'succeeded',
+        );
+
+        // Adicionar créditos
+        await _addCreditsToUser(userId, amount);
+
+        return {
+          'success': true,
+          'transaction_id': transactionId,
+          'payment_intent_id': paymentIntentId,
+        };
+      } else if (confirmResult['status'] == 'requires_action') {
+        // Requer autenticação 3D Secure
+        try {
+          final paymentIntent = await Stripe.instance.handleNextAction(
+            confirmResult['client_secret'],
+          );
+
+          if (paymentIntent.status == PaymentIntentsStatus.Succeeded) {
+            // Pagamento bem-sucedido após autenticação
+            final transactionId = await _savePaymentTransaction(
+              userId: userId,
+              amount: amount,
+              description: description,
+              serviceId: serviceId,
+              serviceType: serviceType,
+              paymentIntentId: paymentIntentId,
+              paymentMethod: 'saved_card_3ds',
+              status: 'succeeded',
+            );
+
+            await _addCreditsToUser(userId, amount);
+
+            return {
+              'success': true,
+              'transaction_id': transactionId,
+              'payment_intent_id': paymentIntentId,
+            };
+          }
+        } catch (e) {
+          return {'success': false, 'error': 'Falha na autenticação'};
+        }
+      }
+
+      return {'success': false, 'error': 'Pagamento não foi aprovado'};
+
     } catch (e) {
-      debugPrint('❌ Erro no processamento do pagamento: $e');
-      return {'success': false, 'error': 'Erro inesperado: $e'};
+      debugPrint('❌ Erro no pagamento com cartão salvo: $e');
+      return {'success': false, 'error': 'Erro no pagamento: $e'};
     } finally {
       isLoading.value = false;
     }
   }
+
+  // ===========================================
+  // APPLE PAY
+  // ===========================================
+
+  /// Verificar se Apple Pay está disponível
+  Future<bool> isApplePaySupported() async {
+    try {
+      return await Stripe.instance.isApplePaySupported();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Processar pagamento com Apple Pay
+  Future<Map<String, dynamic>> processApplePayPayment({
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+    String? currency = 'brl',
+  }) async {
+    try {
+      isLoading.value = true;
+      debugPrint('🔄 Iniciando pagamento com Apple Pay');
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        return {'success': false, 'error': 'Usuário não autenticado'};
+      }
+
+      // Verificar suporte
+      if (!await isApplePaySupported()) {
+        return {'success': false, 'error': 'Apple Pay não está disponível'};
+      }
+
+      // Criar Payment Intent
+      final paymentIntentResult = await _createPaymentIntent(
+        amount: amount,
+        currency: currency!,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+        userId: userId,
+      );
+
+      if (!paymentIntentResult['success']) {
+        return paymentIntentResult;
+      }
+
+      final clientSecret = paymentIntentResult['client_secret'];
+      final paymentIntentId = paymentIntentResult['payment_intent_id'];
+
+      // Configurar Apple Pay
+      await Stripe.instance.confirmApplePayPayment(
+        clientSecret,
+        const ApplePayParams(
+          currencyCode: 'BRL',
+          countryCode: 'BR',
+          merchantDisplayName: 'Oraculum',
+          merchantIdentifier: 'merchant.com.oraculum.app',
+        ),
+      );
+
+      // Verificar resultado
+      final paymentResult = await _checkPaymentIntentStatus(paymentIntentId);
+
+      if (paymentResult['status'] == 'succeeded') {
+        final transactionId = await _savePaymentTransaction(
+          userId: userId,
+          amount: amount,
+          description: description,
+          serviceId: serviceId,
+          serviceType: serviceType,
+          paymentIntentId: paymentIntentId,
+          paymentMethod: 'apple_pay',
+          status: 'succeeded',
+        );
+
+        await _addCreditsToUser(userId, amount);
+
+        return {
+          'success': true,
+          'transaction_id': transactionId,
+          'payment_intent_id': paymentIntentId,
+        };
+      }
+
+      return {'success': false, 'error': 'Pagamento Apple Pay não foi completado'};
+
+    } on StripeException catch (e) {
+      debugPrint('❌ Erro Apple Pay: ${e.error.localizedMessage}');
+      return {'success': false, 'error': e.error.localizedMessage ?? 'Erro no Apple Pay'};
+    } catch (e) {
+      debugPrint('❌ Erro geral Apple Pay: $e');
+      return {'success': false, 'error': 'Erro no Apple Pay: $e'};
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // GOOGLE PAY
+  // ===========================================
+
+  /// Verificar se Google Pay está disponível
+  Future<bool> isGooglePaySupported() async {
+    try {
+      return await Stripe.instance.isGooglePaySupported(
+        const IsGooglePaySupportedParams(),
+      );
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Processar pagamento com Google Pay
+  Future<Map<String, dynamic>> processGooglePayPayment({
+    required double amount,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+    String? currency = 'brl',
+  }) async {
+    try {
+      isLoading.value = true;
+      debugPrint('🔄 Iniciando pagamento com Google Pay');
+
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) {
+        return {'success': false, 'error': 'Usuário não autenticado'};
+      }
+
+      // Verificar suporte
+      if (!await isGooglePaySupported()) {
+        return {'success': false, 'error': 'Google Pay não está disponível'};
+      }
+
+      // Criar Payment Intent
+      final paymentIntentResult = await _createPaymentIntent(
+        amount: amount,
+        currency: currency!,
+        description: description,
+        serviceId: serviceId,
+        serviceType: serviceType,
+        userId: userId,
+      );
+
+      if (!paymentIntentResult['success']) {
+        return paymentIntentResult;
+      }
+
+      final clientSecret = paymentIntentResult['client_secret'];
+      final paymentIntentId = paymentIntentResult['payment_intent_id'];
+
+      // Inicializar Google Pay
+      await Stripe.instance.initGooglePay(
+        GooglePayInitParams(
+          testEnv: true, // Mudar para false em produção
+          merchantName: 'Oraculum',
+          countryCode: 'BR',
+          currencyCode: 'BRL',
+        ),
+      );
+
+      // Apresentar Google Pay
+      await Stripe.instance.presentGooglePay(
+        PresentGooglePayParams(
+          clientSecret: clientSecret,
+          forSetupIntent: false,
+        ),
+      );
+
+      // Verificar resultado
+      final paymentResult = await _checkPaymentIntentStatus(paymentIntentId);
+
+      if (paymentResult['status'] == 'succeeded') {
+        final transactionId = await _savePaymentTransaction(
+          userId: userId,
+          amount: amount,
+          description: description,
+          serviceId: serviceId,
+          serviceType: serviceType,
+          paymentIntentId: paymentIntentId,
+          paymentMethod: 'google_pay',
+          status: 'succeeded',
+        );
+
+        await _addCreditsToUser(userId, amount);
+
+        return {
+          'success': true,
+          'transaction_id': transactionId,
+          'payment_intent_id': paymentIntentId,
+        };
+      }
+
+      return {'success': false, 'error': 'Pagamento Google Pay não foi completado'};
+
+    } on StripeException catch (e) {
+      debugPrint('❌ Erro Google Pay: ${e.error.localizedMessage}');
+      return {'success': false, 'error': e.error.localizedMessage ?? 'Erro no Google Pay'};
+    } catch (e) {
+      debugPrint('❌ Erro geral Google Pay: $e');
+      return {'success': false, 'error': 'Erro no Google Pay: $e'};
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // ===========================================
+  // PIX (VIA STRIPE)
+  // ===========================================
 
   /// Criar pagamento PIX
   Future<Map<String, dynamic>> createPixPayment({
@@ -444,7 +554,6 @@ class StripePaymentService extends GetxService {
     String? currency = 'brl',
   }) async {
     try {
-      await _ensureValidToken();
       isLoading.value = true;
       debugPrint('🔄 Criando pagamento PIX');
 
@@ -466,7 +575,7 @@ class StripePaymentService extends GetxService {
 
       final response = await http.post(
         Uri.parse('$_baseUrl/payment_intents'),
-        headers: _getHeaders(),
+        headers: _headers,
         body: body,
       );
 
@@ -477,7 +586,7 @@ class StripePaymentService extends GetxService {
         // Confirmar para gerar QR Code PIX
         final confirmResponse = await http.post(
           Uri.parse('$_baseUrl/payment_intents/$paymentIntentId/confirm'),
-          headers: _getHeaders(),
+          headers: _headers,
           body: {
             'payment_method_data[type]': 'pix',
             'return_url': 'https://oraculum.app/payment/return',
@@ -487,30 +596,33 @@ class StripePaymentService extends GetxService {
         if (confirmResponse.statusCode == 200) {
           final confirmedData = json.decode(confirmResponse.body);
 
+          String? pixQrCode;
           if (confirmedData['next_action']?['pix_display_qr_code'] != null) {
-            final pixData = confirmedData['next_action']['pix_display_qr_code'];
-
-            final paymentId = await _savePaymentRecord(
-              userId: userId,
-              amount: amount,
-              description: description,
-              serviceId: serviceId,
-              serviceType: serviceType,
-              stripePaymentIntentId: paymentIntentId,
-              status: 'pending',
-              additionalData: {
-                'pixQrCode': pixData['data'],
-                'expiresAt': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
-              },
-            );
-
-            return {
-              'success': true,
-              'payment_id': paymentId,
-              'stripe_payment_intent_id': paymentIntentId,
-              'pix_qr_code': pixData['data'],
-            };
+            pixQrCode = confirmedData['next_action']['pix_display_qr_code']['data'];
           }
+
+          // Salvar transação como pendente
+          final transactionId = await _savePaymentTransaction(
+            userId: userId,
+            amount: amount,
+            description: description,
+            serviceId: serviceId,
+            serviceType: serviceType,
+            paymentIntentId: paymentIntentId,
+            paymentMethod: 'pix',
+            status: 'pending',
+            additionalData: {
+              'pixQrCode': pixQrCode,
+              'expiresAt': DateTime.now().add(const Duration(hours: 24)).toIso8601String(),
+            },
+          );
+
+          return {
+            'success': true,
+            'transaction_id': transactionId,
+            'payment_intent_id': paymentIntentId,
+            'pix_qr_code': pixQrCode,
+          };
         }
       }
 
@@ -525,29 +637,201 @@ class StripePaymentService extends GetxService {
   }
 
   // ===========================================
-  // MÉTODOS AUXILIARES
+  // GESTÃO DE CARTÕES SALVOS
   // ===========================================
 
-  /// Salvar registro de pagamento no Firestore
-  Future<String> _savePaymentRecord({
+  /// Obter cartões salvos do usuário
+  Future<List<Map<String, dynamic>>> getSavedCards(String userId) async {
+    try {
+      final cardsSnapshot = await _firebaseService.firestore
+          .collection('user_payment_methods')
+          .where('userId', isEqualTo: userId)
+          .where('type', isEqualTo: 'card')
+          .get();
+
+      return cardsSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          ...data,
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('❌ Erro ao buscar cartões salvos: $e');
+      return [];
+    }
+  }
+
+  /// Remover cartão salvo
+  Future<bool> removeCard(String userId, String cardId) async {
+    try {
+      // Remover do Stripe
+      await http.post(
+        Uri.parse('$_baseUrl/payment_methods/$cardId/detach'),
+        headers: _headers,
+      );
+
+      // Remover do Firebase
+      await _firebaseService.firestore
+          .collection('user_payment_methods')
+          .doc(cardId)
+          .delete();
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ Erro ao remover cartão: $e');
+      return false;
+    }
+  }
+
+  // ===========================================
+  // MÉTODOS AUXILIARES DA API
+  // ===========================================
+
+  /// Criar Payment Intent
+  Future<Map<String, dynamic>> _createPaymentIntent({
+    required double amount,
+    required String currency,
+    required String description,
+    required String serviceId,
+    required String serviceType,
+    required String userId,
+    String? customerId,
+    String? paymentMethodId,
+    String? setupFutureUsage,
+  }) async {
+    try {
+      final amountInCents = (amount * 100).round();
+      final body = {
+        'amount': amountInCents.toString(),
+        'currency': currency.toLowerCase(),
+        'description': description,
+        'metadata[user_id]': userId,
+        'metadata[service_id]': serviceId,
+        'metadata[service_type]': serviceType,
+        if (customerId != null) 'customer': customerId,
+        if (paymentMethodId != null) 'payment_method': paymentMethodId,
+        if (setupFutureUsage != null) 'setup_future_usage': setupFutureUsage,
+      };
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/payment_intents'),
+        headers: _headers,
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'payment_intent_id': data['id'],
+          'client_secret': data['client_secret'],
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {'success': false, 'error': errorData['error']['message']};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erro ao criar Payment Intent: $e'};
+    }
+  }
+
+  /// Confirmar Payment Intent
+  Future<Map<String, dynamic>> _confirmPaymentIntent(String paymentIntentId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/payment_intents/$paymentIntentId/confirm'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'status': data['status'],
+          'client_secret': data['client_secret'],
+        };
+      } else {
+        final errorData = json.decode(response.body);
+        return {'success': false, 'error': errorData['error']['message']};
+      }
+    } catch (e) {
+      return {'success': false, 'error': 'Erro ao confirmar Payment Intent: $e'};
+    }
+  }
+
+  /// Verificar status do Payment Intent
+  Future<Map<String, dynamic>> _checkPaymentIntentStatus(String paymentIntentId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/payment_intents/$paymentIntentId'),
+        headers: _headers,
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'status': data['status'],
+          'data': data,
+        };
+      }
+
+      return {'success': false, 'error': 'Erro ao verificar status'};
+    } catch (e) {
+      return {'success': false, 'error': 'Erro na verificação: $e'};
+    }
+  }
+
+  /// Criar Ephemeral Key para customer
+  Future<String?> _createEphemeralKey(String customerId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/ephemeral_keys'),
+        headers: {
+          ..._headers,
+          'Stripe-Version': '2023-10-16',
+        },
+        body: {'customer': customerId},
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['secret'];
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro ao criar ephemeral key: $e');
+      return null;
+    }
+  }
+
+  // ===========================================
+  // MÉTODOS AUXILIARES DO FIREBASE
+  // ===========================================
+
+  /// Salvar transação no Firebase
+  Future<String> _savePaymentTransaction({
     required String userId,
     required double amount,
     required String description,
     required String serviceId,
     required String serviceType,
-    required String stripePaymentIntentId,
+    required String paymentIntentId,
+    required String paymentMethod,
     required String status,
     Map<String, dynamic>? additionalData,
   }) async {
     try {
-      final paymentData = {
+      final transactionData = {
         'userId': userId,
         'amount': amount,
         'description': description,
         'serviceId': serviceId,
         'serviceType': serviceType,
-        'paymentMethod': 'Stripe',
-        'stripePaymentIntentId': stripePaymentIntentId,
+        'paymentMethod': paymentMethod,
+        'stripePaymentIntentId': paymentIntentId,
         'status': status,
         'timestamp': FieldValue.serverTimestamp(),
         'createdAt': DateTime.now().toIso8601String(),
@@ -556,13 +840,13 @@ class StripePaymentService extends GetxService {
 
       final docRef = await _firebaseService.firestore
           .collection('payments')
-          .add(paymentData);
+          .add(transactionData);
 
-      debugPrint('✅ Registro de pagamento salvo: ${docRef.id}');
+      debugPrint('✅ Transação salva: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      debugPrint('❌ Erro ao salvar registro de pagamento: $e');
-      throw Exception('Erro ao salvar pagamento: $e');
+      debugPrint('❌ Erro ao salvar transação: $e');
+      throw Exception('Erro ao salvar transação: $e');
     }
   }
 
@@ -582,48 +866,26 @@ class StripePaymentService extends GetxService {
           .doc(userId)
           .update({'credits': newCredits});
 
-      debugPrint('✅ Créditos atualizados: R\$ ${amount.toStringAsFixed(2)} adicionados');
+      debugPrint('✅ Créditos atualizados: +R\$ ${amount.toStringAsFixed(2)}');
     } catch (e) {
       debugPrint('❌ Erro ao adicionar créditos: $e');
-      throw Exception('Erro ao adicionar créditos: $e');
     }
   }
 
-  /// Verificar status de um Payment Intent
-  Future<Map<String, dynamic>> checkPaymentIntentStatus(String paymentIntentId) async {
+  /// Salvar cartão do Payment Intent
+  Future<void> _saveCardFromPaymentIntent(String userId, String customerId, String paymentIntentId) async {
     try {
-      await _ensureValidToken();
+      // Buscar Payment Intent para obter o Payment Method
+      final paymentIntentData = await _checkPaymentIntentStatus(paymentIntentId);
 
-      final response = await http.get(
-        Uri.parse('$_baseUrl/payment_intents/$paymentIntentId'),
-        headers: _getHeaders(),
-      );
+      if (paymentIntentData['success']) {
+        final paymentMethodId = paymentIntentData['data']['payment_method'];
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {'success': true, 'data': data, 'status': data['status']};
-      } else {
-        return {'success': false, 'error': 'Erro ao verificar status: ${response.body}'};
-      }
-    } catch (e) {
-      return {'success': false, 'error': 'Erro na requisição: $e'};
-    }
-  }
+        if (paymentMethodId != null) {
+          // Buscar detalhes do Payment Method
+          final pmResponse = await http.get(
+            Uri.parse('$_baseUrl/payment_methods/$paymentMethodId'),
+            headers: _headers,
+          );
 
-  /// Testar conectividade com Stripe
-  Future<bool> testStripeConnection() async {
-    try {
-      debugPrint('🔄 Testando conexão com Stripe...');
-      return await _authenticate();
-    } catch (e) {
-      debugPrint('❌ Erro ao testar conexão: $e');
-      return false;
-    }
-  }
-
-  // ===========================================
-  // GETTERS
-  // ===========================================
-  String get publishableKey => _publishableKey;
-  bool get isAuthenticated => _isTokenValid();
-}
+          if

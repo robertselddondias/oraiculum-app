@@ -8,20 +8,18 @@ import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/gemini_service.dart';
-import 'package:oraculum/services/pagarme_service.dart';
-import 'package:oraculum/services/pagarme_wallet_service.dart';
 import 'package:oraculum/services/payment_service.dart';
 import 'package:oraculum/services/stripe_payment_service.dart';
 
 class InitialBinding implements Bindings {
   @override
   void dependencies() {
-    // Services
+    // Services - ordem de inicialização importante
     Get.put(FirebaseService(), permanent: true);
     Get.put(GeminiService(apiKey: 'AIzaSyD2aGQjaAvnlm75UwuEsT6QR0R9jZ1bKW0'), permanent: true);
     Get.put(PaymentService(), permanent: true);
-    Get.put(PagarmeWalletService(), permanent: true);
-    Get.put(PagarmeService(), permanent: true);
+
+    // Stripe Service - deve ser inicializado após Firebase
     Get.put(StripePaymentService(), permanent: true);
 
     // Base controllers
@@ -33,6 +31,5 @@ class InitialBinding implements Bindings {
     Get.put(TarotController(), permanent: true);
     Get.put(HoroscopeController(), permanent: true);
     Get.put(CardListController(), permanent: true);
-    Get.put(NewCreditCardController());
   }
 }

@@ -1,50 +1,131 @@
+<!-- ios/Runner/Info.plist -->
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSApplePayUsageDescription</key>
-    <string>Usamos o Apple Pay para facilitar pagamentos seguros.</string>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>Oraculum</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>oraculum</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>$(FLUTTER_BUILD_NAME)</string>
+    <key>CFBundleSignature</key>
+    <string>????</string>
+    <key>CFBundleVersion</key>
+    <string>$(FLUTTER_BUILD_NUMBER)</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UISupportedInterfaceOrientations~ipad</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationPortraitUpsideDown</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+
+    <!-- URL Schemes para Deep Linking -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>oraculum.payment.return</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>oraculum</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Apple Pay Configuration -->
+    <key>com.apple.developer.in-app-payments</key>
+    <array>
+        <string>merchant.com.oraculum.app</string>
+    </array>
+
+    <!-- Stripe Configuration -->
+    <key>StripePublishableKey</key>
+    <string>pk_test_51RTpqm4TyzboYffk5IRBTmwEqPvKtBftyepU82rkCK5j0Bh6TYJ7Ld6e9lqvxoJoNe1xefeE58iFS2Igwvsfnc5q00R2Aztn0o</string>
+
+    <!-- Permissions -->
     <key>NSCameraUsageDescription</key>
-    <string>Este app precisa usar a câmera para tirar fotos.</string>
+    <string>O Oraculum precisa acessar a câmera para escanear QR codes de pagamento PIX</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>O Oraculum usa sua localização para personalizar a experiência astrológica</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Este app precisa acessar sua galeria de fotos.</string>
+    <string>O Oraculum precisa acessar suas fotos para definir sua foto de perfil</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>O Oraculum precisa acessar o microfone para consultas por voz</string>
+    <key>NSContactsUsageDescription</key>
+    <string>O Oraculum pode acessar seus contatos para análise de compatibilidade</string>
+    <key>NSFaceIDUsageDescription</key>
+    <string>O Oraculum usa Face ID para autenticação segura em pagamentos</string>
 
-    <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>Este app precisa salvar imagens na galeria.</string>
+    <!-- Firebase Configuration -->
+    <key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+    <true/>
+    <key>FIREBASE_CRASHLYTICS_COLLECTION_ENABLED</key>
+    <true/>
 
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>CFBundleDevelopmentRegion</key>
-	<string>$(DEVELOPMENT_LANGUAGE)</string>
-	<key>CFBundleDisplayName</key>
-	<string>Oraculum App</string>
-	<key>CFBundleExecutable</key>
-	<string>$(EXECUTABLE_NAME)</string>
-	<key>CFBundleIdentifier</key>
-	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-	<key>CFBundleInfoDictionaryVersion</key>
-	<string>6.0</string>
-	<key>CFBundleName</key>
-	<string>oraculum_app</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(FLUTTER_BUILD_NAME)</string>
-	<key>CFBundleSignature</key>
-	<string>????</string>
-	<key>CFBundleVersion</key>
-	<string>$(FLUTTER_BUILD_NUMBER)</string>
-	<key>LSRequiresIPhoneOS</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>UILaunchStoryboardName</key>
-	<string>LaunchScreen</string>
-	<key>UIMainStoryboardFile</key>
-	<string>Main</string>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
+    <!-- App Transport Security -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>api.stripe.com</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <false/>
+                <key>NSExceptionMinimumTLSVersion</key>
+                <string>TLSv1.2</string>
+                <key>NSExceptionRequiresForwardSecrecy</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+
+    <!-- Background Modes -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>remote-notification</string>
+        <string>background-fetch</string>
+    </array>
+
+    <!-- Minimum iOS Version -->
+    <key>MinimumOSVersion</key>
+    <string>12.0</string>
+
+    <!-- Device Capabilities -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+    </array>
+
+    <!-- Status Bar -->
+    <key>UIStatusBarHidden</key>
+    <false/>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <false/>
 </dict>
 </plist>
