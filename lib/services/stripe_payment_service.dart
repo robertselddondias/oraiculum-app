@@ -13,8 +13,8 @@ class StripePaymentService extends GetxService {
   // ===========================================
   // CONFIGURAÇÕES STRIPE
   // ===========================================
-  static const String _publishableKey = 'pk_test_51RTpqm4TyzboYffk5IRBTmwEqPvKtBftyepU82rkCK5j0Bh6TYJ7Ld6e9lqvxoJoNe1xefeE58iFS2Igwvsfnc5q00R2Aztn0o';
-  static const String _secretKey = 'sk_test_51RTpqm4TyzboYffkLCT1uIvlITbGX3vgRC6rNnduYStBy2wg99c4DxrraH75S4ATZiPEOdk3KxsYlR8fVQ661CkV00r5Yt8XgO';
+  static const String _publishableKey = 'pk_live_51RTpqdGBYInScAnoXT5vqiOUP4HKd5E5ptAbiHqS3iqTPxI7GCSj1kyII47CPqrDeLJB56E3OwrTiw70F9Bjixkn00lkQrlzoN';
+  static const String _secretKey = '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';
   static const String _baseUrl = 'https://api.stripe.com/v1';
 
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
