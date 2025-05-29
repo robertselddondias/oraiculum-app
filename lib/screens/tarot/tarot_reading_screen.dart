@@ -10,6 +10,7 @@ import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:oraculum/widgets/app_card_image.dart';
+import 'package:oraculum/screens/tarot/widgets/mystic_welcome_dialog.dart';
 import 'package:share_plus/share_plus.dart';
 
 class TarotReadingScreen extends StatefulWidget {
@@ -38,6 +39,10 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
   final RxMap<String, dynamic> _parsedInterpretation = <String, dynamic>{}.obs;
   final RxBool _isCardDetailsVisible = false.obs;
   final Rx<TarotCard?> _selectedCardForDetails = Rx<TarotCard?>(null);
+
+  // Controle do diálogo místico
+  final RxBool _hasShownMysticDialog = false.obs;
+  final RxBool _isReadyToStart = false.obs;
 
   @override
   void initState() {
@@ -84,9 +89,9 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
       );
     }).toList();
 
-    // Carregar cartas aleatórias
+    // Aguardar o build inicial e mostrar o diálogo místico
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadRandomCards();
+      _showMysticWelcomeDialog();
     });
 
     // Observar mudanças no estado das cartas e na interpretação
@@ -108,6 +113,26 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
       controller.dispose();
     }
     super.dispose();
+  }
+
+  // Mostrar o diálogo místico de boas-vindas
+  void _showMysticWelcomeDialog() {
+    if (!_hasShownMysticDialog.value) {
+      _hasShownMysticDialog.value = true;
+
+      Future.delayed(const Duration(milliseconds: 500), () {
+        MysticWelcomeDialog.show(
+          context,
+          onContinue: () {
+            _isReadyToStart.value = true;
+            _loadRandomCards();
+
+            // Efeito tátil quando o usuário está pronto para começar
+            HapticFeedback.mediumImpact();
+          },
+        );
+      });
+    }
   }
 
   void _loadRandomCards() async {
@@ -198,7 +223,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
         shareText += '✨ ${generalText.substring(0, min(150, generalText.length))}...\n\n';
       }
 
-      shareText += 'Descubra seu futuro com o app Astral Connect!';
+      shareText += 'Descubra seu futuro com o app Oraculum!';
 
       SharePlus.instance.share(
           ShareParams(text: shareText)
@@ -210,6 +235,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
         snackPosition: SnackPosition.BOTTOM,
       );
     }
+  }
+
+  // Reiniciar experiência (mostrar diálogo místico novamente)
+  void _restartMysticExperience() {
+    _hasShownMysticDialog.value = false;
+    _isReadyToStart.value = false;
+    _showMysticWelcomeDialog();
   }
 
   @override
@@ -241,6 +273,11 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
         },
         child: SafeArea(
           child: Obx(() {
+            // Mostrar tela de carregamento inicial até que o diálogo seja mostrado
+            if (!_isReadyToStart.value) {
+              return _buildMysticLoadingState();
+            }
+
             if (_controller.isLoading.value) {
               return _buildLoadingState();
             }
@@ -272,6 +309,73 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
         ),
       ),
     );
+  }
+
+  Widget _buildMysticLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Ícone místico com animação de rotação
+          AnimatedBuilder(
+            animation: _backgroundController,
+            builder: (context, child) {
+              return Transform.rotate(
+                angle: _backgroundController.value * 2 * pi,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF6C63FF).withOpacity(0.3),
+                        const Color(0xFF8E78FF).withOpacity(0.7),
+                        const Color(0xFFFF9D8A).withOpacity(0.3),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF6C63FF).withOpacity(0.4),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '🌟 Preparando o Portal dos Arcanos...',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'O universo está alinhando as energias para você',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 800.ms);
   }
 
   Widget _buildDailyReadingStatus(bool isSmallScreen) {
@@ -381,6 +485,16 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
           // Linha de ações (botões)
           Row(
             children: [
+              // Botão para reiniciar a experiência mística
+              IconButton(
+                onPressed: _restartMysticExperience,
+                icon: const Icon(
+                  Icons.psychology,
+                  color: Colors.white,
+                ),
+                splashRadius: 24,
+                tooltip: 'Experiência Mística',
+              ),
               // Botão para Minhas Leituras
               IconButton(
                 onPressed: () => Get.toNamed(AppRoutes.savedReadingsList),
