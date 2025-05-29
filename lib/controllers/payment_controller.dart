@@ -53,10 +53,7 @@ class PaymentController extends GetxController {
       // Definir padrões se houver erro
       availablePaymentMethods.value = {
         'card_payments': true,
-        'apple_pay': false,
-        'google_pay': false,
         'pix': true,
-        'save_cards': true,
       };
     }
   }
@@ -909,42 +906,12 @@ class PaymentController extends GetxController {
       });
     }
 
-    if (availablePaymentMethods['apple_pay'] == true) {
-      methods.add({
-        'id': 'apple_pay',
-        'name': 'Apple Pay',
-        'icon': Icons.apple,
-        'description': 'Pagamento rápido e seguro',
-        'available': true,
-      });
-    }
-
-    if (availablePaymentMethods['google_pay'] == true) {
-      methods.add({
-        'id': 'google_pay',
-        'name': 'Google Pay',
-        'icon': Icons.account_balance_wallet,
-        'description': 'Pagamento rápido e seguro',
-        'available': true,
-      });
-    }
-
     if (availablePaymentMethods['pix'] == true) {
       methods.add({
         'id': 'pix',
         'name': 'PIX',
         'icon': Icons.qr_code,
         'description': 'Pagamento instantâneo',
-        'available': true,
-      });
-    }
-
-    if (userCredits.value > 0) {
-      methods.add({
-        'id': 'credits',
-        'name': 'Créditos',
-        'icon': Icons.account_balance_wallet,
-        'description': 'Usar créditos da conta (R\$ ${userCredits.value.toStringAsFixed(2)})',
         'available': true,
       });
     }

@@ -1023,8 +1023,8 @@ class StripePaymentService extends GetxService {
     try {
       final features = <String, bool>{};
 
-      features['apple_pay'] = await isApplePaySupported();
-      features['google_pay'] = await isGooglePaySupported();
+      // features['apple_pay'] = await isApplePaySupported();
+      // features['google_pay'] = await isGooglePaySupported();
       features['card_payments'] = true;
       features['pix'] = true;
       features['save_cards'] = true;
@@ -1034,8 +1034,6 @@ class StripePaymentService extends GetxService {
       debugPrint('❌ Erro ao verificar recursos: $e');
       return {
         'card_payments': true,
-        'apple_pay': false,
-        'google_pay': false,
         'pix': true,
         'save_cards': true,
       };
