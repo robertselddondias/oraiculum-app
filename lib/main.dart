@@ -4,6 +4,7 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:get/get.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:oraculum/bindings/initial_bindings.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/config/theme.dart';
@@ -19,6 +20,8 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  await initializeDateFormatting('pt_BR', null);
 
   // Configurar status bar
   SystemChrome.setSystemUIOverlayStyle(
