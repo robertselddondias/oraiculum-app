@@ -487,16 +487,6 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             children: [
               // Botão para reiniciar a experiência mística
               IconButton(
-                onPressed: _restartMysticExperience,
-                icon: const Icon(
-                  Icons.psychology,
-                  color: Colors.white,
-                ),
-                splashRadius: 24,
-                tooltip: 'Experiência Mística',
-              ),
-              // Botão para Minhas Leituras
-              IconButton(
                 onPressed: () => Get.toNamed(AppRoutes.savedReadingsList),
                 icon: const Icon(
                   Icons.history,

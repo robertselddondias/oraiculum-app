@@ -37,23 +37,23 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
   // Mensagens místicas por página com melhor legibilidade
   final List<Map<String, dynamic>> _mysticMessages = [
     {
-      'title': '🌟 Bem-vindo ao Portal dos Arcanos',
-      'subtitle': 'As cartas sussurram segredos do universo...',
+      'title': '🌟 Portal dos Arcanos',
+      'subtitle': 'As cartas sussurram segredos...',
       'message': 'Respire profundamente e conecte-se com sua energia interior.\n\nO tarô aguarda para revelar os mistérios que cercam seu caminho.',
       'icon': Icons.auto_awesome,
       'gradient': [Color(0xFF6C63FF), Color(0xFF8E78FF)],
     },
     {
-      'title': '🔮 Prepare Sua Mente e Coração',
+      'title': '🔮 Prepare Sua Mente',
       'subtitle': 'Feche os olhos por um momento...',
       'message': 'Pense em uma pergunta que habita seu coração, uma situação que busca clareza.\n\nPermita que sua intuição guie este momento sagrado.',
       'icon': Icons.psychology,
       'gradient': [Color(0xFF8E78FF), Color(0xFFFF9D8A)],
     },
     {
-      'title': '✨ O Universo Está Ouvindo',
+      'title': '✨ O Universo Escuta',
       'subtitle': 'Sua energia está alinhada...',
-      'message': 'As cartas já sentem sua presença.\n\nConfie no processo, permita que sua intuição flua e esteja aberto às mensagens que o universo tem para você.',
+      'message': 'As cartas já sentem sua presença.\n\nConfie no processo e esteja aberto às mensagens que o universo tem para você.',
       'icon': Icons.favorite,
       'gradient': [Color(0xFFFF9D8A), Color(0xFF6C63FF)],
     },
@@ -115,12 +115,19 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
     final isSmallScreen = screenSize.width < 360;
     final isTablet = screenSize.width >= 600;
 
+    // Ajustar altura baseada no tamanho da tela
+    final dialogHeight = isSmallScreen
+        ? screenSize.height * 0.9 // Mais espaço em telas pequenas
+        : isTablet
+        ? screenSize.height * 0.8
+        : screenSize.height * 0.85;
+
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: EdgeInsets.all(isSmallScreen ? 12 : isTablet ? 32 : 20),
+      insetPadding: EdgeInsets.all(isSmallScreen ? 8 : isTablet ? 32 : 16), // Reduzir padding em telas pequenas
       child: Container(
         width: double.infinity,
-        height: screenSize.height * (isTablet ? 0.8 : 0.85),
+        height: dialogHeight,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
@@ -139,16 +146,18 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
               _buildEnhancedBackground(screenSize),
 
               // Estrelas animadas mais sutis
-              ...List.generate(25, (index) => _buildSubtleAnimatedStar(index, screenSize)),
+              ...List.generate(isSmallScreen ? 15 : 25, (index) => _buildSubtleAnimatedStar(index, screenSize)),
 
-              // Conteúdo principal
+              // Conteúdo principal com melhor distribuição de espaço
               Column(
+                mainAxisSize: MainAxisSize.min, // Importante para evitar overflow
                 children: [
                   // Indicador de páginas melhorado
-                  _buildEnhancedPageIndicator(isTablet),
+                  _buildEnhancedPageIndicator(isTablet, isSmallScreen),
 
-                  // Conteúdo das páginas
-                  Expanded(
+                  // Conteúdo das páginas - usar Flexible em vez de Expanded
+                  Flexible(
+                    flex: 1,
                     child: PageView.builder(
                       controller: _pageController,
                       onPageChanged: (index) {
@@ -226,17 +235,19 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
     );
   }
 
-  Widget _buildEnhancedPageIndicator(bool isTablet) {
+  Widget _buildEnhancedPageIndicator(bool isTablet, bool isSmallScreen) {
     return Container(
-      padding: EdgeInsets.symmetric(vertical: isTablet ? 24 : 20),
+      padding: EdgeInsets.symmetric(
+          vertical: isSmallScreen ? 12 : (isTablet ? 24 : 16) // Reduzir padding vertical em telas pequenas
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(_totalPages, (index) {
           return AnimatedContainer(
             duration: const Duration(milliseconds: 400),
-            margin: const EdgeInsets.symmetric(horizontal: 6),
-            width: _currentPage == index ? 32 : 12,
-            height: 12,
+            margin: const EdgeInsets.symmetric(horizontal: 4), // Reduzir margin
+            width: _currentPage == index ? (isSmallScreen ? 24 : 32) : 10, // Ajustar tamanhos
+            height: 10, // Reduzir altura
             decoration: BoxDecoration(
               gradient: _currentPage == index
                   ? LinearGradient(
@@ -244,7 +255,7 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
               )
                   : null,
               color: _currentPage == index ? null : Colors.white.withOpacity(0.4),
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(5),
               boxShadow: _currentPage == index ? [
                 BoxShadow(
                   color: _mysticMessages[_currentPage]['gradient'][0].withOpacity(0.6),
@@ -262,160 +273,167 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
   Widget _buildEnhancedMysticPage(int index, bool isSmallScreen, bool isTablet) {
     final message = _mysticMessages[index];
 
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: isTablet ? 48 : (isSmallScreen ? 24 : 32),
-        vertical: isTablet ? 20 : 16,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Ícone central com animação de pulso melhorada
-          AnimatedBuilder(
-            animation: _pulseController,
-            builder: (context, child) {
-              final scale = 1.0 + (_pulseController.value * 0.15);
-              return Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: isTablet ? 120 : (isSmallScreen ? 90 : 100),
-                  height: isTablet ? 120 : (isSmallScreen ? 90 : 100),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: message['gradient'],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+    return SingleChildScrollView( // Adicionar scroll para evitar overflow
+      physics: const BouncingScrollPhysics(),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: isTablet ? 48 : (isSmallScreen ? 16 : 24), // Reduzir padding horizontal
+          vertical: isTablet ? 16 : (isSmallScreen ? 8 : 12), // Reduzir padding vertical
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min, // Importante para evitar overflow
+          children: [
+            // Ícone central com animação de pulso melhorada
+            AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                final scale = 1.0 + (_pulseController.value * 0.15);
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: isTablet ? 100 : (isSmallScreen ? 70 : 80), // Reduzir tamanhos
+                    height: isTablet ? 100 : (isSmallScreen ? 70 : 80),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: message['gradient'],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: message['gradient'][0].withOpacity(0.6),
+                          blurRadius: 20, // Reduzir blur
+                          spreadRadius: 6, // Reduzir spread
+                        ),
+                        BoxShadow(
+                          color: message['gradient'][1].withOpacity(0.4),
+                          blurRadius: 30, // Reduzir blur
+                          spreadRadius: 8, // Reduzir spread
+                        ),
+                      ],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: message['gradient'][0].withOpacity(0.6),
-                        blurRadius: 25,
-                        spreadRadius: 8,
-                      ),
-                      BoxShadow(
-                        color: message['gradient'][1].withOpacity(0.4),
-                        blurRadius: 40,
-                        spreadRadius: 12,
-                      ),
-                    ],
+                    child: Icon(
+                      message['icon'],
+                      color: Colors.white,
+                      size: isTablet ? 50 : (isSmallScreen ? 35 : 40), // Reduzir tamanho do ícone
+                    ),
                   ),
-                  child: Icon(
-                    message['icon'],
-                    color: Colors.white,
-                    size: isTablet ? 60 : (isSmallScreen ? 45 : 50),
-                  ),
-                ),
-              );
-            },
-          ),
-
-          SizedBox(height: isTablet ? 40 : (isSmallScreen ? 32 : 36)),
-
-          // Título principal com melhor hierarquia
-          Text(
-            message['title'],
-            style: TextStyle(
-              fontSize: isTablet ? 28 : (isSmallScreen ? 22 : 24),
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              letterSpacing: 1.2,
-              height: 1.2,
+                );
+              },
             ),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(
-            delay: Duration(milliseconds: 200 + (index * 100)),
-            duration: const Duration(milliseconds: 800),
-          ),
 
-          SizedBox(height: isTablet ? 16 : 12),
+            SizedBox(height: isTablet ? 32 : (isSmallScreen ? 20 : 24)), // Reduzir espaçamentos
 
-          // Subtítulo com estilo diferenciado
-          Text(
-            message['subtitle'],
-            style: TextStyle(
-              fontSize: isTablet ? 18 : (isSmallScreen ? 16 : 17),
-              color: message['gradient'][0].withOpacity(0.9),
-              fontWeight: FontWeight.w500,
-              fontStyle: FontStyle.italic,
-              letterSpacing: 0.8,
-            ),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(
-            delay: Duration(milliseconds: 400 + (index * 100)),
-            duration: const Duration(milliseconds: 800),
-          ),
-
-          SizedBox(height: isTablet ? 32 : (isSmallScreen ? 24 : 28)),
-
-          // Card de conteúdo com melhor contraste
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.all(isTablet ? 28 : (isSmallScreen ? 20 : 24)),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A0A18).withOpacity(0.8),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: message['gradient'][0].withOpacity(0.3),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.6),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-                BoxShadow(
-                  color: message['gradient'][0].withOpacity(0.1),
-                  blurRadius: 30,
-                  spreadRadius: 5,
-                ),
-              ],
-            ),
-            child: Text(
-              message['message'],
+            // Título principal com melhor hierarquia
+            Text(
+              message['title'],
               style: TextStyle(
-                fontSize: isTablet ? 18 : (isSmallScreen ? 16 : 17),
-                color: Colors.white.withOpacity(0.95),
-                height: 1.7,
-                letterSpacing: 0.3,
-                fontWeight: FontWeight.w400,
+                fontSize: isTablet ? 24 : (isSmallScreen ? 18 : 20), // Reduzir tamanhos de fonte
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 1.0, // Reduzir letter spacing
+                height: 1.2,
               ),
               textAlign: TextAlign.center,
+            ).animate().fadeIn(
+              delay: Duration(milliseconds: 200 + (index * 100)),
+              duration: const Duration(milliseconds: 800),
             ),
-          ).animate().fadeIn(
-            delay: Duration(milliseconds: 600 + (index * 100)),
-            duration: const Duration(milliseconds: 1000),
-          ).slideY(
-            begin: 0.05,
-            end: 0,
-            curve: Curves.easeOutCubic,
-          ),
 
-          // Elemento decorativo sutil
-          if (index == 1) // Só na página do meio
-            Container(
-              margin: EdgeInsets.only(top: isTablet ? 24 : 20),
-              width: 60,
-              height: 2,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: message['gradient'],
-                ),
-                borderRadius: BorderRadius.circular(1),
+            SizedBox(height: isTablet ? 12 : (isSmallScreen ? 6 : 8)), // Reduzir espaçamento
+
+            // Subtítulo com estilo diferenciado
+            Text(
+              message['subtitle'],
+              style: TextStyle(
+                fontSize: isTablet ? 16 : (isSmallScreen ? 13 : 14), // Reduzir fonte
+                color: message['gradient'][0].withOpacity(0.9),
+                fontWeight: FontWeight.w500,
+                fontStyle: FontStyle.italic,
+                letterSpacing: 0.6, // Reduzir letter spacing
               ),
-            ).animate().scaleX(
-              delay: Duration(milliseconds: 800 + (index * 100)),
-              duration: const Duration(milliseconds: 600),
+              textAlign: TextAlign.center,
+            ).animate().fadeIn(
+              delay: Duration(milliseconds: 400 + (index * 100)),
+              duration: const Duration(milliseconds: 800),
             ),
-        ],
+
+            SizedBox(height: isTablet ? 24 : (isSmallScreen ? 16 : 20)), // Reduzir espaçamento
+
+            // Card de conteúdo com melhor contraste
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(isTablet ? 24 : (isSmallScreen ? 16 : 20)), // Reduzir padding
+              decoration: BoxDecoration(
+                color: const Color(0xFF0A0A18).withOpacity(0.8),
+                borderRadius: BorderRadius.circular(16), // Reduzir radius
+                border: Border.all(
+                  color: message['gradient'][0].withOpacity(0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.6),
+                    blurRadius: 15, // Reduzir blur
+                    spreadRadius: 1, // Reduzir spread
+                  ),
+                  BoxShadow(
+                    color: message['gradient'][0].withOpacity(0.1),
+                    blurRadius: 20, // Reduzir blur
+                    spreadRadius: 3, // Reduzir spread
+                  ),
+                ],
+              ),
+              child: Text(
+                message['message'],
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : (isSmallScreen ? 13 : 14), // Reduzir fonte
+                  color: Colors.white.withOpacity(0.95),
+                  height: 1.5, // Reduzir line height
+                  letterSpacing: 0.2, // Reduzir letter spacing
+                  fontWeight: FontWeight.w400,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ).animate().fadeIn(
+              delay: Duration(milliseconds: 600 + (index * 100)),
+              duration: const Duration(milliseconds: 1000),
+            ).slideY(
+              begin: 0.05,
+              end: 0,
+              curve: Curves.easeOutCubic,
+            ),
+
+            // Elemento decorativo sutil
+            if (index == 1) // Só na página do meio
+              Container(
+                margin: EdgeInsets.only(top: isTablet ? 20 : (isSmallScreen ? 12 : 16)), // Reduzir margin
+                width: 50, // Reduzir largura
+                height: 2,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: message['gradient'],
+                  ),
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ).animate().scaleX(
+                delay: Duration(milliseconds: 800 + (index * 100)),
+                duration: const Duration(milliseconds: 600),
+              ),
+
+            // Adicionar espaçamento extra na parte inferior para telas pequenas
+            if (isSmallScreen) SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildEnhancedNavigationButtons(bool isSmallScreen, bool isTablet) {
     return Container(
-      padding: EdgeInsets.all(isTablet ? 32 : (isSmallScreen ? 20 : 24)),
+      padding: EdgeInsets.all(isTablet ? 24 : (isSmallScreen ? 12 : 16)), // Reduzir padding
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -425,11 +443,11 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
             style: TextButton.styleFrom(
               foregroundColor: Colors.white.withOpacity(0.8),
               padding: EdgeInsets.symmetric(
-                horizontal: isTablet ? 24 : (isSmallScreen ? 16 : 20),
-                vertical: isTablet ? 16 : (isSmallScreen ? 12 : 14),
+                horizontal: isTablet ? 20 : (isSmallScreen ? 12 : 16), // Reduzir padding
+                vertical: isTablet ? 12 : (isSmallScreen ? 8 : 10), // Reduzir padding
               ),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10), // Reduzir radius
                 side: BorderSide(
                   color: Colors.white.withOpacity(0.3),
                   width: 1,
@@ -439,7 +457,7 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
             child: Text(
               'Pular',
               style: TextStyle(
-                fontSize: isTablet ? 16 : (isSmallScreen ? 14 : 15),
+                fontSize: isTablet ? 15 : (isSmallScreen ? 12 : 13), // Reduzir fonte
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -448,16 +466,16 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
           // Botão Continuar/Começar melhorado
           Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14), // Reduzir radius
               gradient: LinearGradient(
                 colors: _mysticMessages[_currentPage]['gradient'],
               ),
               boxShadow: [
                 BoxShadow(
                   color: _mysticMessages[_currentPage]['gradient'][0].withOpacity(0.5),
-                  blurRadius: 15,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 4),
+                  blurRadius: 12, // Reduzir blur
+                  spreadRadius: 1, // Reduzir spread
+                  offset: const Offset(0, 3), // Reduzir offset
                 ),
               ],
             ),
@@ -468,23 +486,23 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
                 foregroundColor: Colors.white,
                 shadowColor: Colors.transparent,
                 padding: EdgeInsets.symmetric(
-                  horizontal: isTablet ? 32 : (isSmallScreen ? 20 : 24),
-                  vertical: isTablet ? 16 : (isSmallScreen ? 12 : 14),
+                  horizontal: isTablet ? 24 : (isSmallScreen ? 16 : 20), // Reduzir padding
+                  vertical: isTablet ? 12 : (isSmallScreen ? 8 : 10), // Reduzir padding
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14), // Reduzir radius
                 ),
               ),
               icon: Icon(
                 _currentPage == _totalPages - 1 ? Icons.psychology : Icons.arrow_forward,
-                size: isTablet ? 22 : (isSmallScreen ? 18 : 20),
+                size: isTablet ? 20 : (isSmallScreen ? 16 : 18), // Reduzir tamanho do ícone
               ),
               label: Text(
                 _currentPage == _totalPages - 1 ? 'Revelar Destino' : 'Continuar',
                 style: TextStyle(
-                  fontSize: isTablet ? 16 : (isSmallScreen ? 14 : 15),
+                  fontSize: isTablet ? 15 : (isSmallScreen ? 12 : 13), // Reduzir fonte
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
+                  letterSpacing: 0.3, // Reduzir letter spacing
                 ),
               ),
             ),
