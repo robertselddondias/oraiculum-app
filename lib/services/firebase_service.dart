@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:intl/intl.dart';
 import 'package:oraculum/models/tarot_model.dart';
 import 'package:oraculum/models/user_model.dart';
 import 'package:uuid/uuid.dart';
@@ -254,5 +256,266 @@ class FirebaseService {
     }
 
     return [];
+  }
+
+  /// Métodos para gerenciar mapas astrais
+  Future<String> saveBirthChart({
+    required String userId,
+    required String name,
+    required String birthDate,
+    required String birthTime,
+    required String birthPlace,
+    required String interpretation,
+    required String paymentId,
+  }) async {
+    try {
+      final birthChartData = {
+        'userId': userId,
+        'name': name,
+        'birthDate': birthDate,
+        'birthTime': birthTime,
+        'birthPlace': birthPlace,
+        'interpretation': interpretation,
+        'paymentId': paymentId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'isFavorite': false,
+        'tags': _generateTags(name, birthPlace), // Para facilitar buscas
+      };
+
+      final docRef = await _firestore.collection('birth_charts').add(birthChartData);
+      return docRef.id;
+    } catch (e) {
+      debugPrint('Erro ao salvar mapa astral: $e');
+      throw Exception('Falha ao salvar mapa astral: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getUserBirthCharts(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('birth_charts')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'name': data['name'] ?? 'Sem nome',
+          'birthDate': data['birthDate'] ?? '',
+          'birthTime': data['birthTime'] ?? '',
+          'birthPlace': data['birthPlace'] ?? '',
+          'interpretation': data['interpretation'] ?? '',
+          'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
+          'paymentId': data['paymentId'] ?? '',
+          'isFavorite': data['isFavorite'] ?? false,
+          'tags': List<String>.from(data['tags'] ?? []),
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('Erro ao buscar mapas astrais: $e');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getFavoriteBirthCharts(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('birth_charts')
+          .where('userId', isEqualTo: userId)
+          .where('isFavorite', isEqualTo: true)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'name': data['name'] ?? 'Sem nome',
+          'birthDate': data['birthDate'] ?? '',
+          'birthTime': data['birthTime'] ?? '',
+          'birthPlace': data['birthPlace'] ?? '',
+          'interpretation': data['interpretation'] ?? '',
+          'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
+          'paymentId': data['paymentId'] ?? '',
+          'isFavorite': data['isFavorite'] ?? false,
+          'tags': List<String>.from(data['tags'] ?? []),
+        };
+      }).toList();
+    } catch (e) {
+      debugPrint('Erro ao buscar mapas astrais favoritos: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getBirthChart(String chartId) async {
+    try {
+      final doc = await _firestore.collection('birth_charts').doc(chartId).get();
+
+      if (!doc.exists) {
+        return null;
+      }
+
+      final data = doc.data() as Map<String, dynamic>;
+      return {
+        'id': doc.id,
+        'name': data['name'] ?? 'Sem nome',
+        'birthDate': data['birthDate'] ?? '',
+        'birthTime': data['birthTime'] ?? '',
+        'birthPlace': data['birthPlace'] ?? '',
+        'interpretation': data['interpretation'] ?? '',
+        'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
+        'paymentId': data['paymentId'] ?? '',
+        'isFavorite': data['isFavorite'] ?? false,
+        'tags': List<String>.from(data['tags'] ?? []),
+      };
+    } catch (e) {
+      debugPrint('Erro ao buscar mapa astral: $e');
+      return null;
+    }
+  }
+
+  Future<void> toggleBirthChartFavorite(String chartId, bool isFavorite) async {
+    try {
+      await _firestore.collection('birth_charts').doc(chartId).update({
+        'isFavorite': isFavorite,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Erro ao atualizar favorito do mapa astral: $e');
+      throw Exception('Falha ao atualizar favorito: $e');
+    }
+  }
+
+  Future<void> deleteBirthChart(String chartId) async {
+    try {
+      await _firestore.collection('birth_charts').doc(chartId).delete();
+    } catch (e) {
+      debugPrint('Erro ao deletar mapa astral: $e');
+      throw Exception('Falha ao deletar mapa astral: $e');
+    }
+  }
+
+  Future<void> updateBirthChart(String chartId, Map<String, dynamic> updates) async {
+    try {
+      final updateData = {
+        ...updates,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      await _firestore.collection('birth_charts').doc(chartId).update(updateData);
+    } catch (e) {
+      debugPrint('Erro ao atualizar mapa astral: $e');
+      throw Exception('Falha ao atualizar mapa astral: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> searchBirthCharts(String userId, String query) async {
+    try {
+      final lowercaseQuery = query.toLowerCase();
+
+      // Buscar por tags primeiro (mais eficiente)
+      final snapshot = await _firestore
+          .collection('birth_charts')
+          .where('userId', isEqualTo: userId)
+          .where('tags', arrayContains: lowercaseQuery)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final results = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          'name': data['name'] ?? 'Sem nome',
+          'birthDate': data['birthDate'] ?? '',
+          'birthTime': data['birthTime'] ?? '',
+          'birthPlace': data['birthPlace'] ?? '',
+          'interpretation': data['interpretation'] ?? '',
+          'createdAt': data['createdAt']?.toDate() ?? DateTime.now(),
+          'paymentId': data['paymentId'] ?? '',
+          'isFavorite': data['isFavorite'] ?? false,
+          'tags': List<String>.from(data['tags'] ?? []),
+        };
+      }).toList();
+
+      // Se não encontrou por tags, buscar todos e filtrar localmente
+      if (results.isEmpty) {
+        final allCharts = await getUserBirthCharts(userId);
+        return allCharts.where((chart) {
+          return chart['name'].toString().toLowerCase().contains(lowercaseQuery) ||
+              chart['birthPlace'].toString().toLowerCase().contains(lowercaseQuery) ||
+              chart['birthDate'].toString().contains(query);
+        }).toList();
+      }
+
+      return results;
+    } catch (e) {
+      debugPrint('Erro ao buscar mapas astrais: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getBirthChartStats(String userId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('birth_charts')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final charts = snapshot.docs;
+      final totalCharts = charts.length;
+      final favoriteCharts = charts.where((doc) =>
+      (doc.data()['isFavorite'] ?? false) == true).length;
+
+      // Agrupar por mês de criação
+      final chartsByMonth = <String, int>{};
+      for (final doc in charts) {
+        final createdAt = (doc.data()['createdAt'] as Timestamp?)?.toDate();
+        if (createdAt != null) {
+          final monthKey = DateFormat('yyyy-MM').format(createdAt);
+          chartsByMonth[monthKey] = (chartsByMonth[monthKey] ?? 0) + 1;
+        }
+      }
+
+      return {
+        'totalCharts': totalCharts,
+        'favoriteCharts': favoriteCharts,
+        'chartsByMonth': chartsByMonth,
+        'firstChartDate': charts.isNotEmpty
+            ? charts.map((doc) => (doc.data()['createdAt'] as Timestamp?)?.toDate())
+            .where((date) => date != null)
+            .fold<DateTime?>(null, (earliest, current) =>
+        earliest == null || current!.isBefore(earliest) ? current : earliest)
+            : null,
+      };
+    } catch (e) {
+      debugPrint('Erro ao obter estatísticas dos mapas astrais: $e');
+      return {
+        'totalCharts': 0,
+        'favoriteCharts': 0,
+        'chartsByMonth': <String, int>{},
+        'firstChartDate': null,
+      };
+    }
+  }
+
+// Método auxiliar para gerar tags de busca
+  List<String> _generateTags(String name, String birthPlace) {
+    final tags = <String>[];
+
+    // Adicionar nome em minúsculas e suas palavras
+    if (name.isNotEmpty) {
+      tags.add(name.toLowerCase());
+      tags.addAll(name.toLowerCase().split(' ').where((word) => word.isNotEmpty));
+    }
+
+    // Adicionar local de nascimento em minúsculas e suas palavras
+    if (birthPlace.isNotEmpty) {
+      tags.add(birthPlace.toLowerCase());
+      tags.addAll(birthPlace.toLowerCase().split(' ').where((word) => word.isNotEmpty));
+    }
+
+    return tags.toSet().toList(); // Remove duplicatas
   }
 }

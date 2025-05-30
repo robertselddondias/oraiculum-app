@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
@@ -14,6 +15,9 @@ class HoroscopeController extends GetxController {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final PaymentController _paymentController = Get.find<PaymentController>();
   final AuthController _authController = Get.find<AuthController>();
+
+  RxList<Map<String, dynamic>> birthChartHistory = <Map<String, dynamic>>[].obs;
+  RxBool isLoadingHistory = false.obs;
 
   RxBool isLoading = false.obs;
   RxString currentSign = ''.obs;
@@ -38,6 +42,7 @@ class HoroscopeController extends GetxController {
 
   // Custo para gerar um mapa astral (em R$)
   final double birthChartCost = 20.0;
+
 
   Future<void> getDailyHoroscope(String sign) async {
     try {
@@ -355,61 +360,61 @@ class HoroscopeController extends GetxController {
     }
   }
 
-  Future<Map<String, dynamic>> getBirthChartInterpretation(
-      String birthDate,
-      String birthTime,
-      String birthPlace,
-      ) async {
-    try {
-      isLoading.value = true;
-
-      // Processar pagamento primeiro
-      final paymentResult = await processBirthChartPayment();
-      if (!paymentResult['success']) {
-        return {
-          'success': false,
-          'message': paymentResult['message']
-        };
-      }
-
-      // Gerar a interpretação
-      final chartInterpretation = await _geminiService.getBirthChartInterpretation(
-        birthDate,
-        birthTime,
-        birthPlace,
-        jsonFormat: true
-      );
-
-      // Salvar a interpretação no histórico do usuário
-      if (_authController.currentUser.value != null) {
-        final userId = _authController.currentUser.value!.uid;
-
-        await _firebaseService.firestore.collection('birth_charts').add({
-          'userId': userId,
-          'birthDate': birthDate,
-          'birthTime': birthTime,
-          'birthPlace': birthPlace,
-          'interpretation': chartInterpretation,
-          'createdAt': DateTime.now(),
-          'paymentId': paymentResult['paymentId']
-        });
-      }
-
-      return {
-        'success': true,
-        'interpretation': chartInterpretation
-      };
-    } catch (e) {
-      Get.snackbar('Erro', 'Não foi possível interpretar o mapa astral: $e');
-      return {
-        'success': false,
-        'message': 'Erro ao interpretar o mapa astral: $e'
-      };
-    } finally {
-      isLoading.value = false;
-      update();
-    }
-  }
+  // Future<Map<String, dynamic>> getBirthChartInterpretation(
+  //     String birthDate,
+  //     String birthTime,
+  //     String birthPlace,
+  //     ) async {
+  //   try {
+  //     isLoading.value = true;
+  //
+  //     // Processar pagamento primeiro
+  //     final paymentResult = await processBirthChartPayment();
+  //     if (!paymentResult['success']) {
+  //       return {
+  //         'success': false,
+  //         'message': paymentResult['message']
+  //       };
+  //     }
+  //
+  //     // Gerar a interpretação
+  //     final chartInterpretation = await _geminiService.getBirthChartInterpretation(
+  //       birthDate,
+  //       birthTime,
+  //       birthPlace,
+  //       jsonFormat: true
+  //     );
+  //
+  //     // Salvar a interpretação no histórico do usuário
+  //     if (_authController.currentUser.value != null) {
+  //       final userId = _authController.currentUser.value!.uid;
+  //
+  //       await _firebaseService.firestore.collection('birth_charts').add({
+  //         'userId': userId,
+  //         'birthDate': birthDate,
+  //         'birthTime': birthTime,
+  //         'birthPlace': birthPlace,
+  //         'interpretation': chartInterpretation,
+  //         'createdAt': DateTime.now(),
+  //         'paymentId': paymentResult['paymentId']
+  //       });
+  //     }
+  //
+  //     return {
+  //       'success': true,
+  //       'interpretation': chartInterpretation
+  //     };
+  //   } catch (e) {
+  //     Get.snackbar('Erro', 'Não foi possível interpretar o mapa astral: $e');
+  //     return {
+  //       'success': false,
+  //       'message': 'Erro ao interpretar o mapa astral: $e'
+  //     };
+  //   } finally {
+  //     isLoading.value = false;
+  //     update();
+  //   }
+  // }
 
   // Função para obter o histórico de mapas astrais do usuário
   Future<List<Map<String, dynamic>>> getUserBirthCharts() async {
@@ -435,6 +440,426 @@ class HoroscopeController extends GetxController {
     } catch (e) {
       Get.snackbar('Erro', 'Não foi possível carregar seu histórico de mapas astrais: $e');
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getBirthChartInterpretation(
+      String birthDate,
+      String birthTime,
+      String birthPlace, {
+        String? name,
+      }) async {
+    try {
+      isLoading.value = true;
+
+      // Processar pagamento primeiro
+      final paymentResult = await processBirthChartPayment();
+      if (!paymentResult['success']) {
+        return {
+          'success': false,
+          'message': paymentResult['message']
+        };
+      }
+
+      // Gerar a interpretação
+      final chartInterpretation = await _geminiService.getBirthChartInterpretation(
+          birthDate,
+          birthTime,
+          birthPlace,
+          jsonFormat: true
+      );
+
+      // Salvar no histórico do usuário
+      if (_authController.currentUser.value != null) {
+        final userId = _authController.currentUser.value!.uid;
+        final userName = name ?? _authController.userModel.value?.name ?? 'Usuário';
+
+        final chartId = await _firebaseService.saveBirthChart(
+          userId: userId,
+          name: userName,
+          birthDate: birthDate,
+          birthTime: birthTime,
+          birthPlace: birthPlace,
+          interpretation: chartInterpretation,
+          paymentId: paymentResult['paymentId'],
+        );
+
+        // Atualizar lista local
+        await loadUserBirthCharts();
+
+        debugPrint('✅ Mapa astral salvo com ID: $chartId');
+      }
+
+      return {
+        'success': true,
+        'interpretation': chartInterpretation
+      };
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível interpretar o mapa astral: $e');
+      return {
+        'success': false,
+        'message': 'Erro ao interpretar o mapa astral: $e'
+      };
+    } finally {
+      isLoading.value = false;
+      update();
+    }
+  }
+
+  /// Carregar histórico de mapas astrais do usuário
+  Future<void> loadUserBirthCharts() async {
+    try {
+      if (_authController.currentUser.value == null) {
+        birthChartHistory.clear();
+        return;
+      }
+
+      isLoadingHistory.value = true;
+      final userId = _authController.currentUser.value!.uid;
+
+      final charts = await _firebaseService.getUserBirthCharts(userId);
+      birthChartHistory.value = charts;
+
+      debugPrint('✅ Carregados ${charts.length} mapas astrais');
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível carregar histórico: $e');
+      debugPrint('❌ Erro ao carregar histórico: $e');
+    } finally {
+      isLoadingHistory.value = false;
+    }
+  }
+
+  /// Obter mapas astrais favoritos
+  Future<List<Map<String, dynamic>>> getFavoriteBirthCharts() async {
+    try {
+      if (_authController.currentUser.value == null) {
+        return [];
+      }
+
+      final userId = _authController.currentUser.value!.uid;
+      return await _firebaseService.getFavoriteBirthCharts(userId);
+    } catch (e) {
+      debugPrint('❌ Erro ao obter favoritos: $e');
+      return [];
+    }
+  }
+
+  /// Alternar favorito de um mapa astral
+  Future<void> toggleBirthChartFavorite(String chartId, bool isFavorite) async {
+    try {
+      await _firebaseService.toggleBirthChartFavorite(chartId, isFavorite);
+
+      // Atualizar lista local
+      final chartIndex = birthChartHistory.indexWhere((chart) => chart['id'] == chartId);
+      if (chartIndex != -1) {
+        birthChartHistory[chartIndex]['isFavorite'] = isFavorite;
+      }
+
+      Get.snackbar(
+        'Sucesso',
+        isFavorite ? 'Adicionado aos favoritos' : 'Removido dos favoritos',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível atualizar favorito: $e');
+    }
+  }
+
+  /// Deletar um mapa astral
+  Future<void> deleteBirthChart(String chartId) async {
+    try {
+      await _firebaseService.deleteBirthChart(chartId);
+
+      // Remover da lista local
+      birthChartHistory.removeWhere((chart) => chart['id'] == chartId);
+
+      Get.snackbar(
+        'Sucesso',
+        'Mapa astral removido com sucesso',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível remover o mapa astral: $e');
+    }
+  }
+
+  /// Buscar mapas astrais
+  Future<List<Map<String, dynamic>>> searchBirthCharts(String query) async {
+    try {
+      if (_authController.currentUser.value == null) {
+        return [];
+      }
+
+      final userId = _authController.currentUser.value!.uid;
+      return await _firebaseService.searchBirthCharts(userId, query);
+    } catch (e) {
+      debugPrint('❌ Erro na busca: $e');
+      return [];
+    }
+  }
+
+  /// Obter estatísticas dos mapas astrais
+  Future<Map<String, dynamic>> getBirthChartStats() async {
+    try {
+      if (_authController.currentUser.value == null) {
+        return {};
+      }
+
+      final userId = _authController.currentUser.value!.uid;
+      return await _firebaseService.getBirthChartStats(userId);
+    } catch (e) {
+      debugPrint('❌ Erro ao obter estatísticas: $e');
+      return {};
+    }
+  }
+
+  /// Obter um mapa astral específico
+  Future<Map<String, dynamic>?> getBirthChart(String chartId) async {
+    try {
+      return await _firebaseService.getBirthChart(chartId);
+    } catch (e) {
+      debugPrint('❌ Erro ao obter mapa astral: $e');
+      return null;
+    }
+  }
+
+  /// Duplicar um mapa astral existente
+  Future<String?> duplicateBirthChart(String chartId) async {
+    try {
+      final originalChart = await getBirthChart(chartId);
+      if (originalChart == null) {
+        throw Exception('Mapa astral não encontrado');
+      }
+
+      if (_authController.currentUser.value == null) {
+        throw Exception('Usuário não autenticado');
+      }
+
+      final userId = _authController.currentUser.value!.uid;
+      final newName = '${originalChart['name']} (Cópia)';
+
+      final newChartId = await _firebaseService.saveBirthChart(
+        userId: userId,
+        name: newName,
+        birthDate: originalChart['birthDate'],
+        birthTime: originalChart['birthTime'],
+        birthPlace: originalChart['birthPlace'],
+        interpretation: originalChart['interpretation'],
+        paymentId: 'duplicated_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      // Atualizar lista local
+      await loadUserBirthCharts();
+
+      Get.snackbar(
+        'Sucesso',
+        'Mapa astral duplicado com sucesso',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+
+      return newChartId;
+    } catch (e) {
+      Get.snackbar('Erro', 'Não foi possível duplicar o mapa astral: $e');
+      return null;
+    }
+  }
+
+  /// Exportar mapa astral como texto
+  String exportBirthChartAsText(Map<String, dynamic> chart) {
+    final buffer = StringBuffer();
+
+    buffer.writeln('🌟 MAPA ASTRAL - ${chart['name']}');
+    buffer.writeln('=' * 50);
+    buffer.writeln();
+
+    buffer.writeln('📋 INFORMAÇÕES PESSOAIS:');
+    buffer.writeln('Nome: ${chart['name']}');
+    buffer.writeln('Data de Nascimento: ${chart['birthDate']}');
+    buffer.writeln('Horário: ${chart['birthTime']}');
+    buffer.writeln('Local: ${chart['birthPlace']}');
+    buffer.writeln('Gerado em: ${DateFormat('dd/MM/yyyy HH:mm').format(chart['createdAt'])}');
+    buffer.writeln();
+
+    buffer.writeln('🔮 INTERPRETAÇÃO:');
+    buffer.writeln('-' * 30);
+
+    try {
+      // Tentar decodificar como JSON estruturado
+      final interpretation = json.decode(chart['interpretation']);
+
+      if (interpretation is Map<String, dynamic>) {
+        interpretation.forEach((key, value) {
+          if (value is Map<String, dynamic>) {
+            buffer.writeln();
+            buffer.writeln('${value['title'] ?? key.toUpperCase()}:');
+            buffer.writeln(value['body'] ?? '');
+          }
+        });
+      } else {
+        buffer.writeln(chart['interpretation']);
+      }
+    } catch (e) {
+      // Se não for JSON, usar como texto simples
+      buffer.writeln(chart['interpretation']);
+    }
+
+    buffer.writeln();
+    buffer.writeln('=' * 50);
+    buffer.writeln('Gerado pelo app Oraculum');
+
+    return buffer.toString();
+  }
+
+  /// Validar dados do mapa astral
+  Map<String, String?> validateBirthChartData({
+    required String name,
+    required String birthDate,
+    required String birthTime,
+    required String birthPlace,
+  }) {
+    final errors = <String, String?>{};
+
+    // Validar nome
+    if (name.trim().isEmpty) {
+      errors['name'] = 'Nome é obrigatório';
+    } else if (name.trim().length < 2) {
+      errors['name'] = 'Nome deve ter pelo menos 2 caracteres';
+    }
+
+    // Validar data de nascimento
+    if (birthDate.isEmpty) {
+      errors['birthDate'] = 'Data de nascimento é obrigatória';
+    } else {
+      try {
+        final date = DateFormat('dd/MM/yyyy').parse(birthDate);
+        final now = DateTime.now();
+
+        if (date.isAfter(now)) {
+          errors['birthDate'] = 'Data não pode ser no futuro';
+        } else if (date.isBefore(DateTime(1900))) {
+          errors['birthDate'] = 'Data deve ser após 1900';
+        }
+      } catch (e) {
+        errors['birthDate'] = 'Formato de data inválido (use dd/MM/yyyy)';
+      }
+    }
+
+    // Validar horário
+    if (birthTime.isEmpty) {
+      errors['birthTime'] = 'Horário é obrigatório';
+    } else {
+      try {
+        final timeParts = birthTime.split(':');
+        if (timeParts.length != 2) {
+          throw FormatException('Formato inválido');
+        }
+
+        final hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+
+        if (hour < 0 || hour > 23) {
+          errors['birthTime'] = 'Hora deve estar entre 00 e 23';
+        } else if (minute < 0 || minute > 59) {
+          errors['birthTime'] = 'Minuto deve estar entre 00 e 59';
+        }
+      } catch (e) {
+        errors['birthTime'] = 'Formato de horário inválido (use HH:mm)';
+      }
+    }
+
+    // Validar local
+    if (birthPlace.trim().isEmpty) {
+      errors['birthPlace'] = 'Local de nascimento é obrigatório';
+    } else if (birthPlace.trim().length < 2) {
+      errors['birthPlace'] = 'Local deve ter pelo menos 2 caracteres';
+    }
+
+    return errors;
+  }
+
+  /// Formatar data para exibição
+  String formatBirthDate(DateTime date) {
+    return DateFormat('dd \'de\' MMMM \'de\' yyyy', 'pt_BR').format(date);
+  }
+
+  /// Calcular idade
+  int calculateAge(DateTime birthDate) {
+    final now = DateTime.now();
+    int age = now.year - birthDate.year;
+
+    if (now.month < birthDate.month ||
+        (now.month == birthDate.month && now.day < birthDate.day)) {
+      age--;
+    }
+
+    return age;
+  }
+
+  /// Gerar resumo do mapa astral
+  Map<String, dynamic> generateBirthChartSummary(Map<String, dynamic> chart) {
+    final birthDate = DateTime.tryParse(chart['birthDate'].replaceAll('/', '-'));
+
+    return {
+      'name': chart['name'],
+      'age': birthDate != null ? calculateAge(birthDate) : null,
+      'zodiacSign': birthDate != null ? _getZodiacSignFromDate(birthDate) : null,
+      'birthPlace': chart['birthPlace'],
+      'createdAt': chart['createdAt'],
+      'isFavorite': chart['isFavorite'],
+      'hasInterpretation': chart['interpretation']?.isNotEmpty ?? false,
+    };
+  }
+
+  /// Determinar signo zodiacal pela data
+  String _getZodiacSignFromDate(DateTime birthDate) {
+    final day = birthDate.day;
+    final month = birthDate.month;
+
+    if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 'Aquário';
+    if ((month == 2 && day >= 19) || (month == 3 && day <= 20)) return 'Peixes';
+    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return 'Áries';
+    if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return 'Touro';
+    if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return 'Gêmeos';
+    if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return 'Câncer';
+    if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return 'Leão';
+    if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return 'Virgem';
+    if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return 'Libra';
+    if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return 'Escorpião';
+    if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return 'Sagitário';
+
+    return 'Capricórnio';
+  }
+
+  /// Limpar histórico (apenas dados locais)
+  void clearLocalHistory() {
+    birthChartHistory.clear();
+    Get.snackbar(
+      'Sucesso',
+      'Histórico local limpo',
+      backgroundColor: Colors.green,
+      colorText: Colors.white,
+    );
+  }
+
+  /// Sincronizar dados com servidor
+  Future<void> syncBirthChartsWithServer() async {
+    try {
+      isLoadingHistory.value = true;
+      await loadUserBirthCharts();
+
+      Get.snackbar(
+        'Sucesso',
+        'Dados sincronizados com sucesso',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar('Erro', 'Falha na sincronização: $e');
+    } finally {
+      isLoadingHistory.value = false;
     }
   }
 }

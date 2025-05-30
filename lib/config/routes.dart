@@ -1,4 +1,7 @@
 import 'package:get/get.dart';
+import 'package:oraculum/controllers/horoscope_controller.dart';
+import 'package:oraculum/screens/astrology/birth_chart_details_screen.dart';
+import 'package:oraculum/screens/astrology/birth_chart_history_screen.dart';
 import 'package:oraculum/screens/astrology/birth_chart_screen.dart';
 import 'package:oraculum/screens/astrology/compatibility_screen.dart';
 import 'package:oraculum/screens/astrology/horoscope_screen.dart';
@@ -34,6 +37,8 @@ class AppRoutes {
   static const String horoscope = '/horoscope';
   static const String compatibility = '/compatibility';
   static const String birthChart = '/birth-chart';
+  static const String birthChartHistory = '/birth-chart-history';
+  static const String birthChartDetails = '/birth-chart-details';
   static const String tarotReading = '/tarot-reading';
   static const String tarotCardDetails = '/tarot-card-details';
   static const String savedReadingsList = '/saved-readings-list';
@@ -75,6 +80,21 @@ class AppRoutes {
       page: () => const SavedReadingDetailScreen(),
       transition: Transition.rightToLeft,  // Adicionando transição suave
       transitionDuration: const Duration(milliseconds: 300),
+    ),
+    GetPage(
+      name: AppRoutes.birthChartHistory,
+      page: () => const BirthChartHistoryScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut<HoroscopeController>(() => HoroscopeController());
+      }),
+    ),
+
+    GetPage(
+      name: AppRoutes.birthChartDetails,
+      page: () => const BirthChartDetailsScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut<HoroscopeController>(() => HoroscopeController());
+      }),
     ),
   ];
 }

@@ -325,7 +325,7 @@ class _BirthChartScreenState extends State<BirthChartScreen> with SingleTickerPr
           IconButton(
             icon: const Icon(Icons.history, color: Colors.white),
             tooltip: 'Histórico de Mapas Astrais',
-            onPressed: () => _showHistoryDialog(context),
+            onPressed: () => Get.toNamed(AppRoutes.birthChartHistory),
             splashRadius: 24,
           ),
         ],
