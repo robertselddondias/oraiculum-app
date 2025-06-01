@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
+import 'package:oraculum/utils/zodiac_utils.dart';
 
 class BirthChartHistoryDialog {
   static Future<void> show({
@@ -12,358 +13,541 @@ class BirthChartHistoryDialog {
     required Function(Map<String, dynamic>) onChartSelected,
   }) async {
     try {
+      // Loading dialog com tema consistente
       Get.dialog(
-        Center(
-          child: CircularProgressIndicator(
-            color: AppTheme.primaryColor,
+        Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withOpacity(0.7),
+                Colors.black.withOpacity(0.5),
+              ],
+            ),
+          ),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Carregando histórico...',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         barrierDismissible: false,
       );
 
       final birthCharts = await controller.getUserBirthCharts();
-
       Get.back();
 
       if (birthCharts.isEmpty) {
         return Get.dialog(
-          AlertDialog(
-            backgroundColor: Theme.of(context).cardTheme.color ??
-                (Theme.of(context).brightness == Brightness.dark
-                    ? const Color(0xFF1E1E1E)
-                    : Colors.white),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            title: Text(
-              'Histórico de Mapas Astrais',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            content: Text(
-              'Você ainda não gerou nenhum mapa astral.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Get.back(),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.primaryColor,
+          Dialog(
+            backgroundColor: Colors.transparent,
+            child: Container(
+              margin: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF392F5A),
+                    Color(0xFF483D8B),
+                  ],
                 ),
-                child: const Text('Fechar'),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-            ],
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.history,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Histórico Vazio',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Você ainda não gerou nenhum mapa astral.\nGere seu primeiro mapa para começar sua jornada astrológica!',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 14,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Get.back(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.9),
+                          foregroundColor: const Color(0xFF392F5A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                        ),
+                        child: const Text(
+                          'Entendi',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         );
       }
 
+      // Obter dimensões da tela para responsividade
+      final screenWidth = MediaQuery.of(context).size.width;
+      final isSmallScreen = screenWidth < 360;
+      final isTablet = screenWidth >= 600;
+
       return Get.dialog(
         Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(16),
+          insetPadding: EdgeInsets.all(isSmallScreen ? 12 : 16),
           child: Container(
             width: double.maxFinite,
             decoration: BoxDecoration(
-              gradient: AppTheme.mysticGradient,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF392F5A),
+                  Color(0xFF483D8B),
+                  Color(0xFF8C6BAE),
+                ],
+              ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: AppTheme.primaryColor.withOpacity(0.3),
-                width: 2,
+                color: Colors.white.withOpacity(0.1),
+                width: 1,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  color: Colors.black.withOpacity(0.3),
                   blurRadius: 20,
                   spreadRadius: 2,
                 ),
               ],
             ),
             constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.7,
-              maxWidth: MediaQuery.of(context).size.width * 0.9,
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+              maxWidth: isTablet ? 600 : double.infinity,
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Stack(
               children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.primaryColor,
-                        AppTheme.secondaryColor,
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Histórico de Mapas Astrais',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Get.back(),
-                        icon: const Icon(Icons.close, color: Colors.white),
-                        style: IconButton.styleFrom(
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // Partículas de fundo
+                ...ZodiacUtils.buildStarParticles(context, 15, maxHeight: 200),
 
-                // Lista de mapas
-                Flexible(
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: birthCharts.length,
-                    itemBuilder: (context, index) {
-                      final chart = birthCharts[index];
-                      final date = chart['birthDate'] != null
-                          ? DateFormat('dd/MM/yyyy').format((chart['birthDate'] as DateTime))
-                          : 'Data desconhecida';
-                      final place = chart['birthPlace'] ?? 'Local desconhecido';
-                      final time = chart['birthTime'] ?? 'Hora desconhecida';
-                      final createdAt = chart['createdAt'] != null
-                          ? DateFormat('dd/MM/yyyy').format((chart['createdAt'] as DateTime))
-                          : 'Data desconhecida';
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        color: Colors.white.withOpacity(0.1),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(
-                            color: AppTheme.primaryColor.withOpacity(0.3),
-                            width: 1,
-                          ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Header com gradiente e estilo consistente
+                    Container(
+                      padding: EdgeInsets.all(isTablet ? 28 : isSmallScreen ? 20 : 24),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.black.withOpacity(0.3),
+                            Colors.black.withOpacity(0.1),
+                          ],
                         ),
-                        child: InkWell(
-                          onTap: () {
-                            Get.back();
-                            onChartSelected(chart);
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.white.withOpacity(0.05),
-                                  Colors.white.withOpacity(0.02),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
+                              color: Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.auto_awesome,
+                              color: Colors.white,
+                              size: isTablet ? 28 : 24,
+                            ),
+                          ),
+                          SizedBox(width: isTablet ? 16 : 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Histórico de Mapas',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: isTablet ? 22 : isSmallScreen ? 18 : 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  '${birthCharts.length} ${birthCharts.length == 1 ? 'mapa gerado' : 'mapas gerados'}',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.7),
+                                    fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Get.back(),
+                            icon: Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: isTablet ? 28 : 24,
+                            ),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white.withOpacity(0.1),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Lista de mapas astrais
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.all(isTablet ? 20 : isSmallScreen ? 12 : 16),
+                        itemCount: birthCharts.length,
+                        itemBuilder: (context, index) {
+                          final chart = birthCharts[index];
+
+                          // Usar o método helper para formatar os dados
+                          final formattedChart = _formatChartData(chart);
+                          final name = formattedChart['name'] as String;
+                          final formattedDate = formattedChart['birthDateString'] as String;
+                          final place = formattedChart['birthPlace'] as String;
+                          final time = formattedChart['birthTime'] as String;
+                          final formattedCreatedAt = formattedChart['formattedCreatedAt'] as String;
+                          final zodiacSign = formattedChart['zodiacSign'] as String;
+                          final isFavorite = formattedChart['isFavorite'] as bool;
+
+                          return Container(
+                            margin: EdgeInsets.only(bottom: isTablet ? 16 : 12),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.1),
+                                width: 1,
+                              ),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(16),
+                              child: InkWell(
+                                onTap: () {
+                                  Get.back();
+                                  // Passar dados formatados para compatibilidade com BirthChartDetailsScreen
+                                  onChartSelected(formattedChart);
+                                },
+                                borderRadius: BorderRadius.circular(16),
+                                child: Padding(
+                                  padding: EdgeInsets.all(isTablet ? 20 : isSmallScreen ? 12 : 16),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          gradient: AppTheme.primaryGradient,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppTheme.primaryColor.withOpacity(0.3),
-                                              blurRadius: 8,
-                                              spreadRadius: 1,
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Icon(
-                                          Icons.auto_awesome,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Mapa Astral - $date',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Gerado em: $createdAt',
-                                              style: TextStyle(
-                                                color: Colors.white.withOpacity(0.7),
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primaryColor.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: const Icon(
-                                          Icons.arrow_forward_ios,
-                                          color: Colors.white,
-                                          size: 16,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Container(
-                                    height: 1,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.transparent,
-                                          AppTheme.primaryColor.withOpacity(0.5),
-                                          Colors.transparent,
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              Icons.location_on,
-                                              color: AppTheme.accentColor,
-                                              size: 16,
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                place,
-                                                style: TextStyle(
-                                                  color: Colors.white.withOpacity(0.8),
-                                                  fontSize: 13,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 16),
+                                      // Cabeçalho do card
                                       Row(
                                         children: [
-                                          Icon(
-                                            Icons.access_time,
-                                            color: AppTheme.accentColor,
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            time,
-                                            style: TextStyle(
-                                              color: Colors.white.withOpacity(0.8),
-                                              fontSize: 13,
+                                          // Avatar do signo se disponível
+                                          if (zodiacSign.isNotEmpty)
+                                            ZodiacUtils.buildSignAvatar(
+                                              context: context,
+                                              sign: zodiacSign,
+                                              size: isTablet ? 56 : isSmallScreen ? 40 : 48,
+                                              highlight: true,
+                                            )
+                                          else
+                                            Container(
+                                              width: isTablet ? 56 : isSmallScreen ? 40 : 48,
+                                              height: isTablet ? 56 : isSmallScreen ? 40 : 48,
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    AppTheme.primaryColor,
+                                                    AppTheme.secondaryColor,
+                                                  ],
+                                                ),
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.public,
+                                                color: Colors.white,
+                                                size: isTablet ? 28 : isSmallScreen ? 20 : 24,
+                                              ),
                                             ),
+
+                                          SizedBox(width: isTablet ? 16 : 12),
+
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Text(
+                                                        name,
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.bold,
+                                                          fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                    if (isFavorite)
+                                                      Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.amber.withOpacity(0.2),
+                                                          borderRadius: BorderRadius.circular(6),
+                                                        ),
+                                                        child: Icon(
+                                                          Icons.star,
+                                                          color: Colors.amber,
+                                                          size: isSmallScreen ? 12 : 14,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.calendar_today,
+                                                      color: Colors.white.withOpacity(0.6),
+                                                      size: isSmallScreen ? 12 : 14,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      formattedDate,
+                                                      style: TextStyle(
+                                                        color: Colors.white.withOpacity(0.7),
+                                                        fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+                                                      ),
+                                                    ),
+                                                    if (zodiacSign.isNotEmpty) ...[
+                                                      Text(
+                                                        ' • ',
+                                                        style: TextStyle(
+                                                          color: Colors.white.withOpacity(0.5),
+                                                          fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+                                                        ),
+                                                      ),
+                                                      Text(
+                                                        zodiacSign,
+                                                        style: TextStyle(
+                                                          color: ZodiacUtils.getSignColor(zodiacSign),
+                                                          fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Gerado em $formattedCreatedAt',
+                                                  style: TextStyle(
+                                                    color: Colors.white.withOpacity(0.5),
+                                                    fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          Container(
+                                            padding: EdgeInsets.all(isTablet ? 10 : 8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withOpacity(0.1),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Icon(
+                                              Icons.arrow_forward_ios,
+                                              color: Colors.white,
+                                              size: isTablet ? 18 : isSmallScreen ? 14 : 16,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      const SizedBox(height: 16),
+
+                                      // Divider com gradiente
+                                      Container(
+                                        height: 1,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [
+                                              Colors.transparent,
+                                              Colors.white.withOpacity(0.3),
+                                              Colors.transparent,
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+
+                                      const SizedBox(height: 16),
+
+                                      // Informações detalhadas
+                                      Row(
+                                        children: [
+                                          // Local de nascimento
+                                          Expanded(
+                                            child: _buildInfoChip(
+                                              icon: Icons.location_on,
+                                              label: 'Local',
+                                              value: place,
+                                              color: AppTheme.accentColor,
+                                              isSmallScreen: isSmallScreen,
+                                              isTablet: isTablet,
+                                            ),
+                                          ),
+
+                                          SizedBox(width: isTablet ? 16 : 12),
+
+                                          // Horário
+                                          _buildInfoChip(
+                                            icon: Icons.access_time,
+                                            label: 'Horário',
+                                            value: time,
+                                            color: AppTheme.successColor,
+                                            isSmallScreen: isSmallScreen,
+                                            isTablet: isTablet,
                                           ),
                                         ],
                                       ),
                                     ],
                                   ),
-                                ],
+                                ),
                               ),
                             ),
+                          ).animate().fadeIn(
+                            delay: Duration(milliseconds: 100 * index),
+                            duration: const Duration(milliseconds: 500),
+                          ).slideY(
+                            begin: 0.1,
+                            end: 0,
+                            curve: Curves.easeOutQuart,
+                            duration: const Duration(milliseconds: 400),
+                          ).scale(
+                            begin: const Offset(0.95, 0.95),
+                            end: const Offset(1.0, 1.0),
+                            duration: const Duration(milliseconds: 300),
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Botão de fechar com estilo consistente
+                    Padding(
+                      padding: EdgeInsets.all(isTablet ? 24 : isSmallScreen ? 16 : 20),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: isTablet ? 56 : 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () => Get.back(),
+                          icon: Icon(
+                            Icons.close,
+                            size: isTablet ? 24 : 20,
+                          ),
+                          label: Text(
+                            'Fechar',
+                            style: TextStyle(
+                              fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.9),
+                            foregroundColor: const Color(0xFF392F5A),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                            ),
+                            elevation: 0,
                           ),
                         ),
-                      ).animate().fadeIn(
-                        delay: Duration(milliseconds: 100 * index),
-                        duration: const Duration(milliseconds: 400),
-                      ).slideY(
-                        begin: 0.2,
-                        end: 0,
-                        duration: const Duration(milliseconds: 400),
-                      ).scale(
-                        begin: const Offset(0.8, 0.8),
-                        end: const Offset(1.0, 1.0),
-                        duration: const Duration(milliseconds: 400),
-                      );
-                    },
-                  ),
-                ),
-
-                // Botão de fechar
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryColor.withOpacity(0.3),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: () => Get.back(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: const Text(
-                        'Fechar',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -384,5 +568,158 @@ class BirthChartHistoryDialog {
       );
       return;
     }
+  }
+
+  // Método helper para formatar dados do mapa astral seguindo o padrão da BirthChartDetailsScreen
+  static Map<String, dynamic> _formatChartData(Map<String, dynamic> chart) {
+    final name = chart['name'] ?? 'Sem nome';
+    final birthDateRaw = chart['birthDate'];
+    final place = chart['birthPlace'] ?? 'Local desconhecido';
+    final time = chart['birthTime'] ?? 'Hora desconhecida';
+    final createdAt = chart['createdAt'];
+    final isFavorite = chart['isFavorite'] ?? false;
+
+    String formattedDate = 'Data desconhecida';
+    String formattedCreatedAt = 'Data desconhecida';
+    String zodiacSign = '';
+    DateTime? birthDateTime;
+
+    // Formatar datas seguindo o padrão da BirthChartDetailsScreen
+    if (birthDateRaw != null) {
+      if (birthDateRaw is DateTime) {
+        birthDateTime = birthDateRaw;
+        formattedDate = DateFormat('dd/MM/yyyy').format(birthDateTime);
+        zodiacSign = ZodiacUtils.getZodiacSignFromDate(birthDateTime);
+      } else if (birthDateRaw is String && birthDateRaw.isNotEmpty) {
+        try {
+          // Tentar diferentes formatos de data
+          if (birthDateRaw.contains('/')) {
+            birthDateTime = DateFormat('dd/MM/yyyy').parse(birthDateRaw);
+          } else if (birthDateRaw.contains('-')) {
+            // Formato ISO 8601 ou similar
+            birthDateTime = DateTime.parse(birthDateRaw);
+          }
+
+          if (birthDateTime != null) {
+            formattedDate = DateFormat('dd/MM/yyyy').format(birthDateTime);
+            zodiacSign = ZodiacUtils.getZodiacSignFromDate(birthDateTime);
+          } else {
+            formattedDate = birthDateRaw;
+          }
+        } catch (e) {
+          formattedDate = birthDateRaw;
+          // Tentar extrair signo mesmo com erro de parsing
+          final parts = birthDateRaw.split('/');
+          if (parts.length == 3) {
+            try {
+              final day = int.parse(parts[0]);
+              final month = int.parse(parts[1]);
+              final year = int.parse(parts[2]);
+              if (year < 100) {
+                // Assumir que anos de 2 dígitos são do século 20/21
+                final currentYear = DateTime.now().year;
+                final century = (currentYear ~/ 100) * 100;
+                final fullYear = year + century;
+                if (fullYear > currentYear) {
+                  birthDateTime = DateTime(fullYear - 100, month, day);
+                } else {
+                  birthDateTime = DateTime(fullYear, month, day);
+                }
+              } else {
+                birthDateTime = DateTime(year, month, day);
+              }
+              zodiacSign = ZodiacUtils.getZodiacSignFromDate(birthDateTime!);
+            } catch (e) {
+              // Ignorar erro se não conseguir fazer parsing
+            }
+          }
+        }
+      }
+    }
+
+    if (createdAt != null) {
+      if (createdAt is DateTime) {
+        formattedCreatedAt = DateFormat('dd/MM/yyyy HH:mm').format(createdAt);
+      } else if (createdAt is String) {
+        try {
+          final parsedCreatedAt = DateTime.parse(createdAt);
+          formattedCreatedAt = DateFormat('dd/MM/yyyy HH:mm').format(parsedCreatedAt);
+        } catch (e) {
+          formattedCreatedAt = createdAt;
+        }
+      }
+    }
+
+    // Retornar dados formatados compatíveis com BirthChartDetailsScreen
+    return {
+      ...chart,
+      'name': name,
+      'birthDate': formattedDate, // String formatada para exibição
+      'birthDateTime': birthDateTime, // DateTime original para cálculos
+      'birthTime': time,
+      'birthPlace': place,
+      'zodiacSign': zodiacSign,
+      'createdAtFormatted': formattedCreatedAt,
+      'isFavorite': isFavorite,
+      // Manter campos originais para compatibilidade
+      'interpretation': chart['interpretation'] ?? '',
+      'paymentId': chart['paymentId'] ?? '',
+      'tags': chart['tags'] ?? [],
+    };
+  }
+
+  // Widget helper para criar chips de informação
+  static Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isSmallScreen,
+    required bool isTablet,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.all(isTablet ? 8 : 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: isTablet ? 16 : isSmallScreen ? 12 : 14,
+          ),
+        ),
+        SizedBox(width: isTablet ? 10 : 8),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }
