@@ -82,11 +82,12 @@ class AppTheme {
         ),
       ),
     ),
-    cardTheme: CardTheme(
-      color: Colors.white,
+    cardTheme: const CardThemeData(
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black26,
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.all(Radius.circular(20)),
       ),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
@@ -167,11 +168,12 @@ class AppTheme {
         ),
       ),
     ),
-    cardTheme: CardTheme(
-      color: const Color(0xFF1E1E1E),
+    cardTheme: const CardThemeData(
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black54,
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.all(Radius.circular(20)),
       ),
     ),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
