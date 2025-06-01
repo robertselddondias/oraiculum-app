@@ -5,27 +5,25 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/services/firebase_service.dart';
 
-class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+class GoogleRegisterCompleteScreen extends StatefulWidget {
+  const GoogleRegisterCompleteScreen({super.key});
 
   @override
-  State<RegisterScreen> createState() => _RegisterScreenState();
+  State<GoogleRegisterCompleteScreen> createState() => _GoogleRegisterCompleteScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _GoogleRegisterCompleteScreenState extends State<GoogleRegisterCompleteScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
   final _birthDateController = TextEditingController();
-  bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
+  final FirebaseService _firebaseService = Get.find<FirebaseService>();
+  final AuthController _authController = Get.find<AuthController>();
+
   DateTime? _selectedDate;
   String _selectedGender = '';
-
-  final AuthController _authController = Get.find<AuthController>();
+  bool _isLoading = false;
 
   // Lista de opções de gênero
   final List<Map<String, dynamic>> _genderOptions = [
@@ -47,25 +45,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Preencher o nome se disponível do Google
+    if (_authController.currentUser.value?.displayName != null) {
+      _nameController.text = _authController.currentUser.value!.displayName!;
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     _birthDateController.dispose();
     super.dispose();
-  }
-
-  void _togglePasswordVisibility() {
-    setState(() {
-      _isPasswordVisible = !_isPasswordVisible;
-    });
-  }
-
-  void _toggleConfirmPasswordVisibility() {
-    setState(() {
-      _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-    });
   }
 
   /// Valida e converte a data digitada
@@ -105,7 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return age;
   }
 
-  Future<void> _register() async {
+  Future<void> _completeRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedGender.isEmpty) {
@@ -116,17 +108,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
         icon: const Icon(Icons.warning, color: Colors.white),
-      );
-      return;
-    }
-
-    if (_passwordController.text != _confirmPasswordController.text) {
-      Get.snackbar(
-        'Erro',
-        'As senhas não coincidem',
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
       );
       return;
     }
@@ -145,22 +126,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      await _authController.registerWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-        _nameController.text.trim(),
-        parsedDate,
-        _selectedGender, // Adicionar gênero
-      );
-    } catch (e) {
+      final user = _authController.currentUser.value;
+
+      if (user == null) {
+        throw Exception('Usuário não encontrado');
+      }
+
+      // Atualizar o displayName se foi modificado
+      if (_nameController.text.trim() != user.displayName) {
+        await user.updateDisplayName(_nameController.text.trim());
+      }
+
+      // Salvar as informações complementares no Firestore
+      await _firebaseService.updateUserData(user.uid, {
+        'name': _nameController.text.trim(),
+        'birthDate': parsedDate,
+        'gender': _selectedGender,
+        'registrationCompleted': true,
+        'completedAt': DateTime.now(),
+        'profileCompleted': true,
+      });
+
+      // Recarregar os dados do usuário
+      await _authController.loadUserData();
+
+      // Mostrar mensagem de sucesso
       Get.snackbar(
-        'Erro no Registro',
-        e.toString(),
+        'Cadastro Concluído!',
+        'Suas informações foram salvas com sucesso',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        icon: const Icon(Icons.check_circle, color: Colors.white),
+        duration: const Duration(seconds: 3),
+      );
+
+      // Navegar para a tela principal
+      Get.offAllNamed(AppRoutes.navigation);
+
+    } catch (e) {
+      debugPrint('Erro ao completar registro: $e');
+
+      Get.snackbar(
+        'Erro',
+        'Não foi possível salvar suas informações. Tente novamente.',
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        icon: const Icon(Icons.error, color: Colors.white),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -263,43 +286,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo e Título
-                  const Icon(
-                    Icons.nights_stay_rounded,
-                    size: 70,
-                    color: Colors.white,
+                  // Ícone e título
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.person_add_rounded,
+                      size: 50,
+                      color: Colors.white,
+                    ),
                   )
                       .animate()
                       .fadeIn(duration: 600.ms)
                       .scale(delay: 300.ms),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
                   Text(
-                    'Criar Conta',
+                    'Complete seu Perfil',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
+                    textAlign: TextAlign.center,
                   )
                       .animate()
-                      .fadeIn(delay: 300.ms)
+                      .fadeIn(delay: 400.ms)
                       .slideY(begin: 0.3, end: 0, curve: Curves.easeOutQuad),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
 
                   Text(
-                    'Entre para a comunidade Oraculum',
+                    'Para uma experiência personalizada, precisamos de algumas informações básicas',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Colors.white70,
                     ),
+                    textAlign: TextAlign.center,
                   )
                       .animate()
-                      .fadeIn(delay: 500.ms),
+                      .fadeIn(delay: 600.ms),
 
                   const SizedBox(height: 32),
 
-                  // Formulário de Registro
+                  // Formulário
                   Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
@@ -312,6 +344,37 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // Informação sobre o Google
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.blue.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: Colors.blue.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      'Login realizado com Google. Complete as informações abaixo.',
+                                      style: TextStyle(
+                                        color: Colors.blue.shade700,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
                             // Campo de nome
                             TextFormField(
                               controller: _nameController,
@@ -319,40 +382,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               decoration: const InputDecoration(
                                 labelText: 'Nome Completo *',
                                 prefixIcon: Icon(Icons.person_outline),
+                                hintText: 'Digite seu nome completo',
                               ),
                               validator: (value) {
-                                if (value == null || value.isEmpty) {
+                                if (value == null || value.trim().isEmpty) {
                                   return 'Por favor, digite seu nome';
                                 }
-                                if (value.split(' ').length < 2) {
+                                if (value.trim().split(' ').length < 2) {
                                   return 'Por favor, digite seu nome completo';
                                 }
                                 return null;
                               },
                             ),
 
-                            const SizedBox(height: 16),
-
-                            // Campo de email
-                            TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              decoration: const InputDecoration(
-                                labelText: 'Email *',
-                                prefixIcon: Icon(Icons.email_outlined),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Por favor, digite seu email';
-                                }
-                                if (!value.contains('@') || !value.contains('.')) {
-                                  return 'Por favor, digite um email válido';
-                                }
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 20),
 
                             // Campo de data de nascimento com máscara
                             TextFormField(
@@ -409,70 +452,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             // Seletor de gênero
                             _buildGenderSelector(),
 
-                            const SizedBox(height: 24),
+                            const SizedBox(height: 32),
 
-                            // Campo de senha
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: !_isPasswordVisible,
-                              decoration: InputDecoration(
-                                labelText: 'Senha *',
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _isPasswordVisible
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                  ),
-                                  onPressed: _togglePasswordVisibility,
+                            // Botão de completar cadastro
+                            ElevatedButton(
+                              onPressed: _isLoading ? null : _completeRegistration,
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Por favor, digite sua senha';
-                                }
-                                if (value.length < 6) {
-                                  return 'A senha deve ter pelo menos 6 caracteres';
-                                }
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            // Campo de confirmação de senha
-                            TextFormField(
-                              controller: _confirmPasswordController,
-                              obscureText: !_isConfirmPasswordVisible,
-                              decoration: InputDecoration(
-                                labelText: 'Confirmar Senha *',
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _isConfirmPasswordVisible
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                  ),
-                                  onPressed: _toggleConfirmPasswordVisibility,
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Por favor, confirme sua senha';
-                                }
-                                if (value != _passwordController.text) {
-                                  return 'As senhas não coincidem';
-                                }
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 24),
-
-                            // Botão de registro
-                            Obx(() => ElevatedButton(
-                              onPressed: _authController.isLoading.value ? null : _register,
-                              child: _authController.isLoading.value
+                              child: _isLoading
                                   ? const SizedBox(
                                 height: 20,
                                 width: 20,
@@ -481,29 +472,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                                  : const Text('Criar Conta'),
-                            )),
+                                  : const Text(
+                                'Completar Cadastro',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
 
                             const SizedBox(height: 16),
 
-                            // Link para login
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text('Já tem uma conta?'),
-                                TextButton(
-                                  onPressed: () {
-                                    Get.offNamed(AppRoutes.login);
-                                  },
-                                  child: const Text('Entrar'),
-                                ),
-                              ],
+                            // Nota sobre privacidade
+                            Text(
+                              'Suas informações são seguras e serão usadas apenas para personalizar sua experiência no app.',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.grey.shade600,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
                       ),
                     ),
-                  ).animate().fadeIn(delay: 600.ms, duration: 500.ms).slideY(begin: 0.2, end: 0),
+                  ).animate().fadeIn(delay: 800.ms, duration: 500.ms).slideY(begin: 0.2, end: 0),
                 ],
               ),
             ),

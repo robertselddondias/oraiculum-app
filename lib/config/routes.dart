@@ -6,6 +6,7 @@ import 'package:oraculum/screens/astrology/birth_chart_screen.dart';
 import 'package:oraculum/screens/astrology/compatibility_screen.dart';
 import 'package:oraculum/screens/astrology/horoscope_screen.dart';
 import 'package:oraculum/screens/auth/forgot_password_screen.dart';
+import 'package:oraculum/screens/auth/google_register_complete_screen.dart';
 import 'package:oraculum/screens/auth/login_screen.dart';
 import 'package:oraculum/screens/auth/register_screen.dart';
 import 'package:oraculum/screens/home/home_screen.dart';
@@ -51,6 +52,7 @@ class AppRoutes {
   static const String savedReading = '/saved-reading-detail';
   static const String creditcardList = '/creditcard-list';
   static const String addCreditCard = '/add-credit-card';
+  static const String googleRegisterComplete = '/google-register-complete';
 
   static final routes = [
     GetPage(name: splash, page: () => const SplashScreen()),
@@ -93,6 +95,12 @@ class AppRoutes {
       binding: BindingsBuilder(() {
         Get.lazyPut<HoroscopeController>(() => HoroscopeController());
       }),
+    ),
+    GetPage(
+      name: googleRegisterComplete,
+      page: () => const GoogleRegisterCompleteScreen(),
+      transition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 300),
     ),
   ];
 }

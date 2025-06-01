@@ -1305,7 +1305,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Ganhe 20% de desconto em créditos',
+                      'Ganhe ate 15% de desconto em créditos',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,

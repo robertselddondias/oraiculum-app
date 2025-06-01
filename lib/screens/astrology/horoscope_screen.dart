@@ -130,7 +130,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.account_circle),
-                  onPressed: () => Get.toNamed('/birthChart'),
+                  onPressed: () => Get.toNamed('/birth-chart'),
                   tooltip: 'Mapa Astral',
                 ),
               ],

@@ -264,104 +264,6 @@ class AuthController extends GetxController {
     }
   }
 
-  /// Método de teste para verificar autenticação
-  Future<Map<String, dynamic>> testAuthentication() async {
-    try {
-      debugPrint('=== testAuthentication() ===');
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        debugPrint('❌ Usuário não está logado');
-        return {
-          'success': false,
-          'error': 'Usuário não está logado',
-        };
-      }
-
-      debugPrint('✅ Usuário logado: ${user.email}');
-      debugPrint('✅ UID: ${user.uid}');
-      debugPrint('✅ Email verificado: ${user.emailVerified}');
-      debugPrint('✅ Provedor: ${user.providerData.map((p) => p.providerId).join(', ')}');
-
-      // Testar se consegue obter token
-      final token = await user.getIdToken(true);
-      debugPrint('✅ Token obtido: ${token!.substring(0, 20)}... (${token.length} chars)');
-
-      return {
-        'success': true,
-        'user': {
-          'uid': user.uid,
-          'email': user.email,
-          'emailVerified': user.emailVerified,
-          'isAnonymous': user.isAnonymous,
-          'providers': user.providerData.map((p) => p.providerId).toList(),
-          'tokenLength': token.length,
-        },
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-
-    } catch (e) {
-      debugPrint('❌ Erro de autenticação: $e');
-      return {
-        'success': false,
-        'error': e.toString(),
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-    }
-  }
-
-  /// Verificar conectividade com Firebase
-  Future<Map<String, dynamic>> testFirebaseConnection() async {
-    try {
-      debugPrint('=== testFirebaseConnection() ===');
-
-      // Testar Firestore
-      await _firebaseService.firestore
-          .collection('test')
-          .doc('connection')
-          .get();
-      debugPrint('✅ Firestore conectado');
-
-      return {
-        'success': true,
-        'firestore': true,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-
-    } catch (e) {
-      debugPrint('❌ Erro de conexão com Firestore: $e');
-      return {
-        'success': false,
-        'firestore': false,
-        'error': e.toString(),
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-    }
-  }
-
-  /// Forçar atualização do token
-  Future<bool> refreshToken() async {
-    try {
-      debugPrint('=== refreshToken() ===');
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await user.reload();
-        final token = await user.getIdToken(true);
-        authError.value = '';
-        debugPrint('✅ Token atualizado manualmente com sucesso');
-        return true;
-      } else {
-        debugPrint('❌ Usuário não logado');
-        return false;
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao atualizar token: $e');
-      authError.value = 'Erro ao atualizar token';
-      return false;
-    }
-  }
-
   /// Carregar dados do usuário do Firestore
   Future<void> _loadUserData() async {
     if (currentUser.value != null) {
@@ -407,6 +309,26 @@ class AuthController extends GetxController {
         isLoading.value = false;
         update();
       }
+    }
+  }
+
+  /// Método público para carregar dados do usuário (usado na tela de completar cadastro)
+  Future<void> loadUserData() async {
+    await _loadUserData();
+  }
+
+  /// Verificar se o usuário completou o registro
+  Future<bool> checkRegistrationCompleted(String userId) async {
+    try {
+      final userDoc = await _firebaseService.getUserData(userId);
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        return userData['registrationCompleted'] ?? false;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Erro ao verificar registro completo: $e');
+      return false;
     }
   }
 
@@ -472,16 +394,21 @@ class AuthController extends GetxController {
   }
 
   // Registro com email e senha - VERSÃO MELHORADA
+  // Substitua o método registerWithEmailAndPassword existente no AuthController por este:
+
+// Registro com email e senha - VERSÃO ATUALIZADA COM GÊNERO
   Future<User?> registerWithEmailAndPassword(
       String email,
       String password,
       String name,
-      DateTime birthDate
+      DateTime birthDate,
+      String gender // ← Novo parâmetro adicionado
       ) async {
     try {
       debugPrint('=== registerWithEmailAndPassword() ===');
       debugPrint('Email: $email');
       debugPrint('Nome: $name');
+      debugPrint('Gênero: $gender');
 
       isLoading.value = true;
       authError.value = '';
@@ -509,11 +436,14 @@ class AuthController extends GetxController {
           'name': name,
           'email': email,
           'birthDate': birthDate,
+          'gender': gender, // ← Campo gênero adicionado
           'createdAt': DateTime.now(),
           'profileImageUrl': '',
           'favoriteReadings': [],
           'favoriteReaders': [],
           'credits': 0.0,
+          'registrationCompleted': true, // Registro por email já está completo
+          'loginProvider': 'email',
         });
 
         await _loadUserData();
@@ -557,7 +487,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // Login com Google - NOVO MÉTODO
+  // Login com Google - VERSÃO ATUALIZADA COM FLUXO DE CADASTRO
   Future<User?> signInWithGoogle() async {
     try {
       debugPrint('=== signInWithGoogle() ===');
@@ -598,42 +528,65 @@ class AuthController extends GetxController {
         // Verificar se é um novo usuário ou usuário existente
         final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
 
-        if (isNewUser) {
-          debugPrint('Novo usuário - criando perfil...');
+        // Garantir que o token seja obtido
+        await userCredential.user!.getIdToken(true);
+        isAuthenticated.value = true;
+        debugPrint('✅ Token obtido após login com Google');
 
-          // Criar dados do usuário no Firestore para novos usuários
+        if (isNewUser) {
+          debugPrint('Novo usuário - criando perfil básico...');
+
+          // Criar dados básicos do usuário no Firestore para novos usuários
           await _firebaseService.createUserData(userCredential.user!.uid, {
             'name': userCredential.user!.displayName ?? 'Usuário',
             'email': userCredential.user!.email ?? '',
-            'birthDate': DateTime.now().subtract(const Duration(days: 365 * 25)), // Padrão: 25 anos
             'createdAt': DateTime.now(),
             'profileImageUrl': userCredential.user!.photoURL ?? '',
             'favoriteReadings': [],
             'favoriteReaders': [],
             'credits': 0.0,
             'loginProvider': 'google',
+            'registrationCompleted': false, // Importante: marca como incompleto
           });
 
-          debugPrint('✅ Perfil de novo usuário criado');
+          debugPrint('✅ Perfil básico de novo usuário criado');
+
+          // Carregar dados básicos
+          await _loadUserData();
+
+          // Redirecionar para completar cadastro
+          debugPrint('Redirecionando para completar cadastro...');
+          Get.offAllNamed(AppRoutes.googleRegisterComplete);
+
         } else {
-          debugPrint('Usuário existente - atualizando informações...');
+          debugPrint('Usuário existente - verificando se completou o registro...');
 
-          // Atualizar informações do usuário existente se necessário
-          await _firebaseService.updateUserData(userCredential.user!.uid, {
-            'lastLogin': DateTime.now(),
-            'profileImageUrl': userCredential.user!.photoURL ?? '',
-          });
+          // Verificar se o usuário já completou o registro
+          final registrationCompleted = await checkRegistrationCompleted(userCredential.user!.uid);
+
+          if (!registrationCompleted) {
+            debugPrint('Usuário existente mas registro incompleto - redirecionando para completar...');
+
+            // Carregar dados básicos
+            await _loadUserData();
+
+            // Redirecionar para completar cadastro
+            Get.offAllNamed(AppRoutes.googleRegisterComplete);
+          } else {
+            debugPrint('Usuário existente com registro completo - atualizando informações...');
+
+            // Atualizar informações do usuário existente se necessário
+            await _firebaseService.updateUserData(userCredential.user!.uid, {
+              'lastLogin': DateTime.now(),
+              'profileImageUrl': userCredential.user!.photoURL ?? '',
+            });
+
+            await _loadUserData();
+
+            debugPrint('Redirecionando para navegação...');
+            Get.offAllNamed(AppRoutes.navigation);
+          }
         }
-
-        // Garantir que o token seja obtido
-        await userCredential.user!.getIdToken(true);
-        isAuthenticated.value = true;
-        debugPrint('✅ Token obtido após login com Google');
-
-        await _loadUserData();
-
-        debugPrint('Redirecionando para navegação...');
-        Get.offAllNamed(AppRoutes.navigation);
 
         Get.snackbar(
           'Sucesso',
@@ -733,6 +686,13 @@ class AuthController extends GetxController {
 
       // Parar timer de refresh
       _stopTokenRefreshTimer();
+
+      // Fazer logout do Google também se necessário
+      try {
+        await _googleSignIn.signOut();
+      } catch (e) {
+        debugPrint('Erro ao fazer logout do Google (pode ser normal): $e');
+      }
 
       await _auth.signOut();
 
@@ -921,6 +881,104 @@ class AuthController extends GetxController {
     }
   }
 
+  /// Método de teste para verificar autenticação
+  Future<Map<String, dynamic>> testAuthentication() async {
+    try {
+      debugPrint('=== testAuthentication() ===');
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('❌ Usuário não está logado');
+        return {
+          'success': false,
+          'error': 'Usuário não está logado',
+        };
+      }
+
+      debugPrint('✅ Usuário logado: ${user.email}');
+      debugPrint('✅ UID: ${user.uid}');
+      debugPrint('✅ Email verificado: ${user.emailVerified}');
+      debugPrint('✅ Provedor: ${user.providerData.map((p) => p.providerId).join(', ')}');
+
+      // Testar se consegue obter token
+      final token = await user.getIdToken(true);
+      debugPrint('✅ Token obtido: ${token!.substring(0, 20)}... (${token.length} chars)');
+
+      return {
+        'success': true,
+        'user': {
+          'uid': user.uid,
+          'email': user.email,
+          'emailVerified': user.emailVerified,
+          'isAnonymous': user.isAnonymous,
+          'providers': user.providerData.map((p) => p.providerId).toList(),
+          'tokenLength': token.length,
+        },
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+    } catch (e) {
+      debugPrint('❌ Erro de autenticação: $e');
+      return {
+        'success': false,
+        'error': e.toString(),
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
+  /// Verificar conectividade com Firebase
+  Future<Map<String, dynamic>> testFirebaseConnection() async {
+    try {
+      debugPrint('=== testFirebaseConnection() ===');
+
+      // Testar Firestore
+      await _firebaseService.firestore
+          .collection('test')
+          .doc('connection')
+          .get();
+      debugPrint('✅ Firestore conectado');
+
+      return {
+        'success': true,
+        'firestore': true,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+    } catch (e) {
+      debugPrint('❌ Erro de conexão com Firestore: $e');
+      return {
+        'success': false,
+        'firestore': false,
+        'error': e.toString(),
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+    }
+  }
+
+  /// Forçar atualização do token
+  Future<bool> refreshToken() async {
+    try {
+      debugPrint('=== refreshToken() ===');
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.reload();
+        final token = await user.getIdToken(true);
+        authError.value = '';
+        debugPrint('✅ Token atualizado manualmente com sucesso');
+        return true;
+      } else {
+        debugPrint('❌ Usuário não logado');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar token: $e');
+      authError.value = 'Erro ao atualizar token';
+      return false;
+    }
+  }
+
   /// Executar diagnóstico completo da autenticação
   Future<Map<String, dynamic>> runCompleteDiagnostics() async {
     debugPrint('=== runCompleteDiagnostics() ===');
@@ -981,119 +1039,6 @@ class AuthController extends GetxController {
 
     debugPrint('Diagnósticos completos concluídos');
     return results;
-  }
-
-  // Tratamento de exceções do Firebase Auth
-  String _handleAuthException(FirebaseAuthException e) {
-    debugPrint('Tratando exceção de autenticação: ${e.code}');
-
-    switch (e.code) {
-      case 'user-not-found':
-        return 'Usuário não encontrado.';
-      case 'wrong-password':
-        return 'Senha incorreta.';
-      case 'email-already-in-use':
-        return 'Este email já está em uso.';
-      case 'weak-password':
-        return 'A senha é muito fraca. Use pelo menos 6 caracteres.';
-      case 'invalid-email':
-        return 'Email inválido.';
-      case 'invalid-credential':
-        return 'Credenciais inválidas. Verifique email e senha.';
-      case 'user-disabled':
-        return 'Esta conta foi desabilitada.';
-      case 'operation-not-allowed':
-        return 'Operação não permitida.';
-      case 'too-many-requests':
-        return 'Muitas tentativas falharam. Tente novamente mais tarde.';
-      case 'requires-recent-login':
-        return 'Esta operação requer autenticação recente. Faça login novamente.';
-      case 'network-request-failed':
-        return 'Erro de conexão. Verifique sua internet e tente novamente.';
-      case 'internal-error':
-        return 'Erro interno do servidor. Tente novamente mais tarde.';
-      case 'invalid-api-key':
-        return 'Configuração inválida do aplicativo.';
-      case 'app-deleted':
-        return 'Aplicativo não configurado corretamente.';
-      case 'expired-action-code':
-        return 'Link expirado. Solicite um novo.';
-      case 'invalid-action-code':
-        return 'Link inválido ou já utilizado.';
-      case 'missing-email':
-        return 'Email é obrigatório.';
-      case 'missing-password':
-        return 'Senha é obrigatória.';
-      case 'email-change-needs-verification':
-        return 'Mudança de email precisa ser verificada.';
-      case 'credential-already-in-use':
-        return 'Esta credencial já está sendo usada por outra conta.';
-      case 'invalid-verification-code':
-        return 'Código de verificação inválido.';
-      case 'invalid-verification-id':
-        return 'ID de verificação inválido.';
-      case 'session-expired':
-        return 'Sessão expirada. Faça login novamente.';
-      case 'quota-exceeded':
-        return 'Cota excedida. Tente novamente mais tarde.';
-      default:
-        debugPrint('Erro não mapeado: ${e.code} - ${e.message}');
-        return e.message ?? 'Ocorreu um erro inesperado. Tente novamente.';
-    }
-  }
-
-  /// Método de conveniência para mostrar snackbars de erro
-  void _showErrorSnackbar(String title, String message) {
-    Get.snackbar(
-      title,
-      message,
-      backgroundColor: Colors.red,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 4),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 8,
-      icon: const Icon(
-        Icons.error_outline,
-        color: Colors.white,
-      ),
-    );
-  }
-
-  /// Método de conveniência para mostrar snackbars de sucesso
-  void _showSuccessSnackbar(String title, String message) {
-    Get.snackbar(
-      title,
-      message,
-      backgroundColor: Colors.green,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 8,
-      icon: const Icon(
-        Icons.check_circle_outline,
-        color: Colors.white,
-      ),
-    );
-  }
-
-  /// Método de conveniência para mostrar snackbars de aviso
-  void _showWarningSnackbar(String title, String message) {
-    Get.snackbar(
-      title,
-      message,
-      backgroundColor: Colors.orange,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 8,
-      icon: const Icon(
-        Icons.warning_outlined,
-        color: Colors.white,
-      ),
-    );
   }
 
   /// Método para verificar se é necessário reautenticar para operações sensíveis
@@ -1234,26 +1179,116 @@ class AuthController extends GetxController {
     );
   }
 
-  /// Getter para informações básicas do usuário (para debug)
-  Map<String, dynamic> get userDebugInfo {
-    final user = currentUser.value;
-    if (user == null) {
-      return {'loggedIn': false};
-    }
+  // Tratamento de exceções do Firebase Auth
+  String _handleAuthException(FirebaseAuthException e) {
+    debugPrint('Tratando exceção de autenticação: ${e.code}');
 
-    return {
-      'loggedIn': true,
-      'uid': user.uid,
-      'email': user.email,
-      'emailVerified': user.emailVerified,
-      'isAnonymous': user.isAnonymous,
-      'isAuthenticated': isAuthenticated.value,
-      'hasUserModel': userModel.value != null,
-      'timerActive': _tokenRefreshTimer != null,
-      'reauthAttempts': _reauthAttempts,
-      'authError': authError.value,
-      'lastSignIn': user.metadata.lastSignInTime?.toIso8601String(),
-      'creationTime': user.metadata.creationTime?.toIso8601String(),
-    };
+    switch (e.code) {
+      case 'user-not-found':
+        return 'Usuário não encontrado.';
+      case 'wrong-password':
+        return 'Senha incorreta.';
+      case 'email-already-in-use':
+        return 'Este email já está em uso.';
+      case 'weak-password':
+        return 'A senha é muito fraca. Use pelo menos 6 caracteres.';
+      case 'invalid-email':
+        return 'Email inválido.';
+      case 'invalid-credential':
+        return 'Credenciais inválidas. Verifique email e senha.';
+      case 'user-disabled':
+        return 'Esta conta foi desabilitada.';
+      case 'operation-not-allowed':
+        return 'Operação não permitida.';
+      case 'too-many-requests':
+        return 'Muitas tentativas falharam. Tente novamente mais tarde.';
+      case 'requires-recent-login':
+        return 'Esta operação requer autenticação recente. Faça login novamente.';
+      case 'network-request-failed':
+        return 'Erro de conexão. Verifique sua internet e tente novamente.';
+      case 'internal-error':
+        return 'Erro interno do servidor. Tente novamente mais tarde.';
+      case 'invalid-api-key':
+        return 'Configuração inválida do aplicativo.';
+      case 'app-deleted':
+        return 'Aplicativo não configurado corretamente.';
+      case 'expired-action-code':
+        return 'Link expirado. Solicite um novo.';
+      case 'invalid-action-code':
+        return 'Link inválido ou já utilizado.';
+      case 'missing-email':
+        return 'Email é obrigatório.';
+      case 'missing-password':
+        return 'Senha é obrigatória.';
+      case 'email-change-needs-verification':
+        return 'Mudança de email precisa ser verificada.';
+      case 'credential-already-in-use':
+        return 'Esta credencial já está sendo usada por outra conta.';
+      case 'invalid-verification-code':
+        return 'Código de verificação inválido.';
+      case 'invalid-verification-id':
+        return 'ID de verificação inválido.';
+      case 'session-expired':
+        return 'Sessão expirada. Faça login novamente.';
+      case 'quota-exceeded':
+        return 'Cota excedida. Tente novamente mais tarde.';
+      default:
+        debugPrint('Erro não mapeado: ${e.code} - ${e.message}');
+        return e.message ?? 'Ocorreu um erro inesperado. Tente novamente.';
+    }
+  }
+
+  /// Método de conveniência para mostrar snackbars de erro
+  void _showErrorSnackbar(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      backgroundColor: Colors.red,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 4),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 8,
+      icon: const Icon(
+        Icons.error_outline,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  /// Método de conveniência para mostrar snackbars de sucesso
+  void _showSuccessSnackbar(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      backgroundColor: Colors.green,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 8,
+      icon: const Icon(
+        Icons.check_circle_outline,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  /// Método de conveniência para mostrar snackbars de aviso
+  void _showWarningSnackbar(String title, String message) {
+    Get.snackbar(
+      title,
+      message,
+      backgroundColor: Colors.orange,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.BOTTOM,
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(16),
+      borderRadius: 8,
+      icon: const Icon(
+        Icons.warning_outlined,
+        color: Colors.white,
+      ),
+    );
   }
 }
