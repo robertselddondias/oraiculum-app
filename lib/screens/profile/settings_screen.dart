@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:oraculum/controllers/settings_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
@@ -18,10 +19,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
   final AuthController _authController = Get.find<AuthController>();
-  bool _isDarkMode = false;
-  bool _notificationsEnabled = true;
-  bool _emailNotifications = true;
-  final String _selectedLanguage = 'Português';
+
+  // Criar e registrar o SettingsController
+  late final SettingsController _settingsController;
 
   late AnimationController _backgroundController;
   late Animation<Alignment> _topAlignmentAnimation;
@@ -30,6 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
+    // Inicializar SettingsController
+    _settingsController = Get.put(SettingsController());
     _setupAnimations();
   }
 
@@ -122,24 +124,34 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 children: [
                   _buildAppBar(dimensions),
                   Expanded(
-                    child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      padding: EdgeInsets.all(dimensions['padding']!),
-                      child: Column(
-                        children: [
-                          _buildAccountSection(dimensions),
-                          SizedBox(height: dimensions['sectionSpacing']!),
-                          _buildPreferencesSection(dimensions),
-                          SizedBox(height: dimensions['sectionSpacing']!),
-                          _buildNotificationsSection(dimensions),
-                          SizedBox(height: dimensions['sectionSpacing']!),
-                          _buildAboutSection(dimensions),
-                          SizedBox(height: dimensions['sectionSpacing']!),
-                          _buildLogoutButton(dimensions),
-                          SizedBox(height: dimensions['spacing']!),
-                        ],
-                      ),
-                    ),
+                    child: Obx(() {
+                      if (_settingsController.isLoading.value) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        );
+                      }
+
+                      return SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.all(dimensions['padding']!),
+                        child: Column(
+                          children: [
+                            _buildAccountSection(dimensions),
+                            SizedBox(height: dimensions['sectionSpacing']!),
+                            _buildPreferencesSection(dimensions),
+                            SizedBox(height: dimensions['sectionSpacing']!),
+                            _buildNotificationsSection(dimensions),
+                            SizedBox(height: dimensions['sectionSpacing']!),
+                            _buildAboutSection(dimensions),
+                            SizedBox(height: dimensions['sectionSpacing']!),
+                            _buildLogoutButton(dimensions),
+                            SizedBox(height: dimensions['spacing']!),
+                          ],
+                        ),
+                      );
+                    }),
                   ),
                 ],
               ),
@@ -446,20 +458,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               dimensions: dimensions,
             ),
             SizedBox(height: dimensions['spacing']!),
-            _buildCustomSwitchTile(
-              icon: _isDarkMode ? Icons.dark_mode : Icons.light_mode,
+            Obx(() => _buildCustomSwitchTile(
+              icon: _settingsController.isDarkMode.value ? Icons.dark_mode : Icons.light_mode,
               title: 'Modo Escuro',
               subtitle: 'Alternar entre tema claro e escuro',
-              value: _isDarkMode,
-              color: _isDarkMode ? Colors.indigo : Colors.amber,
-              onChanged: (value) {
-                setState(() {
-                  _isDarkMode = value;
-                });
-                Get.changeThemeMode(value ? ThemeMode.dark : ThemeMode.light);
-              },
+              value: _settingsController.isDarkMode.value,
+              color: _settingsController.isDarkMode.value ? Colors.indigo : Colors.amber,
+              onChanged: (value) => _settingsController.toggleDarkMode(value),
               dimensions: dimensions,
-            ),
+            )),
           ],
         ),
       ),
@@ -496,33 +503,25 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               dimensions: dimensions,
             ),
             SizedBox(height: dimensions['spacing']!),
-            _buildCustomSwitchTile(
+            Obx(() => _buildCustomSwitchTile(
               icon: Icons.notifications,
               title: 'Notificações Push',
               subtitle: 'Receber notificações no dispositivo',
-              value: _notificationsEnabled,
+              value: _settingsController.notificationsEnabled.value,
               color: Colors.blue,
-              onChanged: (value) {
-                setState(() {
-                  _notificationsEnabled = value;
-                });
-              },
+              onChanged: (value) => _settingsController.toggleNotifications(value),
               dimensions: dimensions,
-            ),
+            )),
             SizedBox(height: dimensions['spacing']! / 2),
-            _buildCustomSwitchTile(
+            Obx(() => _buildCustomSwitchTile(
               icon: Icons.email,
               title: 'Notificações por Email',
               subtitle: 'Receber notificações por email',
-              value: _emailNotifications,
+              value: _settingsController.emailNotifications.value,
               color: Colors.teal,
-              onChanged: (value) {
-                setState(() {
-                  _emailNotifications = value;
-                });
-              },
+              onChanged: (value) => _settingsController.toggleEmailNotifications(value),
               dimensions: dimensions,
-            ),
+            )),
           ],
         ),
       ),

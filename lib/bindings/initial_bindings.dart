@@ -4,6 +4,7 @@ import 'package:oraculum/controllers/card_list_controller.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
+import 'package:oraculum/controllers/settings_controller.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/gemini_service.dart';
@@ -30,5 +31,7 @@ class InitialBinding implements Bindings {
     Get.put(TarotController(), permanent: true);
     Get.put(HoroscopeController(), permanent: true);
     Get.put(CardListController(), permanent: true);
+
+    Get.lazyPut(() => SettingsController(), fenix: true);
   }
 }

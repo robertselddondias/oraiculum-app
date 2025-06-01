@@ -356,6 +356,7 @@ class AuthController extends GetxController {
       }
 
       await _loadUserData();
+      await ensureUserSettingsExist();
 
       debugPrint('Redirecionando para navegação...');
       Get.offAllNamed(AppRoutes.navigation);
@@ -447,6 +448,7 @@ class AuthController extends GetxController {
         });
 
         await _loadUserData();
+        await ensureUserSettingsExist();
 
         debugPrint('Redirecionando para navegação...');
         Get.offAllNamed(AppRoutes.navigation);
@@ -553,6 +555,7 @@ class AuthController extends GetxController {
 
           // Carregar dados básicos
           await _loadUserData();
+          await ensureUserSettingsExist();
 
           // Redirecionar para completar cadastro
           debugPrint('Redirecionando para completar cadastro...');
@@ -1290,5 +1293,22 @@ class AuthController extends GetxController {
         color: Colors.white,
       ),
     );
+  }
+
+  Future<void> ensureUserSettingsExist() async {
+    final userId = currentUser.value?.uid;
+    if (userId == null) {
+      debugPrint('❌ UserId é null, não é possível criar configurações');
+      return;
+    }
+
+    try {
+      debugPrint('=== ensureUserSettingsExist() ===');
+      await _firebaseService.ensureUserSettingsExist(userId);
+      debugPrint('✅ Configurações do usuário verificadas/criadas');
+    } catch (e) {
+      debugPrint('❌ Erro ao garantir configurações do usuário: $e');
+      // Não fazer throw para não quebrar o fluxo de login
+    }
   }
 }

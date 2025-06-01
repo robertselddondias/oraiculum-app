@@ -518,4 +518,201 @@ class FirebaseService {
 
     return tags.toSet().toList(); // Remove duplicatas
   }
+
+
+  // Adicione estes métodos ao FirebaseService existente
+
+  /// Métodos para gerenciar configurações do usuário
+  Future<Map<String, dynamic>> getUserSettings(String userId) async {
+    try {
+      debugPrint('=== getUserSettings() ===');
+      debugPrint('UserId: $userId');
+
+      final settingsDoc = await _firestore
+          .collection('user_settings')
+          .doc(userId)
+          .get();
+
+      if (settingsDoc.exists) {
+        final data = settingsDoc.data() as Map<String, dynamic>;
+        debugPrint('✅ Configurações existentes carregadas: $data');
+        return data;
+      } else {
+        debugPrint('⚠️ Configurações não existem, criando padrões...');
+
+        // Criar configurações padrão automaticamente
+        final defaultSettings = {
+          'isDarkMode': false,
+          'notificationsEnabled': true,
+          'emailNotifications': true,
+          'language': 'Português',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+
+        // Salvar as configurações padrão no Firebase
+        await _firestore
+            .collection('user_settings')
+            .doc(userId)
+            .set(defaultSettings);
+
+        debugPrint('✅ Configurações padrão criadas e salvas');
+        return defaultSettings;
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao carregar configurações: $e');
+
+      // Em caso de erro, ainda retornar configurações padrão para evitar crash
+      final defaultSettings = {
+        'isDarkMode': false,
+        'notificationsEnabled': true,
+        'emailNotifications': true,
+        'language': 'Português',
+      };
+
+      // Tentar criar as configurações padrão mesmo com erro
+      try {
+        await _firestore
+            .collection('user_settings')
+            .doc(userId)
+            .set({
+          ...defaultSettings,
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        debugPrint('✅ Configurações padrão criadas após erro');
+      } catch (createError) {
+        debugPrint('❌ Erro ao criar configurações padrão: $createError');
+      }
+
+      return defaultSettings;
+    }
+  }
+
+  Future<void> saveUserSettings(String userId, Map<String, dynamic> settings) async {
+    try {
+      debugPrint('=== saveUserSettings() ===');
+      debugPrint('UserId: $userId');
+      debugPrint('Settings: $settings');
+
+      // Adicionar timestamp de atualização
+      final settingsWithTimestamp = {
+        ...settings,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // Verificar se o documento já existe
+      final existingDoc = await _firestore
+          .collection('user_settings')
+          .doc(userId)
+          .get();
+
+      if (!existingDoc.exists) {
+        settingsWithTimestamp['createdAt'] = FieldValue.serverTimestamp();
+        debugPrint('📝 Primeira vez - adicionando createdAt');
+      }
+
+      // Usar set com merge para criar ou atualizar
+      await _firestore
+          .collection('user_settings')
+          .doc(userId)
+          .set(settingsWithTimestamp, SetOptions(merge: true));
+
+      debugPrint('✅ Configurações salvas com sucesso');
+    } catch (e) {
+      debugPrint('❌ Erro ao salvar configurações: $e');
+      throw Exception('Falha ao salvar configurações: $e');
+    }
+  }
+
+  Future<void> updateUserSetting(String userId, String key, dynamic value) async {
+    try {
+      debugPrint('=== updateUserSetting() ===');
+      debugPrint('UserId: $userId, Key: $key, Value: $value');
+
+      // Primeiro verificar se o documento existe
+      final docRef = _firestore.collection('user_settings').doc(userId);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        debugPrint('📝 Documento não existe, criando com configurações padrão...');
+
+        // Criar documento com configurações padrão + a nova configuração
+        final defaultSettings = {
+          'isDarkMode': false,
+          'notificationsEnabled': true,
+          'emailNotifications': true,
+          'language': 'Português',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        };
+
+        // Sobrescrever com a nova configuração
+        defaultSettings[key] = value;
+
+        await docRef.set(defaultSettings);
+        debugPrint('✅ Documento criado com configuração $key = $value');
+      } else {
+        // Documento existe, apenas atualizar
+        await docRef.update({
+          key: value,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        debugPrint('✅ Configuração $key atualizada para $value');
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar configuração $key: $e');
+
+      // Tentar criar o documento do zero em caso de erro
+      try {
+        debugPrint('🔄 Tentando criar documento do zero...');
+        await _firestore
+            .collection('user_settings')
+            .doc(userId)
+            .set({
+          'isDarkMode': key == 'isDarkMode' ? value : false,
+          'notificationsEnabled': key == 'notificationsEnabled' ? value : true,
+          'emailNotifications': key == 'emailNotifications' ? value : true,
+          'language': key == 'language' ? value : 'Português',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        debugPrint('✅ Documento criado do zero com sucesso');
+      } catch (createError) {
+        debugPrint('❌ Erro crítico ao criar documento: $createError');
+        throw Exception('Falha crítica ao atualizar configuração: $createError');
+      }
+    }
+  }
+
+  /// Método auxiliar para garantir que o documento de configurações existe
+  Future<void> ensureUserSettingsExist(String userId) async {
+    try {
+      debugPrint('=== ensureUserSettingsExist() ===');
+
+      final docRef = _firestore.collection('user_settings').doc(userId);
+      final docSnapshot = await docRef.get();
+
+      if (!docSnapshot.exists) {
+        debugPrint('📝 Criando documento de configurações para novo usuário...');
+
+        await docRef.set({
+          'isDarkMode': false,
+          'notificationsEnabled': true,
+          'emailNotifications': true,
+          'language': 'Português',
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        debugPrint('✅ Documento de configurações criado para usuário: $userId');
+      } else {
+        debugPrint('✅ Documento de configurações já existe');
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao garantir existência das configurações: $e');
+      // Não fazer throw aqui para não quebrar o fluxo
+    }
+  }
 }
