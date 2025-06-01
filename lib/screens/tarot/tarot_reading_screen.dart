@@ -250,7 +250,9 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 360;
-    final padding = isSmallScreen ? 12.0 : 16.0;
+    final isTablet = screenWidth >= 600;
+    final isLandscape = screenWidth > screenHeight;
+    final padding = _getResponsivePadding(screenWidth);
 
     return Scaffold(
       body: AnimatedBuilder(
@@ -275,34 +277,34 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
           child: Obx(() {
             // Mostrar tela de carregamento inicial até que o diálogo seja mostrado
             if (!_isReadyToStart.value) {
-              return _buildMysticLoadingState();
+              return _buildMysticLoadingState(isSmallScreen, isTablet);
             }
 
             if (_controller.isLoading.value) {
-              return _buildLoadingState();
+              return _buildLoadingState(isSmallScreen);
             }
 
             if (_controller.selectedCards.isEmpty) {
-              return _buildEmptyState();
+              return _buildEmptyState(isSmallScreen);
             }
 
             // Mostrar detalhes da carta, quando selecionada
             if (_isCardDetailsVisible.value && _selectedCardForDetails.value != null) {
-              return _buildCardDetailsView(isSmallScreen, padding);
+              return _buildCardDetailsView(isSmallScreen, isTablet, padding);
             }
 
             return Column(
               children: [
-                _buildAppBar(isSmallScreen),
+                _buildAppBar(isSmallScreen, isTablet),
                 // Adicionar widget de status das leituras diárias
-                _buildDailyReadingStatus(isSmallScreen),
+                _buildDailyReadingStatus(isSmallScreen, isTablet),
                 Expanded(
                   child: _readingPerformed.value
-                      ? _buildReadingResult(isSmallScreen, padding, screenHeight)
-                      : _buildCardsDeck(isSmallScreen, screenHeight),
+                      ? _buildReadingResult(isSmallScreen, isTablet, isLandscape, padding, screenHeight)
+                      : _buildCardsDeck(isSmallScreen, isTablet, isLandscape, screenHeight),
                 ),
                 if (_allCardsRevealed.value && !_readingPerformed.value)
-                  _buildPerformReadingButton(isSmallScreen),
+                  _buildPerformReadingButton(isSmallScreen, isTablet),
               ],
             );
           }),
@@ -311,87 +313,112 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildMysticLoadingState() {
+  // Função para obter padding responsivo
+  double _getResponsivePadding(double screenWidth) {
+    if (screenWidth < 360) return 12.0;
+    if (screenWidth >= 600) return 24.0;
+    return 16.0;
+  }
+
+  // Função para obter tamanhos de fonte responsivos
+  Map<String, double> _getResponsiveFontSizes(bool isSmallScreen, bool isTablet) {
+    return {
+      'title': isTablet ? 24.0 : isSmallScreen ? 18.0 : 20.0,
+      'subtitle': isTablet ? 18.0 : isSmallScreen ? 14.0 : 16.0,
+      'body': isTablet ? 16.0 : isSmallScreen ? 14.0 : 15.0,
+      'caption': isTablet ? 14.0 : isSmallScreen ? 12.0 : 13.0,
+    };
+  }
+
+  Widget _buildMysticLoadingState(bool isSmallScreen, bool isTablet) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Ícone místico com animação de rotação
-          AnimatedBuilder(
-            animation: _backgroundController,
-            builder: (context, child) {
-              return Transform.rotate(
-                angle: _backgroundController.value * 2 * pi,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF6C63FF).withOpacity(0.3),
-                        const Color(0xFF8E78FF).withOpacity(0.7),
-                        const Color(0xFFFF9D8A).withOpacity(0.3),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6C63FF).withOpacity(0.4),
-                        blurRadius: 20,
-                        spreadRadius: 5,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: _getResponsivePadding(MediaQuery.of(context).size.width)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Ícone místico com animação de rotação
+            AnimatedBuilder(
+              animation: _backgroundController,
+              builder: (context, child) {
+                return Transform.rotate(
+                  angle: _backgroundController.value * 2 * pi,
+                  child: Container(
+                    width: isTablet ? 100 : isSmallScreen ? 60 : 80,
+                    height: isTablet ? 100 : isSmallScreen ? 60 : 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF6C63FF).withOpacity(0.3),
+                          const Color(0xFF8E78FF).withOpacity(0.7),
+                          const Color(0xFFFF9D8A).withOpacity(0.3),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6C63FF).withOpacity(0.4),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      color: Colors.white,
+                      size: isTablet ? 50 : isSmallScreen ? 30 : 40,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.auto_awesome,
-                    color: Colors.white,
-                    size: 40,
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-          Text(
-            '🌟 Preparando o Portal dos Arcanos...',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+                );
+              },
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'O universo está alinhando as energias para você',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
-              fontSize: 14,
+            SizedBox(height: isTablet ? 32 : 24),
+            Text(
+              '🌟 Preparando o Portal dos Arcanos...',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: fontSizes['subtitle']!,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            SizedBox(height: isTablet ? 16 : 12),
+            Text(
+              'O universo está alinhando as energias para você',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: fontSizes['body']!,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     ).animate().fadeIn(duration: 800.ms);
   }
 
-  Widget _buildDailyReadingStatus(bool isSmallScreen) {
+  Widget _buildDailyReadingStatus(bool isSmallScreen, bool isTablet) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
+    final padding = _getResponsivePadding(MediaQuery.of(context).size.width);
+
     return Obx(() {
       final hasFreeReading = _controller.hasFreeReadingToday.value;
       final readingsUsed = _controller.dailyReadingsUsed.value;
 
       return Container(
         margin: EdgeInsets.symmetric(
-          horizontal: isSmallScreen ? 16.0 : 20.0,
+          horizontal: padding,
           vertical: 8.0,
         ),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(isTablet ? 20 : 16),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
           border: Border.all(
             color: hasFreeReading ? Colors.green.withOpacity(0.5) : Colors.orange.withOpacity(0.5),
             width: 1,
@@ -402,9 +429,9 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             Icon(
               hasFreeReading ? Icons.casino : Icons.account_balance_wallet,
               color: hasFreeReading ? Colors.green : Colors.orange,
-              size: isSmallScreen ? 20 : 24,
+              size: isTablet ? 28 : isSmallScreen ? 20 : 24,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: isTablet ? 16 : 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,18 +440,18 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                     hasFreeReading ? 'Leitura Gratuita Disponível' : 'Leitura Gratuita Usada',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: isSmallScreen ? 14 : 16,
+                      fontSize: fontSizes['body']!,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: isTablet ? 6 : 4),
                   Text(
                     hasFreeReading
                         ? 'Você pode fazer 1 leitura gratuita hoje'
                         : 'Leituras extras custam ${_controller.additionalReadingCost.toStringAsFixed(0)} créditos',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.8),
-                      fontSize: isSmallScreen ? 12 : 14,
+                      fontSize: fontSizes['caption']!,
                     ),
                   ),
                 ],
@@ -432,16 +459,19 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             ),
             if (!hasFreeReading)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 12 : 8,
+                    vertical: isTablet ? 6 : 4
+                ),
                 decoration: BoxDecoration(
                   color: Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                 ),
                 child: Text(
                   'Usadas: $readingsUsed',
                   style: TextStyle(
                     color: Colors.orange,
-                    fontSize: isSmallScreen ? 10 : 12,
+                    fontSize: fontSizes['caption']! - 2,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -452,10 +482,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     });
   }
 
-  Widget _buildAppBar(bool isSmallScreen) {
+  Widget _buildAppBar(bool isSmallScreen, bool isTablet) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
+    final padding = _getResponsivePadding(MediaQuery.of(context).size.width);
+
     return Padding(
       padding: EdgeInsets.symmetric(
-        horizontal: isSmallScreen ? 16.0 : 20.0,
+        horizontal: padding,
         vertical: 8.0,
       ),
       child: Row(
@@ -464,45 +497,52 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
           // Botão de voltar
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,
+              size: isTablet ? 28 : 24,
             ),
-            splashRadius: 24,
+            splashRadius: isTablet ? 28 : 24,
           ),
 
           // Título centralizado
-          Text(
-            'Leitura de Tarô',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isSmallScreen ? 20.0 : 22.0,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
+          Expanded(
+            child: Text(
+              'Leitura de Tarô',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: fontSizes['title']!,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
 
           // Linha de ações (botões)
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Botão para reiniciar a experiência mística
+              // Botão para histórico
               IconButton(
                 onPressed: () => Get.toNamed(AppRoutes.savedReadingsList),
-                icon: const Icon(
+                icon: Icon(
                   Icons.history,
                   color: Colors.white,
+                  size: isTablet ? 28 : 24,
                 ),
-                splashRadius: 24,
+                splashRadius: isTablet ? 28 : 24,
                 tooltip: 'Minhas Leituras',
               ),
               // Botão de atualizar/nova leitura
               IconButton(
                 onPressed: _loadRandomCards,
-                icon: const Icon(
+                icon: Icon(
                   Icons.refresh,
                   color: Colors.white,
+                  size: isTablet ? 28 : 24,
                 ),
-                splashRadius: 24,
+                splashRadius: isTablet ? 28 : 24,
                 tooltip: 'Nova leitura',
               ),
             ],
@@ -512,20 +552,23 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1, end: 0);
   }
 
-  Widget _buildLoadingState() {
+  Widget _buildLoadingState(bool isSmallScreen) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, false);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(
+          CircularProgressIndicator(
             color: Colors.white,
+            strokeWidth: isSmallScreen ? 2 : 3,
           ),
           const SizedBox(height: 20),
           Text(
             'Preparando as cartas...',
             style: TextStyle(
               color: Colors.white.withOpacity(0.8),
-              fontSize: 16,
+              fontSize: fontSizes['body']!,
             ),
           ),
         ],
@@ -533,14 +576,16 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isSmallScreen) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, false);
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.grid_view,
-            size: 60,
+            size: isSmallScreen ? 50 : 60,
             color: Colors.white.withOpacity(0.6),
           ),
           const SizedBox(height: 16),
@@ -548,7 +593,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             'Carregando cartas de tarô...',
             style: TextStyle(
               color: Colors.white.withOpacity(0.8),
-              fontSize: 16,
+              fontSize: fontSizes['body']!,
             ),
           ),
         ],
@@ -556,56 +601,78 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildCardsDeck(bool isSmallScreen, double screenHeight) {
-    final instructionFontSize = isSmallScreen ? 16.0 : 18.0;
-    final cardScale = min(screenHeight / 800, 1.2);
+  Widget _buildCardsDeck(bool isSmallScreen, bool isTablet, bool isLandscape, double screenHeight) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
+    final padding = _getResponsivePadding(MediaQuery.of(context).size.width);
+    final cardScale = isTablet ? 1.3 : min(screenHeight / 800, 1.2);
 
     return Stack(
       fit: StackFit.expand,
       children: [
         // Partículas/estrelas para o fundo
-        ...ZodiacUtils.buildStarParticles(context, 20),
+        ...ZodiacUtils.buildStarParticles(context, isTablet ? 30 : 20),
 
         // Conteúdo principal
         Padding(
-          padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+          padding: EdgeInsets.all(padding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Instrução para o usuário
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 20 : 16,
+                    vertical: isTablet ? 14 : 10
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(isTablet ? 24 : 20),
                 ),
                 child: Text(
                   _allCardsRevealed.value
                       ? 'Toque nas cartas para ver detalhes'
                       : 'Toque nas cartas para revelá-las',
                   style: TextStyle(
-                    fontSize: instructionFontSize,
+                    fontSize: fontSizes['subtitle']!,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ).animate().fadeIn(delay: 300.ms).slideY(begin: -0.2, end: 0),
 
-              SizedBox(height: screenHeight * 0.05),
+              SizedBox(height: isLandscape ? screenHeight * 0.08 : screenHeight * 0.05),
 
               // Cartas de tarô
-              SizedBox(
-                height: screenHeight * 0.45 * cardScale,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: List.generate(3, (index) {
-                    return _buildTarotCard(
-                      index,
-                      isSmallScreen,
-                      delay: Duration(milliseconds: 300 + (index * 200)),
-                    );
-                  }),
+              Flexible(
+                child: SizedBox(
+                  height: isLandscape
+                      ? screenHeight * 0.6 * cardScale
+                      : screenHeight * 0.45 * cardScale,
+                  child: isLandscape
+                      ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(3, (index) {
+                      return _buildTarotCard(
+                        index,
+                        isSmallScreen,
+                        isTablet,
+                        delay: Duration(milliseconds: 300 + (index * 200)),
+                      );
+                    }),
+                  )
+                      : Wrap(
+                    alignment: WrapAlignment.spaceEvenly,
+                    children: List.generate(3, (index) {
+                      return _buildTarotCard(
+                        index,
+                        isSmallScreen,
+                        isTablet,
+                        delay: Duration(milliseconds: 300 + (index * 200)),
+                      );
+                    }),
+                  ),
                 ),
               ),
             ],
@@ -615,8 +682,8 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildTarotCard(int index, bool isSmallScreen, {Duration? delay}) {
-    final cardWidth = isSmallScreen ? 90.0 : 110.0;
+  Widget _buildTarotCard(int index, bool isSmallScreen, bool isTablet, {Duration? delay}) {
+    final cardWidth = isTablet ? 140.0 : isSmallScreen ? 80.0 : 100.0;
     final cardHeight = cardWidth * 1.8;
 
     return AnimatedBuilder(
@@ -627,28 +694,31 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
 
         return GestureDetector(
           onTap: () => _flipCard(index),
-          child: Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateY(pi * value),
-            child: Container(
-              width: cardWidth,
-              height: cardHeight,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+          child: Container(
+            margin: EdgeInsets.all(isTablet ? 12 : isSmallScreen ? 6 : 8),
+            child: Transform(
+              alignment: Alignment.center,
+              transform: Matrix4.identity()
+                ..setEntry(3, 2, 0.001)
+                ..rotateY(pi * value),
+              child: Container(
+                width: cardWidth,
+                height: cardHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: isTablet ? 15 : 10,
+                      spreadRadius: isTablet ? 3 : 2,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: isRevealed
+                    ? _buildCardFront(index, cardWidth, cardHeight, isTablet)
+                    : _buildCardBack(cardWidth, cardHeight, isTablet),
               ),
-              child: isRevealed
-                  ? _buildCardFront(index, cardWidth, cardHeight)
-                  : _buildCardBack(cardWidth, cardHeight),
             ),
           ),
         );
@@ -665,23 +735,52 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildCardFront(int index, double width, double height) {
+  Widget _buildCardFront(int index, double width, double height, bool isTablet) {
     final card = _controller.selectedCards[index];
 
     return Transform(
       alignment: Alignment.center,
       transform: Matrix4.rotationY(pi),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
         child: Stack(
           children: [
             // Imagem da carta
-            AppCardImage(imageUrl: card.imageUrl),
+            Positioned.fill(
+              child: Image.network(
+                card.imageUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    color: Colors.grey.shade700,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey.shade700,
+                    child: const Center(
+                      child: Icon(
+                        Icons.error_outline,
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
 
             // Gradiente para melhorar a legibilidade do texto
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -696,16 +795,16 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
 
             // Nome da carta
             Positioned(
-              bottom: 12,
-              left: 12,
-              right: 12,
+              bottom: isTablet ? 16 : 12,
+              left: isTablet ? 16 : 12,
+              right: isTablet ? 16 : 12,
               child: Text(
                 card.name,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  shadows: [
+                  fontSize: isTablet ? 16 : 14,
+                  shadows: const [
                     Shadow(
                       color: Colors.black,
                       blurRadius: 5,
@@ -714,24 +813,26 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   ],
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
 
             // Indicador para informar que o usuário pode clicar para ver detalhes
             if (_cardRevealed[index])
               Positioned(
-                top: 10,
-                right: 10,
+                top: isTablet ? 12 : 10,
+                right: isTablet ? 12 : 10,
                 child: Container(
-                  padding: const EdgeInsets.all(5),
+                  padding: EdgeInsets.all(isTablet ? 6 : 5),
                   decoration: BoxDecoration(
                     color: Colors.black54,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.info_outline,
                     color: Colors.white,
-                    size: 16,
+                    size: isTablet ? 18 : 16,
                   ),
                 ),
               ),
@@ -741,10 +842,10 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildCardBack(double width, double height) {
+  Widget _buildCardBack(double width, double height, bool isTablet) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -793,7 +894,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
               return Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                     border: Border.all(
                       color: Colors.white.withOpacity(
                         0.2 + (0.2 * sin(_backgroundController.value * 2 * pi)),
@@ -810,13 +911,14 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildCardDetailsView(bool isSmallScreen, double padding) {
+  Widget _buildCardDetailsView(bool isSmallScreen, bool isTablet, double padding) {
     final card = _selectedCardForDetails.value!;
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
 
     return Stack(
       children: [
         // Partículas/estrelas para o fundo
-        ...ZodiacUtils.buildStarParticles(context, 30),
+        ...ZodiacUtils.buildStarParticles(context, isTablet ? 40 : 30),
 
         // Content
         SingleChildScrollView(
@@ -832,30 +934,34 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   children: [
                     IconButton(
                       onPressed: _hideCardDetails,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.arrow_back_ios_new,
                         color: Colors.white,
+                        size: isTablet ? 28 : 24,
                       ),
-                      splashRadius: 24,
+                      splashRadius: isTablet ? 28 : 24,
                     ),
                     Expanded(
                       child: Text(
                         card.name,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: fontSizes['title']!,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     IconButton(
                       onPressed: _hideCardDetails,
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.close,
                         color: Colors.white,
+                        size: isTablet ? 28 : 24,
                       ),
-                      splashRadius: 24,
+                      splashRadius: isTablet ? 28 : 24,
                     ),
                   ],
                 ),
@@ -864,21 +970,21 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
               // Card image
               Center(
                 child: Container(
-                  height: isSmallScreen ? 280 : 320,
-                  width: isSmallScreen ? 170 : 200,
-                  margin: const EdgeInsets.symmetric(vertical: 16),
+                  height: isTablet ? 400 : isSmallScreen ? 250 : 320,
+                  width: isTablet ? 250 : isSmallScreen ? 150 : 200,
+                  margin: EdgeInsets.symmetric(vertical: isTablet ? 20 : 16),
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.3),
-                        blurRadius: 15,
-                        spreadRadius: 2,
+                        blurRadius: isTablet ? 20 : 15,
+                        spreadRadius: isTablet ? 3 : 2,
                       ),
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
                     child: Image.network(
                       card.imageUrl,
                       fit: BoxFit.cover,
@@ -892,6 +998,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                                   ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
                                   : null,
                               color: Colors.white,
+                              strokeWidth: isTablet ? 3 : 2,
                             ),
                           ),
                         );
@@ -899,11 +1006,11 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                       errorBuilder: (context, error, stack) {
                         return Container(
                           color: Colors.black26,
-                          child: const Center(
+                          child: Center(
                             child: Icon(
                               Icons.error_outline,
                               color: Colors.white,
-                              size: 50,
+                              size: isTablet ? 60 : 50,
                             ),
                           ),
                         );
@@ -920,17 +1027,17 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
 
               // Info card
               Card(
-                elevation: 4,
+                elevation: isTablet ? 6 : 4,
                 color: Colors.black.withOpacity(0.3),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
                   side: BorderSide(
                     color: Colors.white.withOpacity(0.1),
                     width: 1,
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(isTablet ? 24 : 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -939,16 +1046,20 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                         icon: Icons.style,
                         title: 'Arcano',
                         value: card.suit,
+                        isTablet: isTablet,
+                        fontSizes: fontSizes,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: isTablet ? 20 : 16),
                       _buildInfoRow(
                         icon: Icons.format_list_numbered,
                         title: 'Número',
                         value: card.number.toString(),
+                        isTablet: isTablet,
+                        fontSizes: fontSizes,
                       ),
 
-                      const Divider(
-                        height: 32,
+                      Divider(
+                        height: isTablet ? 40 : 32,
                         color: Colors.white24,
                       ),
 
@@ -958,9 +1069,11 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                         content: card.uprightMeaning,
                         icon: Icons.arrow_upward,
                         color: Colors.green,
+                        isTablet: isTablet,
+                        fontSizes: fontSizes,
                       ),
 
-                      const SizedBox(height: 24),
+                      SizedBox(height: isTablet ? 28 : 24),
 
                       // Significado Reversed
                       _buildMeaningSection(
@@ -968,32 +1081,34 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                         content: card.reversedMeaning,
                         icon: Icons.arrow_downward,
                         color: Colors.redAccent,
+                        isTablet: isTablet,
+                        fontSizes: fontSizes,
                       ),
 
-                      const SizedBox(height: 16),
+                      SizedBox(height: isTablet ? 20 : 16),
 
                       // Palavras-chave
-                      const Text(
+                      Text(
                         'Palavras-chave:',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: fontSizes['body']!,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isTablet ? 12 : 8),
                       Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                        spacing: isTablet ? 10 : 8,
+                        runSpacing: isTablet ? 10 : 8,
                         children: card.keywords.map((keyword) {
                           return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: isTablet ? 16 : 12,
+                              vertical: isTablet ? 8 : 6,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                               border: Border.all(
                                 color: Colors.white24,
                                 width: 1,
@@ -1001,9 +1116,9 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                             ),
                             child: Text(
                               keyword,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 12,
+                                fontSize: fontSizes['caption']!,
                               ),
                             ),
                           );
@@ -1017,21 +1132,28 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                 duration: const Duration(milliseconds: 500),
               ),
 
-              const SizedBox(height: 24),
+              SizedBox(height: isTablet ? 32 : 24),
 
               // Botão para voltar
               SizedBox(
                 width: double.infinity,
+                height: isTablet ? 56 : 48,
                 child: ElevatedButton.icon(
                   onPressed: _hideCardDetails,
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Voltar para a Leitura'),
+                  icon: Icon(
+                      Icons.arrow_back,
+                      size: isTablet ? 24 : 20
+                  ),
+                  label: Text(
+                      'Voltar para a Leitura',
+                      style: TextStyle(fontSize: fontSizes['body']!)
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF6C63FF),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
                     ),
                   ),
                 ),
@@ -1040,7 +1162,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                 duration: const Duration(milliseconds: 300),
               ),
 
-              const SizedBox(height: 32),
+              SizedBox(height: isTablet ? 40 : 32),
             ],
           ),
         ),
@@ -1052,11 +1174,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     required IconData icon,
     required String title,
     required String value,
+    required bool isTablet,
+    required Map<String, double> fontSizes,
   }) {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: EdgeInsets.all(isTablet ? 10 : 8),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.1),
             shape: BoxShape.circle,
@@ -1064,10 +1188,10 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
           child: Icon(
             icon,
             color: Colors.white70,
-            size: 18,
+            size: isTablet ? 22 : 18,
           ),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: isTablet ? 20 : 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1076,14 +1200,14 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                 title,
                 style: TextStyle(
                   color: Colors.white.withOpacity(0.6),
-                  fontSize: 12,
+                  fontSize: fontSizes['caption']!,
                 ),
               ),
               Text(
                 value,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 16,
+                  fontSize: fontSizes['body']!,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1099,6 +1223,8 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     required String content,
     required IconData icon,
     required Color color,
+    required bool isTablet,
+    required Map<String, double> fontSizes,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1108,25 +1234,25 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             Icon(
               icon,
               color: color,
-              size: 18,
+              size: isTablet ? 22 : 18,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: isTablet ? 12 : 8),
             Text(
               title,
               style: TextStyle(
                 color: color,
-                fontSize: 16,
+                fontSize: fontSizes['body']!,
                 fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: isTablet ? 12 : 8),
         Text(
           content,
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
-            fontSize: 14,
+            fontSize: fontSizes['caption']! + 1,
             height: 1.5,
           ),
         ),
@@ -1134,7 +1260,10 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildPerformReadingButton(bool isSmallScreen) {
+  Widget _buildPerformReadingButton(bool isSmallScreen, bool isTablet) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
+    final padding = _getResponsivePadding(MediaQuery.of(context).size.width);
+
     return Obx(() {
       final hasFreeReading = _controller.hasFreeReadingToday.value;
       final canAffordPaid = _controller.canPerformPaidReading();
@@ -1159,14 +1288,15 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
       }
 
       return Padding(
-        padding: EdgeInsets.all(isSmallScreen ? 16.0 : 24.0),
+        padding: EdgeInsets.all(padding),
         child: Column(
           children: [
             // Botão principal
             Container(
               width: double.infinity,
+              height: isTablet ? 56 : 48,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
                 boxShadow: [
                   BoxShadow(
                     color: buttonColor.withOpacity(0.3),
@@ -1178,14 +1308,17 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
               ),
               child: ElevatedButton.icon(
                 onPressed: (hasFreeReading || canAffordPaid) ? _performReading : null,
-                icon: Icon(buttonIcon),
-                label: Text(buttonText),
+                icon: Icon(buttonIcon, size: isTablet ? 24 : 20),
+                label: Text(
+                    buttonText,
+                    style: TextStyle(fontSize: fontSizes['body']!)
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: buttonColor,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 14),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
                   ),
                   elevation: 0,
                 ),
@@ -1194,11 +1327,17 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
 
             // Informação adicional se não tiver créditos
             if (!hasFreeReading && !canAffordPaid) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: isTablet ? 16 : 12),
               TextButton.icon(
                 onPressed: () => Get.toNamed('/payment-methods'),
-                icon: const Icon(Icons.add_card, size: 20),
-                label: const Text('Adicionar Créditos'),
+                icon: Icon(
+                    Icons.add_card,
+                    size: isTablet ? 24 : 20
+                ),
+                label: Text(
+                    'Adicionar Créditos',
+                    style: TextStyle(fontSize: fontSizes['body']!)
+                ),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white,
                 ),
@@ -1216,13 +1355,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     });
   }
 
-  Widget _buildReadingResult(bool isSmallScreen, double padding, double screenHeight) {
-    final titleSize = isSmallScreen ? 18.0 : 22.0;
+  Widget _buildReadingResult(bool isSmallScreen, bool isTablet, bool isLandscape, double padding, double screenHeight) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
 
     return Stack(
       children: [
         // Partículas/estrelas para o fundo
-        ...ZodiacUtils.buildStarParticles(context, 30),
+        ...ZodiacUtils.buildStarParticles(context, isTablet ? 40 : 30),
 
         // Conteúdo principal
         SingleChildScrollView(
@@ -1232,13 +1371,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Mostrar as cartas selecionadas em miniatura
-              _buildCardsMiniGallery(isSmallScreen),
+              _buildCardsMiniGallery(isSmallScreen, isTablet),
 
-              SizedBox(height: screenHeight * 0.03),
+              SizedBox(height: isTablet ? screenHeight * 0.04 : screenHeight * 0.03),
 
               // Título da interpretação com decoração
               Container(
-                margin: const EdgeInsets.only(bottom: 20),
+                margin: EdgeInsets.only(bottom: isTablet ? 24 : 20),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -1248,7 +1387,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                       child: Text(
                         'Sua Interpretação',
                         style: TextStyle(
-                          fontSize: titleSize,
+                          fontSize: fontSizes['title']!,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           letterSpacing: 0.5,
@@ -1259,13 +1398,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                     // Linha decorativa
                     Positioned(
                       left: 8,
-                      bottom: -8,
+                      bottom: isTablet ? -10 : -8,
                       child: Container(
-                        width: 60,
-                        height: 3,
+                        width: isTablet ? 80 : 60,
+                        height: isTablet ? 4 : 3,
                         decoration: BoxDecoration(
                           color: const Color(0xFF6C63FF),
-                          borderRadius: BorderRadius.circular(1.5),
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                     ),
@@ -1281,6 +1420,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   icon: Icons.auto_awesome,
                   color: const Color(0xFF6C63FF),
                   isSmallScreen: isSmallScreen,
+                  isTablet: isTablet,
                   delay: 400,
                 ),
 
@@ -1291,6 +1431,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   icon: Icons.favorite,
                   color: Colors.pinkAccent,
                   isSmallScreen: isSmallScreen,
+                  isTablet: isTablet,
                   delay: 600,
                 ),
 
@@ -1301,6 +1442,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   icon: Icons.work,
                   color: Colors.blueAccent,
                   isSmallScreen: isSmallScreen,
+                  isTablet: isTablet,
                   delay: 800,
                 ),
 
@@ -1311,6 +1453,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   icon: Icons.favorite_border,
                   color: Colors.greenAccent,
                   isSmallScreen: isSmallScreen,
+                  isTablet: isTablet,
                   delay: 1000,
                 ),
 
@@ -1321,27 +1464,28 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   icon: Icons.lightbulb_outline,
                   color: Colors.amberAccent,
                   isSmallScreen: isSmallScreen,
+                  isTablet: isTablet,
                   delay: 1200,
                 ),
 
               // Se não houver nenhuma seção ou apenas a geral, mostrar todo o texto
               if (_parsedInterpretation.isEmpty || (_parsedInterpretation.length == 1 && _parsedInterpretation.containsKey('geral')))
                 Card(
-                  elevation: 4,
+                  elevation: isTablet ? 6 : 4,
                   color: Colors.black.withOpacity(0.3),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
                     side: BorderSide(
                       color: Colors.white.withOpacity(0.1),
                       width: 1,
                     ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(isTablet ? 24 : 20),
                     child: Text(
                       _controller.interpretation.value,
                       style: TextStyle(
-                        fontSize: isSmallScreen ? 14 : 16,
+                        fontSize: fontSizes['body']!,
                         height: 1.5,
                         color: Colors.white,
                       ),
@@ -1349,13 +1493,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                   ),
                 ).animate().fadeIn(delay: 400.ms),
 
-              SizedBox(height: screenHeight * 0.04),
+              SizedBox(height: isTablet ? screenHeight * 0.05 : screenHeight * 0.04),
 
               // Botões de ação
-              _buildActionButtons(isSmallScreen),
+              _buildActionButtons(isSmallScreen, isTablet),
 
               // Espaçamento final
-              SizedBox(height: screenHeight * 0.03),
+              SizedBox(height: isTablet ? screenHeight * 0.04 : screenHeight * 0.03),
             ],
           ),
         ),
@@ -1363,9 +1507,12 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildCardsMiniGallery(bool isSmallScreen) {
+  Widget _buildCardsMiniGallery(bool isSmallScreen, bool isTablet) {
+    final cardSize = isTablet ? 100.0 : isSmallScreen ? 70.0 : 80.0;
+    final cardHeight = cardSize * 1.5;
+
     return SizedBox(
-      height: 120,
+      height: cardHeight + 40, // Espaço extra para o texto
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _controller.selectedCards.length,
@@ -1374,27 +1521,27 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
           return GestureDetector(
             onTap: () => _showCardDetails(card),
             child: Container(
-              width: 80,
-              margin: const EdgeInsets.only(right: 16),
+              width: cardSize + 20,
+              margin: EdgeInsets.only(right: isTablet ? 20 : 16),
               child: Column(
                 children: [
                   Stack(
                     children: [
                       Container(
-                        height: 90,
-                        width: 60,
+                        height: cardHeight,
+                        width: cardSize,
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.3),
-                              blurRadius: 8,
+                              blurRadius: isTablet ? 12 : 8,
                               spreadRadius: 1,
                             ),
                           ],
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
                           child: Image.network(
                             card.imageUrl,
                             fit: BoxFit.cover,
@@ -1402,7 +1549,7 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                               if (loadingProgress == null) return child;
                               return Container(
                                 color: Colors.grey.shade700,
-                                child: const Center(
+                                child: Center(
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     color: Colors.white,
@@ -1416,28 +1563,28 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
 
                       // Indicador para informar que o usuário pode clicar para ver detalhes
                       Positioned(
-                        top: 5,
-                        right: 5,
+                        top: isTablet ? 8 : 5,
+                        right: isTablet ? 8 : 5,
                         child: Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: EdgeInsets.all(isTablet ? 6 : 4),
                           decoration: BoxDecoration(
                             color: Colors.black54,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(isTablet ? 10 : 8),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.info_outline,
                             color: Colors.white,
-                            size: 12,
+                            size: isTablet ? 16 : 12,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: isTablet ? 8 : 6),
                   Text(
                     card.name,
-                    style: const TextStyle(
-                      fontSize: 11,
+                    style: TextStyle(
+                      fontSize: isTablet ? 13 : 11,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -1467,17 +1614,20 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     required IconData icon,
     required Color color,
     required bool isSmallScreen,
+    required bool isTablet,
     int delay = 0,
   }) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: EdgeInsets.only(bottom: isTablet ? 28 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(isTablet ? 12 : 10),
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.2),
                   shape: BoxShape.circle,
@@ -1485,26 +1635,28 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                 child: Icon(
                   icon,
                   color: color,
-                  size: isSmallScreen ? 20 : 24,
+                  size: isTablet ? 28 : isSmallScreen ? 20 : 24,
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: isSmallScreen ? 16 : 18,
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              SizedBox(width: isTablet ? 16 : 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: fontSizes['subtitle']!,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: isTablet ? 16 : 12),
           Card(
-            elevation: 4,
+            elevation: isTablet ? 6 : 4,
             color: Colors.black.withOpacity(0.3),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
               side: BorderSide(
                 color: color.withOpacity(0.3),
                 width: 1,
@@ -1512,11 +1664,11 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
             ),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(isTablet ? 24 : 20),
               child: Text(
                 content,
                 style: TextStyle(
-                  fontSize: isSmallScreen ? 14 : 16,
+                  fontSize: fontSizes['body']!,
                   height: 1.5,
                   color: Colors.white,
                 ),
@@ -1535,7 +1687,9 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     );
   }
 
-  Widget _buildActionButtons(bool isSmallScreen) {
+  Widget _buildActionButtons(bool isSmallScreen, bool isTablet) {
+    final fontSizes = _getResponsiveFontSizes(isSmallScreen, isTablet);
+
     return Column(
       children: [
         // Botões primários em linha
@@ -1551,9 +1705,11 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                 onPressed: _loadRandomCards,
                 isPrimary: false,
                 isSmallScreen: isSmallScreen,
+                isTablet: isTablet,
+                fontSizes: fontSizes,
               ),
             ),
-            const SizedBox(width: 16),
+            SizedBox(width: isTablet ? 20 : 16),
             // Botão Salvar
             Expanded(
               child: _buildActionButton(
@@ -1564,11 +1720,13 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                 onPressed: () => _controller.saveReading(),
                 isPrimary: true,
                 isSmallScreen: isSmallScreen,
+                isTablet: isTablet,
+                fontSizes: fontSizes,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: isTablet ? 20 : 16),
         // Botão Compartilhar (largura total)
         _buildActionButton(
           icon: Icons.share,
@@ -1579,7 +1737,9 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
           isPrimary: false,
           isOutlined: true,
           isSmallScreen: isSmallScreen,
+          isTablet: isTablet,
           isFullWidth: true,
+          fontSizes: fontSizes,
         ),
       ],
     ).animate().fadeIn(
@@ -1596,14 +1756,20 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
     required VoidCallback onPressed,
     required bool isPrimary,
     required bool isSmallScreen,
+    required bool isTablet,
+    required Map<String, double> fontSizes,
     bool isOutlined = false,
     bool isFullWidth = false,
   }) {
+    final buttonHeight = isTablet ? 56.0 : isSmallScreen ? 44.0 : 50.0;
+    final iconSize = isTablet ? 24.0 : isSmallScreen ? 18.0 : 20.0;
+    final borderRadius = isTablet ? 20.0 : 16.0;
+
     return Container(
       width: isFullWidth ? double.infinity : null,
-      height: 50,
+      height: buttonHeight,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: isPrimary ? [
           BoxShadow(
             color: color.withOpacity(0.3),
@@ -1616,11 +1782,11 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
       child: isOutlined
           ? OutlinedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: isSmallScreen ? 18 : 20),
+        icon: Icon(icon, size: iconSize),
         label: Text(
           label,
           style: TextStyle(
-            fontSize: isSmallScreen ? 14 : 16,
+            fontSize: fontSizes['body']!,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1628,32 +1794,32 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
           foregroundColor: textColor,
           side: BorderSide(color: Colors.white.withOpacity(0.5), width: 1.5),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(borderRadius),
           ),
           padding: EdgeInsets.symmetric(
-            vertical: isSmallScreen ? 12 : 16,
+            vertical: isTablet ? 16 : isSmallScreen ? 12 : 14,
           ),
         ),
       )
           : ElevatedButton.icon(
         onPressed: onPressed,
-        icon: Icon(icon, size: isSmallScreen ? 18 : 20),
+        icon: Icon(icon, size: iconSize),
         label: Text(
           label,
           style: TextStyle(
-            fontSize: isSmallScreen ? 14 : 16,
+            fontSize: fontSizes['body']!,
             fontWeight: FontWeight.bold,
           ),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: textColor,
-          elevation: isPrimary ? 0 : 0,
+          elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(borderRadius),
           ),
           padding: EdgeInsets.symmetric(
-            vertical: isSmallScreen ? 12 : 16,
+            vertical: isTablet ? 16 : isSmallScreen ? 12 : 14,
           ),
         ),
       ),

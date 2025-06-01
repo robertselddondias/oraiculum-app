@@ -512,7 +512,7 @@ class TarotController extends GetxController {
       Get.snackbar('Erro', 'Não foi possível salvar a leitura: $e');
     } finally {
       isLoading.value = false;
-      update();
+      Get.back();
     }
   }
 
