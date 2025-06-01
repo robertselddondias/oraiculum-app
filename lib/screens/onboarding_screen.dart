@@ -20,7 +20,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<OnboardingPage> _pages = [
     OnboardingPage(
-      title: 'Bem-vindo ao Astral Connect',
+      title: 'Bem-vindo ao Oraculum',
       description: 'Sua conexão com o universo através da astrologia, tarô e consultas com médiuns experientes.',
       animationPath: 'assets/animations/stars.json',
       icon: Icons.nights_stay_rounded,

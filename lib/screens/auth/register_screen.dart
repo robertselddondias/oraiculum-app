@@ -146,7 +146,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 8),
 
                   Text(
-                    'Entre para a comunidade Astral Connect',
+                    'Entre para a comunidade Oraculum',
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: Colors.white70,
                     ),

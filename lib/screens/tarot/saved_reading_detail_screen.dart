@@ -181,7 +181,7 @@ class _SavedReadingDetailScreenState extends State<SavedReadingDetailScreen>
         shareText += '✨ ${generalText.substring(0, maxLength)}...\n\n';
       }
 
-      shareText += 'Descubra seu futuro com o app Astral Connect!';
+      shareText += 'Descubra seu futuro com o app Oraculum!';
 
       SharePlus.instance.share(
           ShareParams(text: shareText)

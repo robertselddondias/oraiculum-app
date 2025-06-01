@@ -66,10 +66,7 @@
 	<string>O Oraculum pode acessar seus contatos para análise de compatibilidade</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>O Oraculum usa Face ID para autenticação segura em pagamentos</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>O Oraculum usa sua localização para personalizar a experiência astrológica</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>O Oraculum precisa acessar o microfone para consultas por voz</string>
+
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>O Oraculum precisa acessar suas fotos para definir sua foto de perfil</string>
 	<key>StripePublishableKey</key>

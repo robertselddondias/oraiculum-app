@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
+import 'package:oraculum/utils/zodiac_utils.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,148 +18,768 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
   final AuthController _authController = Get.find<AuthController>();
   final PaymentController _paymentController = Get.find<PaymentController>();
+
+  late AnimationController _backgroundController;
+  late Animation<Alignment> _topAlignmentAnimation;
+  late Animation<Alignment> _bottomAlignmentAnimation;
 
   @override
   void initState() {
     super.initState();
     _paymentController.loadUserCredits();
+    _setupAnimations();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Obter dimensões da tela para layout responsivo
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
-    final padding = isSmallScreen ? 12.0 : 16.0;
+  void _setupAnimations() {
+    _backgroundController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    )..repeat(reverse: true);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Meu Perfil'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () => Get.toNamed(AppRoutes.settings),
-          ),
-        ],
+    _topAlignmentAnimation = Tween<Alignment>(
+      begin: Alignment.topLeft,
+      end: Alignment.topRight,
+    ).animate(
+      CurvedAnimation(
+        parent: _backgroundController,
+        curve: Curves.easeInOut,
       ),
-      body: SingleChildScrollView(
-        child: Obx(() {
-          if (_authController.isLoading.value) {
-            return SizedBox(
-              height: MediaQuery.of(context).size.height - 100,
-              child: const Center(child: CircularProgressIndicator()),
-            );
-          }
+    );
 
-          final user = _authController.userModel.value;
-          if (user == null) {
-            return SizedBox(
-              height: MediaQuery.of(context).size.height - 100,
-              child: const Center(
-                child: Text('Não foi possível carregar os dados do usuário'),
-              ),
-            );
-          }
-
-          return Column(
-            children: [
-              _buildProfileHeader(user, isSmallScreen),
-              SizedBox(height: isSmallScreen ? 16 : 24),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: padding),
-                child: _buildCreditsCard(isSmallScreen),
-              ),
-              SizedBox(height: isSmallScreen ? 16 : 24),
-              _buildMenuOptions(isSmallScreen, padding),
-            ],
-          );
-        }),
+    _bottomAlignmentAnimation = Tween<Alignment>(
+      begin: Alignment.bottomRight,
+      end: Alignment.bottomLeft,
+    ).animate(
+      CurvedAnimation(
+        parent: _backgroundController,
+        curve: Curves.easeInOut,
       ),
     );
   }
 
-  Widget _buildProfileHeader(user, bool isSmallScreen) {
-    final avatarSize = isSmallScreen ? 40.0 : 50.0;
-    final titleSize = isSmallScreen ? 20.0 : 24.0;
-    final subtitleSize = isSmallScreen ? 14.0 : 16.0;
-    final captionSize = isSmallScreen ? 10.0 : 12.0;
-    final padding = isSmallScreen ? 16.0 : 24.0;
+  @override
+  void dispose() {
+    _backgroundController.dispose();
+    super.dispose();
+  }
 
-    return Container(
-      padding: EdgeInsets.all(padding),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              CircleAvatar(
-                radius: avatarSize,
-                backgroundImage: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
-                    ? NetworkImage(user.profileImageUrl!)
-                    : null,
-                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
-                    ? Icon(
-                  Icons.person,
-                  size: avatarSize,
-                  color: Theme.of(context).colorScheme.primary,
-                )
-                    : null,
+  // Função responsiva para obter dimensões
+  Map<String, double> _getResponsiveDimensions(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth >= 600;
+
+    return {
+      'padding': isTablet ? 24.0 : isSmallScreen ? 12.0 : 16.0,
+      'avatarSize': isTablet ? 70.0 : isSmallScreen ? 50.0 : 60.0,
+      'titleSize': isTablet ? 28.0 : isSmallScreen ? 20.0 : 24.0,
+      'subtitleSize': isTablet ? 18.0 : isSmallScreen ? 14.0 : 16.0,
+      'bodySize': isTablet ? 16.0 : isSmallScreen ? 13.0 : 14.0,
+      'captionSize': isTablet ? 14.0 : isSmallScreen ? 11.0 : 12.0,
+      'cardPadding': isTablet ? 24.0 : isSmallScreen ? 16.0 : 20.0,
+      'iconSize': isTablet ? 28.0 : isSmallScreen ? 20.0 : 24.0,
+      'spacing': isTablet ? 24.0 : isSmallScreen ? 16.0 : 20.0,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dimensions = _getResponsiveDimensions(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+
+    return Scaffold(
+      body: AnimatedBuilder(
+        animation: _backgroundController,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: _topAlignmentAnimation.value,
+                end: _bottomAlignmentAnimation.value,
+                colors: const [
+                  Color(0xFF392F5A),
+                  Color(0xFF483D8B),
+                  Color(0xFF8C6BAE),
+                ],
               ),
-              CircleAvatar(
-                radius: isSmallScreen ? 14 : 18,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: IconButton(
-                  icon: Icon(
-                    Icons.camera_alt,
-                    size: isSmallScreen ? 12 : 16,
-                    color: Colors.white,
+            ),
+            child: child,
+          );
+        },
+        child: SafeArea(
+          child: Stack(
+            children: [
+              // Partículas/estrelas para o fundo
+              ...ZodiacUtils.buildStarParticles(context, isTablet ? 35 : 25),
+
+              Column(
+                children: [
+                  _buildAppBar(dimensions),
+                  Expanded(
+                    child: Obx(() {
+                      if (_authController.isLoading.value) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        );
+                      }
+
+                      final user = _authController.userModel.value;
+                      if (user == null) {
+                        return Center(
+                          child: Card(
+                            margin: EdgeInsets.all(dimensions['padding']!),
+                            color: Colors.black.withOpacity(0.3),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(dimensions['cardPadding']!),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: Colors.white,
+                                    size: dimensions['iconSize']! * 2,
+                                  ),
+                                  SizedBox(height: dimensions['spacing']!),
+                                  Text(
+                                    'Não foi possível carregar os dados do usuário',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: dimensions['bodySize']!,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        padding: EdgeInsets.all(dimensions['padding']!),
+                        child: Column(
+                          children: [
+                            _buildProfileHeader(user, dimensions),
+                            SizedBox(height: dimensions['spacing']!),
+                            _buildCreditsCard(dimensions),
+                            SizedBox(height: dimensions['spacing']!),
+                            _buildStatsRow(dimensions),
+                            SizedBox(height: dimensions['spacing']!),
+                            _buildMenuOptions(dimensions),
+                            SizedBox(height: dimensions['spacing']!),
+                          ],
+                        ),
+                      );
+                    }),
                   ),
-                  onPressed: _pickImage,
-                  padding: EdgeInsets.zero,
-                ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            user.name,
-            style: TextStyle(
-              fontSize: titleSize,
-              fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(Map<String, double> dimensions) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: dimensions['padding']!,
+        vertical: 8.0,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: dimensions['iconSize']!,
+            ),
+            splashRadius: 24,
+          ),
+          Expanded(
+            child: Text(
+              'Meu Perfil',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: dimensions['titleSize']! - 4,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            user.email,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-              fontSize: subtitleSize,
+          IconButton(
+            icon: Icon(
+              Icons.settings,
+              color: Colors.white,
+              size: dimensions['iconSize']!,
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Membro desde ${DateFormat.yMMMd().format(user.createdAt)}',
-            style: TextStyle(
-              fontSize: captionSize,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-            ),
+            onPressed: () => Get.toNamed(AppRoutes.settings),
+            splashRadius: 24,
           ),
         ],
       ),
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: -0.1, end: 0);
+  }
+
+  Widget _buildProfileHeader(user, Map<String, double> dimensions) {
+    final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate);
+    final signColor = ZodiacUtils.getSignColor(userSign);
+
+    return Card(
+      elevation: 8,
+      color: Colors.black.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(dimensions['cardPadding']!),
+        child: Column(
+          children: [
+            // Avatar e informações básicas
+            Row(
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Círculo de fundo com cor do signo
+                    Container(
+                      width: dimensions['avatarSize']! + 20,
+                      height: dimensions['avatarSize']! + 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            signColor.withOpacity(0.3),
+                            signColor.withOpacity(0.1),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Avatar principal
+                    CircleAvatar(
+                      radius: dimensions['avatarSize']! / 2,
+                      backgroundImage: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
+                          ? NetworkImage(user.profileImageUrl!)
+                          : null,
+                      backgroundColor: signColor.withOpacity(0.2),
+                      child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
+                          ? Icon(
+                        Icons.person,
+                        size: dimensions['avatarSize']! / 2,
+                        color: signColor,
+                      )
+                          : null,
+                    ),
+                    // Botão de editar foto
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: signColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white,
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: signColor.withOpacity(0.5),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            Icons.camera_alt,
+                            size: dimensions['bodySize']!,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(width: dimensions['spacing']!),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name,
+                        style: TextStyle(
+                          fontSize: dimensions['titleSize']! - 4,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: dimensions['spacing']! / 4),
+                      Text(
+                        user.email,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: dimensions['bodySize']!,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: dimensions['spacing']! / 2),
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: dimensions['spacing']! / 2,
+                          vertical: dimensions['spacing']! / 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: signColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: signColor.withOpacity(0.5),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ZodiacUtils.buildZodiacImage(
+                              userSign,
+                              size: dimensions['bodySize']!,
+                            ),
+                            SizedBox(width: dimensions['spacing']! / 3),
+                            Text(
+                              userSign,
+                              style: TextStyle(
+                                color: signColor,
+                                fontSize: dimensions['captionSize']! + 1,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            Divider(
+              height: dimensions['spacing']! * 2,
+              color: Colors.white24,
+            ),
+
+            // Informações adicionais
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInfoItem(
+                    icon: Icons.calendar_today,
+                    title: 'Membro desde',
+                    value: DateFormat.yMMMd('pt_BR').format(user.createdAt),
+                    color: Colors.blue,
+                    dimensions: dimensions,
+                  ),
+                ),
+                SizedBox(width: dimensions['spacing']!),
+                Expanded(
+                  child: _buildInfoItem(
+                    icon: Icons.star,
+                    title: 'Elemento',
+                    value: ZodiacUtils.getElement(userSign),
+                    color: signColor,
+                    dimensions: dimensions,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(
+      delay: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 600),
+    ).slideY(
+      begin: 0.1,
+      end: 0,
+      duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  Widget _buildInfoItem({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+    required Map<String, double> dimensions,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(dimensions['spacing']! / 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: color,
+            size: dimensions['bodySize']! + 2,
+          ),
+          SizedBox(height: dimensions['spacing']! / 3),
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: dimensions['captionSize']!,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: dimensions['spacing']! / 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: dimensions['captionSize']! + 1,
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreditsCard(Map<String, double> dimensions) {
+    return Card(
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(dimensions['cardPadding']!),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF6C63FF), Color(0xFF8E78FF), Color(0xFFFF9D8A)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF6C63FF).withOpacity(0.4),
+              blurRadius: 20,
+              spreadRadius: 2,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Seus Créditos',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontWeight: FontWeight.w600,
+                        fontSize: dimensions['bodySize']!,
+                      ),
+                    ),
+                    SizedBox(height: dimensions['spacing']! / 4),
+                    Obx(() => Text(
+                      'R\$ ${_paymentController.userCredits.value.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: dimensions['titleSize']!,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                      ),
+                    )),
+                  ],
+                ),
+                Container(
+                  padding: EdgeInsets.all(dimensions['spacing']! / 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet,
+                    color: Colors.white,
+                    size: dimensions['iconSize']!,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: dimensions['spacing']!),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Get.toNamed(AppRoutes.paymentMethods),
+                icon: Icon(
+                  Icons.add_card,
+                  size: dimensions['bodySize']! + 2,
+                ),
+                label: Text(
+                  'Adicionar Créditos',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: dimensions['bodySize']!,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF6C63FF),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    vertical: dimensions['spacing']! / 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(
+      delay: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 600),
+    ).slideY(
+      begin: 0.1,
+      end: 0,
+      duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  Widget _buildStatsRow(Map<String, double> dimensions) {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildStatCard(
+            icon: Icons.auto_awesome,
+            title: 'Leituras',
+            value: '12', // TODO: Implementar contagem real
+            color: Colors.purple,
+            dimensions: dimensions,
+          ),
+        ),
+        SizedBox(width: dimensions['spacing']! / 2),
+        Expanded(
+          child: _buildStatCard(
+            icon: Icons.favorite,
+            title: 'Favoritas',
+            value: '5', // TODO: Implementar contagem real
+            color: Colors.pink,
+            dimensions: dimensions,
+          ),
+        ),
+        SizedBox(width: dimensions['spacing']! / 2),
+        Expanded(
+          child: _buildStatCard(
+            icon: Icons.timeline,
+            title: 'Mapas',
+            value: '2', // TODO: Implementar contagem real
+            color: Colors.blue,
+            dimensions: dimensions,
+          ),
+        ),
+      ],
+    ).animate().fadeIn(
+      delay: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 600),
+    ).slideY(
+      begin: 0.1,
+      end: 0,
+      duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+    required Map<String, double> dimensions,
+  }) {
+    return Card(
+      elevation: 4,
+      color: Colors.black.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(dimensions['spacing']! / 1.5),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: dimensions['iconSize']!,
+            ),
+            SizedBox(height: dimensions['spacing']! / 3),
+            Text(
+              value,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: dimensions['subtitleSize']!,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: dimensions['spacing']! / 6),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: dimensions['captionSize']!,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuOptions(Map<String, double> dimensions) {
+    final menuItems = [
+      {
+        'title': 'Leituras Favoritas',
+        'icon': Icons.favorite,
+        'color': Colors.pink,
+        'onTap': () => Get.toNamed(AppRoutes.savedReadingsList),
+      },
+      {
+        'title': 'Histórico de Pagamentos',
+        'icon': Icons.receipt_long,
+        'color': Colors.green,
+        'onTap': () => Get.toNamed(AppRoutes.paymentHistory),
+      },
+      {
+        'title': 'Configurações',
+        'icon': Icons.settings,
+        'color': Colors.blue,
+        'onTap': () => Get.toNamed(AppRoutes.settings),
+      },
+      {
+        'title': 'Sair',
+        'icon': Icons.exit_to_app,
+        'color': Colors.red,
+        'onTap': _logout,
+      },
+    ];
+
+    return Card(
+      elevation: 4,
+      color: Colors.black.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(vertical: dimensions['spacing']! / 2),
+        child: Column(
+          children: menuItems.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+
+            return Column(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: dimensions['cardPadding']!,
+                    vertical: dimensions['spacing']! / 4,
+                  ),
+                  leading: Container(
+                    padding: EdgeInsets.all(dimensions['spacing']! / 2.5),
+                    decoration: BoxDecoration(
+                      color: (item['color'] as Color).withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      item['icon'] as IconData,
+                      color: item['color'] as Color,
+                      size: dimensions['bodySize']! + 2,
+                    ),
+                  ),
+                  title: Text(
+                    item['title'] as String,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: dimensions['bodySize']!,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white.withOpacity(0.5),
+                    size: dimensions['bodySize']!,
+                  ),
+                  onTap: item['onTap'] as VoidCallback,
+                ),
+                if (index < menuItems.length - 1)
+                  Divider(
+                    height: 1,
+                    color: Colors.white.withOpacity(0.1),
+                    indent: dimensions['cardPadding']! + dimensions['iconSize']! + 20,
+                    endIndent: dimensions['cardPadding']!,
+                  ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    ).animate().fadeIn(
+      delay: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 600),
+    ).slideY(
+      begin: 0.1,
+      end: 0,
+      duration: const Duration(milliseconds: 500),
     );
   }
 
@@ -190,6 +812,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'Foto de perfil atualizada com sucesso',
           backgroundColor: Colors.green,
           colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
         );
       } catch (e) {
         Get.snackbar(
@@ -197,6 +820,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           'Não foi possível atualizar a foto de perfil: $e',
           backgroundColor: Colors.red,
           colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
         );
       } finally {
         _authController.isLoading.value = false;
@@ -204,182 +828,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _buildCreditsCard(bool isSmallScreen) {
-    final titleSize = isSmallScreen ? 14.0 : 16.0;
-    final amountSize = isSmallScreen ? 24.0 : 28.0;
-    final buttonSize = isSmallScreen ? 14.0 : 16.0;
-    final padding = isSmallScreen ? 16.0 : 20.0;
-
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(padding),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF392F5A), Color(0xFF8C6BAE)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Seus Créditos',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: titleSize,
-                  ),
-                ),
-                const Icon(
-                  Icons.credit_card,
-                  color: Colors.white,
-                ),
-              ],
-            ),
-            SizedBox(height: isSmallScreen ? 16 : 20),
-            Obx(() => Text(
-              'R\$ ${_paymentController.userCredits.value.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: amountSize,
-                fontWeight: FontWeight.bold,
-              ),
-            )),
-            SizedBox(height: isSmallScreen ? 16 : 20),
-            ElevatedButton(
-              onPressed: () => Get.toNamed(AppRoutes.paymentMethods),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF392F5A),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                padding: EdgeInsets.symmetric(
-                  vertical: isSmallScreen ? 10 : 12,
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.add),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Adicionar Créditos',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: buttonSize,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuOptions(bool isSmallScreen, double padding) {
-    final iconSize = isSmallScreen ? 20.0 : 24.0;
-    final textSize = isSmallScreen ? 14.0 : 16.0;
-
-    final menuItems = [
-      // {
-      //   'title': 'Meus Agendamentos',
-      //   'icon': Icons.calendar_today,
-      //   'onTap': () {
-      //     // Implementar navegação para agendamentos
-      //     ScaffoldMessenger.of(context).showSnackBar(
-      //       const SnackBar(content: Text('Navegando para agendamentos...')),
-      //     );
-      //   },
-      // },
-      {
-        'title': 'Leituras Favoritas',
-        'icon': Icons.favorite,
-        'onTap': () => Get.toNamed(AppRoutes.savedReadingsList),
-      },
-      {
-        'title': 'Histórico de Pagamentos',
-        'icon': Icons.receipt_long,
-        'onTap': () => Get.toNamed(AppRoutes.paymentHistory),
-      },
-      // {
-      //   'title': 'Métodos de Pagamento',
-      //   'icon': Icons.payment,
-      //   'onTap': () => Get.toNamed(AppRoutes.creditcardList),
-      // },
-      {
-        'title': 'Configurações',
-        'icon': Icons.settings,
-        'onTap': () => Get.toNamed(AppRoutes.settings),
-      },
-      {
-        'title': 'Sair',
-        'icon': Icons.exit_to_app,
-        'onTap': _logout,
-        'color': Theme.of(context).colorScheme.error,
-      },
-    ];
-
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.symmetric(horizontal: padding),
-      itemCount: menuItems.length,
-      separatorBuilder: (context, index) => const Divider(height: 1),
-      itemBuilder: (context, index) {
-        final item = menuItems[index];
-        return ListTile(
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: padding,
-            vertical: isSmallScreen ? 2 : 4,
-          ),
-          leading: Icon(
-            item['icon'] as IconData,
-            color: item['color'] as Color? ?? Theme.of(context).colorScheme.primary,
-            size: iconSize,
-          ),
-          title: Text(
-            item['title'] as String,
-            style: TextStyle(
-              color: item['color'] as Color? ?? Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: textSize,
-            ),
-          ),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: item['onTap'] as VoidCallback,
-        );
-      },
-    );
-  }
-
   void _logout() async {
     final confirmed = await Get.dialog<bool>(
       AlertDialog(
-        title: const Text('Sair'),
-        content: const Text('Você realmente deseja sair?'),
+        backgroundColor: const Color(0xFF2A2A40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.logout,
+              color: Colors.red,
+              size: 24,
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Sair',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Você realmente deseja sair da sua conta?',
+          style: TextStyle(color: Colors.white70),
+        ),
         actions: [
           TextButton(
             onPressed: () => Get.back(result: false),
-            child: const Text('Cancelar'),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.white70),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Get.back(result: true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
+              backgroundColor: Colors.red,
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text('Sair'),
           ),
