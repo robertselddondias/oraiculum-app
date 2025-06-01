@@ -21,16 +21,24 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProviderStateMixin {
   final AuthController _authController = Get.find<AuthController>();
   final PaymentController _paymentController = Get.find<PaymentController>();
+  final FirebaseService _firebaseService = Get.find<FirebaseService>();
 
   late AnimationController _backgroundController;
   late Animation<Alignment> _topAlignmentAnimation;
   late Animation<Alignment> _bottomAlignmentAnimation;
+
+  // Estatísticas reais do usuário
+  int _totalReadings = 0;
+  int _favoriteReadings = 0;
+  int _totalCharts = 0;
+  bool _statsLoading = true;
 
   @override
   void initState() {
     super.initState();
     _paymentController.loadUserCredits();
     _setupAnimations();
+    _loadUserStats();
   }
 
   void _setupAnimations() {
@@ -64,6 +72,99 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   void dispose() {
     _backgroundController.dispose();
     super.dispose();
+  }
+
+  /// Carregar estatísticas reais do usuário
+  Future<void> _loadUserStats() async {
+    try {
+      final userId = _authController.currentUser.value?.uid;
+      if (userId == null) return;
+
+      setState(() {
+        _statsLoading = true;
+      });
+
+      // Carregar cada estatística individualmente para melhor controle de tipos
+      int totalReadings = 0;
+      int favoriteReadings = 0;
+      int totalCharts = 0;
+
+      try {
+        // 1. Buscar leituras de tarô
+        final tarotReadingsSnapshot = await _firebaseService.getUserTarotReadings(userId);
+        totalReadings = tarotReadingsSnapshot.docs.length;
+        debugPrint('✅ Leituras de tarô carregadas: $totalReadings');
+      } catch (e) {
+        debugPrint('❌ Erro ao carregar leituras de tarô: $e');
+      }
+
+      try {
+        // 2. Buscar cards favoritos
+        final favoriteCardsList = await _firebaseService.getUserFavoriteTarotCards(userId);
+        favoriteReadings = favoriteCardsList.length;
+        debugPrint('✅ Cards favoritos carregados: $favoriteReadings');
+      } catch (e) {
+        debugPrint('❌ Erro ao carregar cards favoritos: $e');
+      }
+
+      try {
+        // 3. Buscar mapas astrais
+        final birthChartsList = await _firebaseService.getUserBirthCharts(userId);
+        totalCharts = birthChartsList.length;
+        debugPrint('✅ Mapas astrais carregados: $totalCharts');
+      } catch (e) {
+        debugPrint('❌ Erro ao carregar mapas astrais: $e');
+      }
+
+      setState(() {
+        _totalReadings = totalReadings;
+        _favoriteReadings = favoriteReadings;
+        _totalCharts = totalCharts;
+        _statsLoading = false;
+      });
+
+      debugPrint('✅ Estatísticas finais: $_totalReadings leituras, $_favoriteReadings favoritas, $_totalCharts mapas');
+
+    } catch (e) {
+      debugPrint('❌ Erro geral ao carregar estatísticas: $e');
+      setState(() {
+        _statsLoading = false;
+      });
+
+      Get.snackbar(
+        'Aviso',
+        'Não foi possível carregar todas as estatísticas',
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  /// Refresh das informações quando o usuário retorna à tela
+  Future<void> _refreshProfile() async {
+    try {
+      // Executar refresh em paralelo, mas de forma mais controlada
+      await Future.wait([
+        _paymentController.loadUserCredits(),
+        _authController.loadUserData(),
+      ]);
+
+      // Carregar estatísticas separadamente para evitar conflitos de tipo
+      await _loadUserStats();
+
+    } catch (e) {
+      debugPrint('❌ Erro ao fazer refresh do perfil: $e');
+      Get.snackbar(
+        'Erro',
+        'Não foi possível atualizar todas as informações',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 2),
+      );
+    }
   }
 
   // Função responsiva para obter dimensões
@@ -158,6 +259,11 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                                     ),
                                     textAlign: TextAlign.center,
                                   ),
+                                  SizedBox(height: dimensions['spacing']!),
+                                  ElevatedButton(
+                                    onPressed: _refreshProfile,
+                                    child: const Text('Tentar Novamente'),
+                                  ),
                                 ],
                               ),
                             ),
@@ -165,20 +271,24 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                         );
                       }
 
-                      return SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: EdgeInsets.all(dimensions['padding']!),
-                        child: Column(
-                          children: [
-                            _buildProfileHeader(user, dimensions),
-                            SizedBox(height: dimensions['spacing']!),
-                            _buildCreditsCard(dimensions),
-                            SizedBox(height: dimensions['spacing']!),
-                            _buildStatsRow(dimensions),
-                            SizedBox(height: dimensions['spacing']!),
-                            _buildMenuOptions(dimensions),
-                            SizedBox(height: dimensions['spacing']!),
-                          ],
+                      return RefreshIndicator(
+                        onRefresh: _refreshProfile,
+                        color: const Color(0xFF6C63FF),
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: EdgeInsets.all(dimensions['padding']!),
+                          child: Column(
+                            children: [
+                              _buildProfileHeader(user, dimensions),
+                              SizedBox(height: dimensions['spacing']!),
+                              _buildCreditsCard(dimensions),
+                              SizedBox(height: dimensions['spacing']!),
+                              _buildStatsRow(dimensions),
+                              SizedBox(height: dimensions['spacing']!),
+                              _buildMenuOptions(dimensions),
+                              SizedBox(height: dimensions['spacing']!),
+                            ],
+                          ),
                         ),
                       );
                     }),
@@ -202,7 +312,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Get.back(),
             icon: Icon(
               Icons.arrow_back_ios_new,
               color: Colors.white,
@@ -383,6 +493,16 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       ),
                     ],
                   ),
+                ),
+                // Botão de editar perfil
+                IconButton(
+                  icon: Icon(
+                    Icons.edit,
+                    color: Colors.white.withOpacity(0.7),
+                    size: dimensions['bodySize']! + 2,
+                  ),
+                  onPressed: _showEditProfileDialog,
+                  tooltip: 'Editar Perfil',
                 ),
               ],
             ),
@@ -596,9 +716,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           child: _buildStatCard(
             icon: Icons.auto_awesome,
             title: 'Leituras',
-            value: '12', // TODO: Implementar contagem real
+            value: _statsLoading ? '...' : _totalReadings.toString(),
             color: Colors.purple,
             dimensions: dimensions,
+            isLoading: _statsLoading,
           ),
         ),
         SizedBox(width: dimensions['spacing']! / 2),
@@ -606,9 +727,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           child: _buildStatCard(
             icon: Icons.favorite,
             title: 'Favoritas',
-            value: '5', // TODO: Implementar contagem real
+            value: _statsLoading ? '...' : _favoriteReadings.toString(),
             color: Colors.pink,
             dimensions: dimensions,
+            isLoading: _statsLoading,
           ),
         ),
         SizedBox(width: dimensions['spacing']! / 2),
@@ -616,9 +738,10 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
           child: _buildStatCard(
             icon: Icons.timeline,
             title: 'Mapas',
-            value: '2', // TODO: Implementar contagem real
+            value: _statsLoading ? '...' : _totalCharts.toString(),
             color: Colors.blue,
             dimensions: dimensions,
+            isLoading: _statsLoading,
           ),
         ),
       ],
@@ -638,6 +761,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     required String value,
     required Color color,
     required Map<String, double> dimensions,
+    bool isLoading = false,
   }) {
     return Card(
       elevation: 4,
@@ -659,7 +783,16 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               size: dimensions['iconSize']!,
             ),
             SizedBox(height: dimensions['spacing']! / 3),
-            Text(
+            isLoading
+                ? SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: color,
+              ),
+            )
+                : Text(
               value,
               style: TextStyle(
                 color: Colors.white,
@@ -780,6 +913,172 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       begin: 0.1,
       end: 0,
       duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  /// Dialog para editar informações básicas do perfil
+  void _showEditProfileDialog() {
+    final user = _authController.userModel.value;
+    if (user == null) return;
+
+    final nameController = TextEditingController(text: user.name);
+    final formKey = GlobalKey<FormState>();
+
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF2A2A40),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6C63FF).withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.edit,
+                color: Color(0xFF6C63FF),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Editar Perfil',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Nome Completo',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    prefixIcon: Icon(
+                      Icons.person,
+                      color: Color(0xFF6C63FF),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white12,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(
+                        color: Colors.white24,
+                        width: 1,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(12)),
+                      borderSide: BorderSide(
+                        color: Color(0xFF6C63FF),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return 'Nome é obrigatório';
+                    }
+                    if (value.trim().split(' ').length < 2) {
+                      return 'Digite seu nome completo';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.orange.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.orange,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Email e data de nascimento não podem ser alterados por questões de segurança.',
+                          style: TextStyle(
+                            color: Colors.orange.shade300,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState?.validate() == true) {
+                try {
+                  await _authController.updateUserProfile(
+                    displayName: nameController.text.trim(),
+                  );
+
+                  Get.back();
+                  Get.snackbar(
+                    'Sucesso',
+                    'Perfil atualizado com sucesso!',
+                    backgroundColor: Colors.green,
+                    colorText: Colors.white,
+                    snackPosition: SnackPosition.BOTTOM,
+                  );
+                } catch (e) {
+                  Get.snackbar(
+                    'Erro',
+                    'Não foi possível atualizar o perfil: $e',
+                    backgroundColor: Colors.red,
+                    colorText: Colors.white,
+                    snackPosition: SnackPosition.BOTTOM,
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
     );
   }
 
