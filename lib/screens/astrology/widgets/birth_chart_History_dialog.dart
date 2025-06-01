@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 
 class BirthChartHistoryDialog {
@@ -12,8 +13,10 @@ class BirthChartHistoryDialog {
   }) async {
     try {
       Get.dialog(
-        const Center(
-          child: CircularProgressIndicator(color: Colors.white),
+        Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.primaryColor,
+          ),
         ),
         barrierDismissible: false,
       );
@@ -25,11 +28,32 @@ class BirthChartHistoryDialog {
       if (birthCharts.isEmpty) {
         return Get.dialog(
           AlertDialog(
-            title: const Text('Histórico de Mapas Astrais'),
-            content: const Text('Você ainda não gerou nenhum mapa astral.'),
+            backgroundColor: Theme.of(context).cardTheme.color ??
+                (Theme.of(context).brightness == Brightness.dark
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.white),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              'Histórico de Mapas Astrais',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(
+              'Você ainda não gerou nenhum mapa astral.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+              ),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Get.back(),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.primaryColor,
+                ),
                 child: const Text('Fechar'),
               ),
             ],
@@ -44,16 +68,16 @@ class BirthChartHistoryDialog {
           child: Container(
             width: double.maxFinite,
             decoration: BoxDecoration(
-              color: const Color(0xFF2A2A40),
-              borderRadius: BorderRadius.circular(16),
+              gradient: AppTheme.mysticGradient,
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withOpacity(0.1),
-                width: 1,
+                color: AppTheme.primaryColor.withOpacity(0.3),
+                width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  blurRadius: 20,
                   spreadRadius: 2,
                 ),
               ],
@@ -66,19 +90,27 @@ class BirthChartHistoryDialog {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Header
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF392F5A),
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.primaryColor,
+                        AppTheme.secondaryColor,
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.2),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
@@ -89,24 +121,29 @@ class BirthChartHistoryDialog {
                         'Histórico de Mapas Astrais',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 20,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       IconButton(
                         onPressed: () => Get.back(),
                         icon: const Icon(Icons.close, color: Colors.white),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
 
+                // Lista de mapas
                 Flexible(
                   child: ListView.builder(
                     shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.all(16),
                     itemCount: birthCharts.length,
                     itemBuilder: (context, index) {
                       final chart = birthCharts[index];
@@ -120,12 +157,12 @@ class BirthChartHistoryDialog {
                           : 'Data desconhecida';
 
                       return Card(
-                        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-                        color: Colors.black26,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        color: Colors.white.withOpacity(0.1),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(16),
                           side: BorderSide(
-                            color: Colors.white.withOpacity(0.1),
+                            color: AppTheme.primaryColor.withOpacity(0.3),
                             width: 1,
                           ),
                         ),
@@ -134,140 +171,198 @@ class BirthChartHistoryDialog {
                             Get.back();
                             onChartSelected(chart);
                           },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF6C63FF).withOpacity(0.2),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.public,
-                                        color: Color(0xFF6C63FF),
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Mapa Astral - $date',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.white.withOpacity(0.05),
+                                  Colors.white.withOpacity(0.02),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(12),
+                                        decoration: BoxDecoration(
+                                          gradient: AppTheme.primaryGradient,
+                                          shape: BoxShape.circle,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.primaryColor.withOpacity(0.3),
+                                              blurRadius: 8,
+                                              spreadRadius: 1,
                                             ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Gerado em: $createdAt',
-                                            style: TextStyle(
-                                              color: Colors.white.withOpacity(0.6),
-                                              fontSize: 12,
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.auto_awesome,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Mapa Astral - $date',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(
-                                        Icons.arrow_forward_ios,
-                                        color: Colors.white54,
-                                        size: 16,
-                                      ),
-                                      onPressed: () {
-                                        Get.back();
-                                        onChartSelected(chart);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                const Divider(height: 1, color: Colors.white24),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Row(
-                                        children: [
-                                          const Icon(
-                                            Icons.location_on,
-                                            color: Colors.white54,
-                                            size: 16,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Expanded(
-                                            child: Text(
-                                              place,
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Gerado em: $createdAt',
                                               style: TextStyle(
                                                 color: Colors.white.withOpacity(0.7),
-                                                fontSize: 13,
+                                                fontSize: 12,
                                               ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryColor.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                          Icons.arrow_forward_ios,
+                                          color: Colors.white,
+                                          size: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Container(
+                                    height: 1,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.transparent,
+                                          AppTheme.primaryColor.withOpacity(0.5),
+                                          Colors.transparent,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.location_on,
+                                              color: AppTheme.accentColor,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                place,
+                                                style: TextStyle(
+                                                  color: Colors.white.withOpacity(0.8),
+                                                  fontSize: 13,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.access_time,
+                                            color: AppTheme.accentColor,
+                                            size: 16,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            time,
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.8),
+                                              fontSize: 13,
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.access_time,
-                                          color: Colors.white54,
-                                          size: 16,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          time,
-                                          style: TextStyle(
-                                            color: Colors.white.withOpacity(0.7),
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ).animate().fadeIn(
-                        delay: Duration(milliseconds: 50 * index),
-                        duration: const Duration(milliseconds: 300),
+                        delay: Duration(milliseconds: 100 * index),
+                        duration: const Duration(milliseconds: 400),
                       ).slideY(
-                        begin: 0.1,
+                        begin: 0.2,
                         end: 0,
-                        duration: const Duration(milliseconds: 300),
+                        duration: const Duration(milliseconds: 400),
+                      ).scale(
+                        begin: const Offset(0.8, 0.8),
+                        end: const Offset(1.0, 1.0),
+                        duration: const Duration(milliseconds: 400),
                       );
                     },
                   ),
                 ),
 
+                // Botão de fechar
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: ElevatedButton(
-                    onPressed: () => Get.back(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6C63FF),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  padding: const EdgeInsets.all(20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: AppTheme.primaryGradient,
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withOpacity(0.3),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () => Get.back(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                      child: const Text(
+                        'Fechar',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    child: const Text('Fechar'),
                   ),
                 ),
               ],
@@ -280,9 +375,12 @@ class BirthChartHistoryDialog {
       Get.snackbar(
         'Erro',
         'Não foi possível carregar o histórico de mapas astrais: $e',
-        backgroundColor: Colors.red,
+        backgroundColor: AppTheme.errorColor,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(16),
+        icon: const Icon(Icons.error, color: Colors.white),
       );
       return;
     }
