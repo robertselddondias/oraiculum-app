@@ -11,7 +11,7 @@ import 'package:oraculum/models/tarot_model.dart';
 import 'package:share_plus/share_plus.dart';
 
 class SavedReadingDetailScreen extends StatefulWidget {
-  const SavedReadingDetailScreen({Key? key}) : super(key: key);
+  const SavedReadingDetailScreen({super.key});
 
   @override
   State<SavedReadingDetailScreen> createState() => _SavedReadingDetailScreenState();
@@ -591,7 +591,7 @@ class _SavedReadingDetailScreenState extends State<SavedReadingDetailScreen>
             delay: const Duration(milliseconds: 300),
             duration: const Duration(milliseconds: 400),
           );
-        }).toList(),
+        }),
 
         // Se não há seções estruturadas, mostrar o texto completo
         if (_parsedInterpretation.isEmpty)

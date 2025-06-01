@@ -6,7 +6,7 @@ import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 
 class BookingScreen extends StatefulWidget {
-  const BookingScreen({Key? key}) : super(key: key);
+  const BookingScreen({super.key});
 
   @override
   State<BookingScreen> createState() => _BookingScreenState();

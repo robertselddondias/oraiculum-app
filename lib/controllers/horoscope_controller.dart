@@ -475,7 +475,7 @@ class HoroscopeController extends GetxController {
 
         final chartId = await _firebaseService.saveBirthChart(
           userId: userId,
-          name: name!,
+          name: name,
           birthDate: birthDate,
           birthTime: birthTime,
           birthPlace: birthPlace,
@@ -753,7 +753,7 @@ class HoroscopeController extends GetxController {
       try {
         final timeParts = birthTime.split(':');
         if (timeParts.length != 2) {
-          throw FormatException('Formato inválido');
+          throw const FormatException('Formato inválido');
         }
 
         final hour = int.parse(timeParts[0]);

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:oraculum/config/theme.dart';
 
 class PaymentButton extends StatelessWidget {
   final Map<String, dynamic>? selectedPackage;
@@ -10,13 +9,13 @@ class PaymentButton extends StatelessWidget {
   final bool isSmallScreen;
 
   const PaymentButton({
-    Key? key,
+    super.key,
     required this.selectedPackage,
     required this.selectedPaymentMethod,
     required this.isLoading,
     required this.onPressed,
     required this.isSmallScreen,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +35,7 @@ class PaymentButton extends StatelessWidget {
           elevation: canProceed ? 4 : 0,
         ),
         child: isLoading
-            ? SizedBox(
+            ? const SizedBox(
           width: 24,
           height: 24,
           child: CircularProgressIndicator(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:oraculum/config/theme.dart';
 
 class PixPaymentView extends StatelessWidget {
   final String pixQrCode;
@@ -13,7 +12,7 @@ class PixPaymentView extends StatelessWidget {
   final bool isTablet;
 
   const PixPaymentView({
-    Key? key,
+    super.key,
     required this.pixQrCode,
     required this.pixTransactionId,
     required this.onBack,
@@ -21,7 +20,7 @@ class PixPaymentView extends StatelessWidget {
     required this.isLoading,
     required this.isSmallScreen,
     required this.isTablet,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

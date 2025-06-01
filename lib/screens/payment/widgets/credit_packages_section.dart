@@ -9,13 +9,13 @@ class CreditPackagesSection extends StatelessWidget {
   final Function(Map<String, dynamic>) onPackageSelected;
 
   const CreditPackagesSection({
-    Key? key,
+    super.key,
     required this.creditPackages,
     required this.selectedPackage,
     required this.isTablet,
     required this.isSmallScreen,
     required this.onPackageSelected,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

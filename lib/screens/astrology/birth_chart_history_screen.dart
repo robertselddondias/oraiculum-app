@@ -11,7 +11,7 @@ import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:share_plus/share_plus.dart';
 
 class BirthChartHistoryScreen extends StatefulWidget {
-  const BirthChartHistoryScreen({Key? key}) : super(key: key);
+  const BirthChartHistoryScreen({super.key});
 
   @override
   State<BirthChartHistoryScreen> createState() => _BirthChartHistoryScreenState();
@@ -930,7 +930,7 @@ class _BirthChartHistoryScreenState extends State<BirthChartHistoryScreen>
           Container(
             width: 60,
             height: 60,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: AppTheme.primaryGradient,
               shape: BoxShape.circle,
             ),
@@ -1051,7 +1051,7 @@ class _BirthChartHistoryScreenState extends State<BirthChartHistoryScreen>
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AppTheme.primaryColor,
                       shape: BoxShape.circle,
                     ),

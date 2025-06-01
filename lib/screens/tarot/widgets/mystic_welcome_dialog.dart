@@ -1,15 +1,14 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:get/get.dart';
 
 class MysticWelcomeDialog extends StatefulWidget {
   final VoidCallback onContinue;
 
   const MysticWelcomeDialog({
-    Key? key,
+    super.key,
     required this.onContinue,
-  }) : super(key: key);
+  });
 
   static Future<void> show(BuildContext context, {required VoidCallback onContinue}) {
     return showDialog(
@@ -41,21 +40,21 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
       'subtitle': 'As cartas sussurram segredos...',
       'message': 'Respire profundamente e conecte-se com sua energia interior.\n\nO tarô aguarda para revelar os mistérios que cercam seu caminho.',
       'icon': Icons.auto_awesome,
-      'gradient': [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+      'gradient': [const Color(0xFF6C63FF), const Color(0xFF8E78FF)],
     },
     {
       'title': '🔮 Prepare Sua Mente',
       'subtitle': 'Feche os olhos por um momento...',
       'message': 'Pense em uma pergunta que habita seu coração, uma situação que busca clareza.\n\nPermita que sua intuição guie este momento sagrado.',
       'icon': Icons.psychology,
-      'gradient': [Color(0xFF8E78FF), Color(0xFFFF9D8A)],
+      'gradient': [const Color(0xFF8E78FF), const Color(0xFFFF9D8A)],
     },
     {
       'title': '✨ O Universo Escuta',
       'subtitle': 'Sua energia está alinhada...',
       'message': 'As cartas já sentem sua presença.\n\nConfie no processo e esteja aberto às mensagens que o universo tem para você.',
       'icon': Icons.favorite,
-      'gradient': [Color(0xFFFF9D8A), Color(0xFF6C63FF)],
+      'gradient': [const Color(0xFFFF9D8A), const Color(0xFF6C63FF)],
     },
   ];
 
@@ -185,17 +184,17 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
 
   Widget _buildEnhancedBackground(Size screenSize) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFF0F0F23),
-            const Color(0xFF1A1A2E),
-            const Color(0xFF16213E),
-            const Color(0xFF0F3460),
+            Color(0xFF0F0F23),
+            Color(0xFF1A1A2E),
+            Color(0xFF16213E),
+            Color(0xFF0F3460),
           ],
-          stops: const [0.0, 0.3, 0.6, 1.0],
+          stops: [0.0, 0.3, 0.6, 1.0],
         ),
       ),
     );
@@ -424,7 +423,7 @@ class _MysticWelcomeDialogState extends State<MysticWelcomeDialog>
               ),
 
             // Adicionar espaçamento extra na parte inferior para telas pequenas
-            if (isSmallScreen) SizedBox(height: 16),
+            if (isSmallScreen) const SizedBox(height: 16),
           ],
         ),
       ),

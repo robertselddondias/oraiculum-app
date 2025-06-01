@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
-import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 
 class PaymentMethodsSection extends StatelessWidget {
@@ -12,13 +11,13 @@ class PaymentMethodsSection extends StatelessWidget {
   final Function(String) onMethodSelected;
 
   const PaymentMethodsSection({
-    Key? key,
+    super.key,
     required this.paymentController,
     required this.selectedPaymentMethod,
     required this.isTablet,
     required this.isSmallScreen,
     required this.onMethodSelected,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

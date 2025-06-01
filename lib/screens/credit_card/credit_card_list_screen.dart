@@ -4,7 +4,7 @@ import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/card_list_controller.dart';
 
 class CreditCardListScreen extends GetView<CardListController> {
-  const CreditCardListScreen({Key? key}) : super(key: key);
+  const CreditCardListScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

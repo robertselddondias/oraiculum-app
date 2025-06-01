@@ -13,7 +13,7 @@ class AppImage extends StatelessWidget {
   final String? heroTag;
 
   const AppImage({
-    Key? key,
+    super.key,
     required this.imageUrl,
     this.width,
     this.height,
@@ -23,7 +23,7 @@ class AppImage extends StatelessWidget {
     this.loadingWidget,
     this.backgroundColor,
     this.heroTag,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

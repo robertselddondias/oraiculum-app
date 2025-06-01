@@ -344,7 +344,7 @@ class BirthChartHistoryDialog {
                                             Container(
                                               width: isTablet ? 56 : isSmallScreen ? 40 : 48,
                                               height: isTablet ? 56 : isSmallScreen ? 40 : 48,
-                                              decoration: BoxDecoration(
+                                              decoration: const BoxDecoration(
                                                 gradient: LinearGradient(
                                                   colors: [
                                                     AppTheme.primaryColor,
@@ -1030,7 +1030,7 @@ class BirthChartHistoryDialog {
             end: 0,
             duration: const Duration(milliseconds: 400),
           );
-        }).toList(),
+        }),
       ],
     );
   }
@@ -1709,7 +1709,7 @@ class BirthChartHistoryDialog {
               } else {
                 birthDateTime = DateTime(year, month, day);
               }
-              zodiacSign = ZodiacUtils.getZodiacSignFromDate(birthDateTime!);
+              zodiacSign = ZodiacUtils.getZodiacSignFromDate(birthDateTime);
             } catch (e) {
               // Ignorar erro se não conseguir fazer parsing
             }

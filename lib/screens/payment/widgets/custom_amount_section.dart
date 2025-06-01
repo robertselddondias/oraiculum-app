@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:oraculum/config/theme.dart';
 
 class CustomAmountSection extends StatelessWidget {
   final TextEditingController controller;
@@ -8,11 +7,11 @@ class CustomAmountSection extends StatelessWidget {
   final Function(double) onAmountChanged;
 
   const CustomAmountSection({
-    Key? key,
+    super.key,
     required this.controller,
     required this.isSmallScreen,
     required this.onAmountChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

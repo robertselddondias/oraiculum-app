@@ -76,7 +76,7 @@ Future<void> _initializeStripe() async {
 }
 
 class OraculumApp extends StatelessWidget {
-  const OraculumApp({Key? key}) : super(key: key);
+  const OraculumApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -137,7 +137,7 @@ class OraculumApp extends StatelessWidget {
 
 /// Tela para rotas não encontradas
 class NotFoundScreen extends StatelessWidget {
-  const NotFoundScreen({Key? key}) : super(key: key);
+  const NotFoundScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

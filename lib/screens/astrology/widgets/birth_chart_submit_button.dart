@@ -10,13 +10,13 @@ class BirthChartSubmitButton extends StatelessWidget {
   final bool isTablet;
 
   const BirthChartSubmitButton({
-    Key? key,
+    super.key,
     required this.controller,
     required this.isLoading,
     required this.onPressed,
     required this.isSmallScreen,
     required this.isTablet,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

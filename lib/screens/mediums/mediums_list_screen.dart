@@ -6,7 +6,7 @@ import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/models/medium_model.dart';
 
 class MediumsListScreen extends StatefulWidget {
-  const MediumsListScreen({Key? key}) : super(key: key);
+  const MediumsListScreen({super.key});
 
   @override
   State<MediumsListScreen> createState() => _MediumsListScreenState();

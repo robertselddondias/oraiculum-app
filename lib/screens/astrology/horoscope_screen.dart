@@ -10,7 +10,7 @@ import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:share_plus/share_plus.dart';
 
 class HoroscopeScreen extends StatefulWidget {
-  const HoroscopeScreen({Key? key}) : super(key: key);
+  const HoroscopeScreen({super.key});
 
   @override
   State<HoroscopeScreen> createState() => _HoroscopeScreenState();

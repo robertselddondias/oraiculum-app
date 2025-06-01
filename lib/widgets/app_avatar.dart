@@ -9,13 +9,13 @@ class AppAvatar extends StatelessWidget {
   final String? heroTag;
 
   const AppAvatar({
-    Key? key,
+    super.key,
     required this.imageUrl,
     required this.size,
     this.name,
     this.backgroundColor,
     this.heroTag,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
@@ -724,12 +723,12 @@ class TarotController extends GetxController {
       final totalReadings = readingsSnapshot.docs.length;
       final totalDays = dailyReadingsSnapshot.docs.length;
       final paidReadings = readingsSnapshot.docs.where((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         return data['wasPaid'] == true;
       }).length;
 
       final totalSpentOnReadings = readingsSnapshot.docs.fold<double>(0.0, (sum, doc) {
-        final data = doc.data() as Map<String, dynamic>;
+        final data = doc.data();
         final cost = data['cost'] ?? 0.0;
         return sum + (cost is num ? cost.toDouble() : 0.0);
       });

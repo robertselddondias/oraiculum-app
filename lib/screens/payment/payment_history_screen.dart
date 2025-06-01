@@ -7,7 +7,7 @@ import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 
 class PaymentHistoryScreen extends StatefulWidget {
-  const PaymentHistoryScreen({Key? key}) : super(key: key);
+  const PaymentHistoryScreen({super.key});
 
   @override
   State<PaymentHistoryScreen> createState() => _PaymentHistoryScreenState();
@@ -26,85 +26,154 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth >= 600;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Histórico de Pagamentos'),
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.arrow_back_ios_new),
+          tooltip: 'Voltar',
+        ),
+        title: Text(
+          'Histórico de Pagamentos',
+          style: TextStyle(
+            fontSize: isTablet ? 22 : isSmallScreen ? 16 : 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         backgroundColor: AppTheme.primaryColor,
+        foregroundColor: Colors.white,
+        centerTitle: !isTablet,
+        elevation: isTablet ? 2 : 0,
+        actions: [
+          IconButton(
+            onPressed: () => _controller.loadPaymentHistory(),
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
+          ),
+        ],
       ),
       body: Obx(() {
         if (_controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  color: AppTheme.primaryColor,
+                  strokeWidth: isTablet ? 4 : 2,
+                ),
+                SizedBox(height: isTablet ? 24 : 16),
+                Text(
+                  'Carregando histórico...',
+                  style: TextStyle(
+                    fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          );
         }
 
         if (_controller.paymentHistory.isEmpty) {
-          return _buildEmptyState();
+          return _buildEmptyState(isSmallScreen, isTablet);
         }
 
-        return _buildPaymentList();
+        return _buildPaymentList(isSmallScreen, isTablet);
       }),
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(bool isSmallScreen, bool isTablet) {
+    final iconSize = isTablet ? 100.0 : isSmallScreen ? 60.0 : 80.0;
+    final titleSize = isTablet ? 22.0 : isSmallScreen ? 16.0 : 18.0;
+    final subtitleSize = isTablet ? 16.0 : isSmallScreen ? 12.0 : 14.0;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.receipt_long,
-            size: 80,
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Nenhum pagamento encontrado',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+      child: Padding(
+        padding: EdgeInsets.all(isTablet ? 32.0 : 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long,
+              size: iconSize,
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
             ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Suas transações aparecerão aqui',
-            style: TextStyle(
-              color: Colors.grey,
+            SizedBox(height: isTablet ? 24 : 16),
+            Text(
+              'Nenhum pagamento encontrado',
+              style: TextStyle(
+                fontSize: titleSize,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => _controller.loadPaymentHistory(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Atualizar'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
+            SizedBox(height: isTablet ? 12 : 8),
+            Text(
+              'Suas transações aparecerão aqui após realizarem pagamentos no app',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: subtitleSize,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+            SizedBox(height: isTablet ? 32 : 24),
+            ElevatedButton.icon(
+              onPressed: () => _controller.loadPaymentHistory(),
+              icon: Icon(
+                Icons.refresh,
+                size: isTablet ? 24 : 20,
+              ),
+              label: Text(
+                'Atualizar',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 32 : 24,
+                  vertical: isTablet ? 16 : 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     ).animate().fadeIn(
       duration: const Duration(milliseconds: 500),
     );
   }
 
-  Widget _buildPaymentList() {
+  Widget _buildPaymentList(bool isSmallScreen, bool isTablet) {
     final payments = _controller.paymentHistory;
+    final padding = isTablet ? 24.0 : isSmallScreen ? 12.0 : 16.0;
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(padding),
       itemCount: payments.length + 1, // +1 para o cabeçalho
       itemBuilder: (context, index) {
         if (index == 0) {
-          return _buildSummaryCard();
+          return _buildSummaryCard(isSmallScreen, isTablet);
         }
 
         final payment = payments[index - 1];
-        return _buildPaymentCard(payment, index - 1);
+        return _buildPaymentCard(payment, index - 1, isSmallScreen, isTablet);
       },
     );
   }
 
-  Widget _buildSummaryCard() {
+  Widget _buildSummaryCard(bool isSmallScreen, bool isTablet) {
     // Calcular totais
     double totalSpent = 0;
     Map<String, double> spentByCategory = {};
@@ -122,90 +191,76 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       }
     }
 
+    final cardPadding = isTablet ? 24.0 : isSmallScreen ? 12.0 : 16.0;
+    final titleSize = isTablet ? 20.0 : isSmallScreen ? 16.0 : 18.0;
+    final amountSize = isTablet ? 28.0 : isSmallScreen ? 20.0 : 24.0;
+    final labelSize = isTablet ? 14.0 : isSmallScreen ? 11.0 : 12.0;
+    final categorySize = isTablet ? 15.0 : isSmallScreen ? 12.0 : 14.0;
+
     return Card(
-      elevation: 3,
+      elevation: isTablet ? 4 : 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(cardPadding),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Resumo de Gastos',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: titleSize,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 16),
-            Row(
+            SizedBox(height: isTablet ? 20 : 16),
+            isTablet
+                ? Row(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Total Gasto',
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-                      Text(
-                        currencyFormatter.format(totalSpent),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Total de Transações',
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-                      Text(
-                        '${_controller.paymentHistory.length}',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                Expanded(child: _buildTotalColumn(totalSpent, amountSize, labelSize)),
+                const SizedBox(width: 24),
+                Expanded(child: _buildTransactionCountColumn(amountSize, labelSize)),
+              ],
+            )
+                : Column(
+              children: [
+                _buildTotalColumn(totalSpent, amountSize, labelSize),
+                const SizedBox(height: 16),
+                _buildTransactionCountColumn(amountSize, labelSize),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isTablet ? 20 : 16),
             const Divider(),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: isTablet ? 12 : 8),
+            Text(
               'Gastos por Categoria',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
+                fontSize: categorySize,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: isTablet ? 12 : 8),
             ...spentByCategory.entries.map((entry) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    _formatCategoryName(entry.key),
-                    style: const TextStyle(color: Colors.grey),
+                  Expanded(
+                    child: Text(
+                      _formatCategoryName(entry.key),
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: labelSize,
+                      ),
+                    ),
                   ),
                   Text(
                     currencyFormatter.format(entry.value),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: categorySize,
+                    ),
                   ),
                 ],
               ),
@@ -213,20 +268,21 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
 
             if (_hasBirthChartPayments())
               Padding(
-                padding: const EdgeInsets.only(top: 16),
+                padding: EdgeInsets.only(top: isTablet ? 20 : 16),
                 child: Row(
                   children: [
                     Icon(
                       Icons.public,
-                      size: 16,
+                      size: isTablet ? 20 : 16,
                       color: Theme.of(context).colorScheme.primary,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: isTablet ? 12 : 8),
                     Text(
                       'Mapas Astrais: ${_countBirthCharts()}',
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.primary,
                         fontWeight: FontWeight.bold,
+                        fontSize: categorySize,
                       ),
                     ),
                   ],
@@ -237,6 +293,54 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       ),
     ).animate().fadeIn(
       duration: const Duration(milliseconds: 500),
+    );
+  }
+
+  Widget _buildTotalColumn(double totalSpent, double amountSize, double labelSize) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Total Gasto',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: labelSize,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          currencyFormatter.format(totalSpent),
+          style: TextStyle(
+            fontSize: amountSize,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primaryColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionCountColumn(double amountSize, double labelSize) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Total de Transações',
+          style: TextStyle(
+            color: Colors.grey,
+            fontSize: labelSize,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${_controller.paymentHistory.length}',
+          style: TextStyle(
+            fontSize: amountSize,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.secondaryColor,
+          ),
+        ),
+      ],
     );
   }
 
@@ -251,7 +355,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         .length;
   }
 
-  Widget _buildPaymentCard(Map<String, dynamic> payment, int index) {
+  Widget _buildPaymentCard(Map<String, dynamic> payment, int index, bool isSmallScreen, bool isTablet) {
     final amount = payment['amount'] as double? ?? 0.0;
     final timestamp = payment['timestamp'] as DateTime? ?? DateTime.now();
     final method = payment['paymentMethod'] as String? ?? 'Desconhecido';
@@ -259,25 +363,31 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     final type = payment['serviceType'] as String? ?? 'outros';
     final description = payment['description'] as String? ?? 'Sem descrição';
 
+    final cardPadding = isTablet ? 20.0 : isSmallScreen ? 12.0 : 16.0;
+    final iconSize = isTablet ? 60.0 : isSmallScreen ? 40.0 : 50.0;
+    final titleSize = isTablet ? 16.0 : isSmallScreen ? 13.0 : 14.0;
+    final subtitleSize = isTablet ? 13.0 : isSmallScreen ? 10.0 : 12.0;
+    final amountTextSize = isTablet ? 16.0 : isSmallScreen ? 14.0 : 15.0;
+
     return Card(
-      elevation: 2,
+      elevation: isTablet ? 3 : 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
       ),
-      margin: const EdgeInsets.only(top: 16),
+      margin: EdgeInsets.only(top: isTablet ? 20 : 16),
       child: InkWell(
-        onTap: () => _showPaymentDetails(payment),
-        borderRadius: BorderRadius.circular(16),
+        onTap: () => _showPaymentDetails(payment, isSmallScreen, isTablet),
+        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(cardPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: iconSize,
+                    height: iconSize,
                     decoration: BoxDecoration(
                       color: _getCategoryColor(type).withOpacity(0.1),
                       shape: BoxShape.circle,
@@ -285,26 +395,29 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                     child: Icon(
                       _getCategoryIcon(type),
                       color: _getCategoryColor(type),
+                      size: iconSize * 0.6,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: isTablet ? 20 : 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           description,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
+                            fontSize: titleSize,
                           ),
-                          maxLines: 1,
+                          maxLines: isTablet ? 2 : 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 4),
                         Text(
                           dateFormatter.format(timestamp),
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                            fontSize: 12,
+                            fontSize: subtitleSize,
                           ),
                         ),
                       ],
@@ -315,32 +428,36 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                     children: [
                       Text(
                         currencyFormatter.format(amount),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: amountTextSize,
                         ),
                       ),
-                      _buildStatusChip(status),
+                      const SizedBox(height: 4),
+                      _buildStatusChip(status, isSmallScreen, isTablet),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: isTablet ? 16 : 12),
               const Divider(height: 1),
-              const SizedBox(height: 12),
+              SizedBox(height: isTablet ? 16 : 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Método: $method',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                  Expanded(
+                    child: Text(
+                      'Método: $method',
+                      style: TextStyle(
+                        fontSize: subtitleSize,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
                     ),
                   ),
-                  const Text(
-                    'Ver detalhes >',
+                  Text(
+                    'Ver detalhes ${isTablet ? '→' : '>'}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: subtitleSize,
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primaryColor,
                     ),
@@ -357,7 +474,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
+  Widget _buildStatusChip(String status, bool isSmallScreen, bool isTablet) {
     Color color;
     String text;
 
@@ -384,24 +501,33 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         break;
     }
 
+    final fontSize = isTablet ? 11.0 : isSmallScreen ? 9.0 : 10.0;
+    final padding = isTablet
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+        : const EdgeInsets.symmetric(horizontal: 8, vertical: 4);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: padding,
       decoration: BoxDecoration(
         color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Text(
         text,
         style: TextStyle(
           color: color,
-          fontSize: 10,
+          fontSize: fontSize,
           fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
-  void _showPaymentDetails(Map<String, dynamic> payment) {
+  void _showPaymentDetails(Map<String, dynamic> payment, bool isSmallScreen, bool isTablet) {
     final amount = payment['amount'] as double? ?? 0.0;
     final timestamp = payment['timestamp'] as DateTime? ?? DateTime.now();
     final method = payment['paymentMethod'] as String? ?? 'Desconhecido';
@@ -423,93 +549,131 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     final efiChargeId = payment['efiChargeId'] as String?;
     final transactionId = efiTxid ?? efiChargeId ?? paymentId;
 
+    final titleSize = isTablet ? 20.0 : isSmallScreen ? 16.0 : 18.0;
+    final buttonPadding = isTablet
+        ? const EdgeInsets.symmetric(horizontal: 24, vertical: 12)
+        : const EdgeInsets.symmetric(horizontal: 16, vertical: 10);
+
     Get.dialog(
       AlertDialog(
-        title: const Text('Detalhes do Pagamento'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+        ),
+        title: Text(
+          'Detalhes do Pagamento',
+          style: TextStyle(
+            fontSize: titleSize,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDetailRow('Descrição', description),
-              _buildDetailRow('Valor', currencyFormatter.format(amount)),
-              _buildDetailRow('Data', dateFormatter.format(timestamp)),
-              _buildDetailRow('Método', method),
-              _buildDetailRow('Tipo de Serviço', _formatCategoryName(type)),
-              _buildDetailRow('Status', _getStatusText(status)),
-              _buildDetailRow('ID da Transação', transactionId),
+          child: SizedBox(
+            width: isTablet ? 500 : double.maxFinite,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Descrição', description, isSmallScreen, isTablet),
+                _buildDetailRow('Valor', currencyFormatter.format(amount), isSmallScreen, isTablet),
+                _buildDetailRow('Data', dateFormatter.format(timestamp), isSmallScreen, isTablet),
+                _buildDetailRow('Método', method, isSmallScreen, isTablet),
+                _buildDetailRow('Tipo de Serviço', _formatCategoryName(type), isSmallScreen, isTablet),
+                _buildDetailRow('Status', _getStatusText(status), isSmallScreen, isTablet),
+                _buildDetailRow('ID da Transação', transactionId, isSmallScreen, isTablet),
 
-              // Para cartão de crédito, mostrar últimos dígitos
-              if (method.toLowerCase().contains('cartão') &&
-                  payment.containsKey('cardLastFourDigits'))
-                _buildDetailRow('Cartão',
-                    '**** **** **** ${payment['cardLastFourDigits']}'),
+                // Para cartão de crédito, mostrar últimos dígitos
+                if (method.toLowerCase().contains('cartão') &&
+                    payment.containsKey('cardLastFourDigits'))
+                  _buildDetailRow('Cartão',
+                      '**** **** **** ${payment['cardLastFourDigits']}', isSmallScreen, isTablet),
 
-              if (isBirthChart) ...[
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-                const Text(
-                  'Mapa Astral',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Este pagamento foi para a geração de um mapa astral completo.',
-                  style: TextStyle(
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-
-              if (isPix) ...[
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-                const Text(
-                  'Pagamento via PIX',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                if (status.toLowerCase() == 'pending')
-                  const Text(
-                    'Este pagamento está pendente de confirmação. Verifique se você completou a transação PIX.',
+                if (isBirthChart) ...[
+                  SizedBox(height: isTablet ? 20 : 16),
+                  const Divider(),
+                  SizedBox(height: isTablet ? 12 : 8),
+                  Text(
+                    'Mapa Astral',
                     style: TextStyle(
-                      color: Colors.orange,
+                      fontSize: isTablet ? 18 : 16,
+                      fontWeight: FontWeight.bold,
                     ),
-                  )
-                else
-                  const Text(
-                    'Pagamento realizado via PIX.',
+                  ),
+                  SizedBox(height: isTablet ? 12 : 8),
+                  Text(
+                    'Este pagamento foi para a geração de um mapa astral completo.',
                     style: TextStyle(
                       color: Colors.grey,
+                      fontSize: isTablet ? 14 : 12,
                     ),
                   ),
+                ],
+
+                if (isPix) ...[
+                  SizedBox(height: isTablet ? 20 : 16),
+                  const Divider(),
+                  SizedBox(height: isTablet ? 12 : 8),
+                  Text(
+                    'Pagamento via PIX',
+                    style: TextStyle(
+                      fontSize: isTablet ? 18 : 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: isTablet ? 12 : 8),
+                  if (status.toLowerCase() == 'pending')
+                    Text(
+                      'Este pagamento está pendente de confirmação. Verifique se você completou a transação PIX.',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontSize: isTablet ? 14 : 12,
+                      ),
+                    )
+                  else
+                    Text(
+                      'Pagamento realizado via PIX.',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: isTablet ? 14 : 12,
+                      ),
+                    ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: const Text('Fechar'),
+            child: Text(
+              'Fechar',
+              style: TextStyle(
+                fontSize: isTablet ? 16 : 14,
+              ),
+            ),
           ),
           if (hasQrCode)
             ElevatedButton.icon(
               onPressed: () {
                 Get.back();
-                Get.dialog(_buildQrCodePopup(pixQrCode));
+                Get.dialog(_buildQrCodePopup(pixQrCode, isSmallScreen, isTablet));
               },
-              icon: const Icon(Icons.qr_code),
-              label: const Text('Ver QR Code'),
+              icon: Icon(
+                Icons.qr_code,
+                size: isTablet ? 20 : 16,
+              ),
+              label: Text(
+                'Ver QR Code',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                ),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: buttonPadding,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           if (isBirthChart)
@@ -521,8 +685,18 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: buttonPadding,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text('Ver Mapas Astrais'),
+              child: Text(
+                'Ver Mapas Astrais',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                ),
+              ),
             ),
           if (status.toLowerCase() == 'approved')
             ElevatedButton(
@@ -539,32 +713,47 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: buttonPadding,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text('Solicitar Suporte'),
+              child: Text(
+                'Solicitar Suporte',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                ),
+              ),
             ),
         ],
+        actionsPadding: EdgeInsets.all(isTablet ? 20 : 16),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
+  Widget _buildDetailRow(String label, String value, bool isSmallScreen, bool isTablet) {
+    final labelSize = isTablet ? 13.0 : isSmallScreen ? 11.0 : 12.0;
+    final valueSize = isTablet ? 17.0 : isSmallScreen ? 14.0 : 16.0;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: EdgeInsets.only(bottom: isTablet ? 16 : 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.grey,
-              fontSize: 12,
+              fontSize: labelSize,
             ),
           ),
+          const SizedBox(height: 4),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontSize: valueSize,
             ),
           ),
         ],
@@ -573,45 +762,51 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   }
 
   // Mostrar QR code do PIX
-  Widget _buildQrCodePopup(String qrCode) {
+  Widget _buildQrCodePopup(String qrCode, bool isSmallScreen, bool isTablet) {
+    final qrSize = isTablet ? 250.0 : isSmallScreen ? 180.0 : 200.0;
+    final iconSize = qrSize * 0.75;
+    final titleSize = isTablet ? 20.0 : isSmallScreen ? 16.0 : 18.0;
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(isTablet ? 24.0 : 16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'QR Code PIX',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: titleSize,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isTablet ? 20 : 16),
             // QR Code (simples representação visual)
             Container(
-              width: 200,
-              height: 200,
+              width: qrSize,
+              height: qrSize,
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Center(
+              child: Center(
                 child: Icon(
                   Icons.qr_code_2,
-                  size: 150,
+                  size: iconSize,
                   color: AppTheme.primaryColor,
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: isTablet ? 20 : 16),
             // Código PIX copia e cola
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: EdgeInsets.all(isTablet ? 12 : 8),
               decoration: BoxDecoration(
                 color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
@@ -619,10 +814,16 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                     child: Text(
                       qrCode.length > 30 ? '${qrCode.substring(0, 30)}...' : qrCode,
                       overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: isTablet ? 14 : 12,
+                      ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.copy),
+                    icon: Icon(
+                      Icons.copy,
+                      size: isTablet ? 24 : 20,
+                    ),
                     onPressed: () {
                       Get.snackbar(
                         'Copiado',
@@ -635,13 +836,28 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => Get.back(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
+            SizedBox(height: isTablet ? 20 : 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Get.back(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(
+                    vertical: isTablet ? 16 : 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'Fechar',
+                  style: TextStyle(
+                    fontSize: isTablet ? 16 : 14,
+                  ),
+                ),
               ),
-              child: const Text('Fechar'),
             ),
           ],
         ),

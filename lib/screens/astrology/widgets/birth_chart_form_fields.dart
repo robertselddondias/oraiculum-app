@@ -15,7 +15,7 @@ class BirthChartFormFields extends StatelessWidget {
   final HoroscopeController horoscopeController;
 
   const BirthChartFormFields({
-    Key? key,
+    super.key,
     required this.nameController,
     required this.birthPlaceController,
     required this.timeController,
@@ -26,7 +26,7 @@ class BirthChartFormFields extends StatelessWidget {
     required this.padding,
     required this.horoscopeController,
     required this.birthDateController
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

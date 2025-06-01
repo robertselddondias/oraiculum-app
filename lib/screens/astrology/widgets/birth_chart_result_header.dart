@@ -12,14 +12,14 @@ class BirthChartResultHeader extends StatelessWidget {
   final bool isTablet;
 
   const BirthChartResultHeader({
-    Key? key,
+    super.key,
     required this.name,
     required this.birthDate,
     required this.birthTime,
     required this.birthPlace,
     required this.isSmallScreen,
     required this.isTablet,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -12,7 +12,7 @@ import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();

@@ -14,7 +14,7 @@ import 'package:oraculum/screens/tarot/widgets/mystic_welcome_dialog.dart';
 import 'package:share_plus/share_plus.dart';
 
 class TarotReadingScreen extends StatefulWidget {
-  const TarotReadingScreen({Key? key}) : super(key: key);
+  const TarotReadingScreen({super.key});
 
   @override
   State<TarotReadingScreen> createState() => _TarotReadingScreenState();

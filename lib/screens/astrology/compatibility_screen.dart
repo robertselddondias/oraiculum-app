@@ -9,7 +9,7 @@ import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
 class CompatibilityScreen extends StatefulWidget {
-  const CompatibilityScreen({Key? key}) : super(key: key);
+  const CompatibilityScreen({super.key});
 
   @override
   State<CompatibilityScreen> createState() => _CompatibilityScreenState();

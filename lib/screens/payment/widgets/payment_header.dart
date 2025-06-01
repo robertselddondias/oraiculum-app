@@ -9,11 +9,11 @@ class PaymentHeader extends StatelessWidget {
   final bool isTablet;
 
   const PaymentHeader({
-    Key? key,
+    super.key,
     required this.paymentController,
     required this.isSmallScreen,
     required this.isTablet,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

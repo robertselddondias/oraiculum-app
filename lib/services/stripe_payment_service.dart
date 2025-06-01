@@ -430,7 +430,7 @@ class StripePaymentService extends GetxService {
       final paymentIntentId = paymentIntentResult['payment_intent_id'];
 
       await Stripe.instance.initGooglePay(
-        GooglePayInitParams(
+        const GooglePayInitParams(
           testEnv: true,
           merchantName: 'Oraculum',
           countryCode: 'BR',

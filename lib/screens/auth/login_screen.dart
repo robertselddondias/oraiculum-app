@@ -5,7 +5,7 @@ import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();

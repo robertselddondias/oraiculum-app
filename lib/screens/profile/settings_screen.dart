@@ -8,7 +8,7 @@ import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -19,7 +19,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isDarkMode = false;
   bool _notificationsEnabled = true;
   bool _emailNotifications = true;
-  String _selectedLanguage = 'Português';
+  final String _selectedLanguage = 'Português';
 
   @override
   void initState() {

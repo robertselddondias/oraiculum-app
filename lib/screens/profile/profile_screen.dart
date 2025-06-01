@@ -10,7 +10,7 @@ import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();

@@ -10,7 +10,7 @@ import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
 
 class SavedReadingsListScreen extends StatefulWidget {
-  const SavedReadingsListScreen({Key? key}) : super(key: key);
+  const SavedReadingsListScreen({super.key});
 
   @override
   State<SavedReadingsListScreen> createState() => _SavedReadingsListScreenState();

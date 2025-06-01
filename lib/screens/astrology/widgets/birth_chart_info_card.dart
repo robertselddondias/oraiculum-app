@@ -12,12 +12,12 @@ class BirthChartInfoCard extends StatelessWidget {
   final bool isTablet;
 
   const BirthChartInfoCard({
-    Key? key,
+    super.key,
     required this.controller,
     required this.paymentController,
     required this.isSmallScreen,
     required this.isTablet,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -16,11 +16,11 @@ class BirthChartInterpretation extends StatelessWidget {
   final bool isTablet;
 
   const BirthChartInterpretation({
-    Key? key,
+    super.key,
     required this.interpretation,
     required this.isSmallScreen,
     required this.isTablet,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +139,7 @@ class BirthChartInterpretation extends StatelessWidget {
             end: 0,
             duration: const Duration(milliseconds: 400),
           );
-        }).toList(),
+        }),
       ],
     );
   }

@@ -8,12 +8,12 @@ class BirthChartActionButtons extends StatelessWidget {
   final bool isTablet;
 
   const BirthChartActionButtons({
-    Key? key,
+    super.key,
     required this.onNewChart,
     required this.onShare,
     required this.isSmallScreen,
     required this.isTablet,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

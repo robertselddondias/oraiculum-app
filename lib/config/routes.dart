@@ -8,8 +8,6 @@ import 'package:oraculum/screens/astrology/horoscope_screen.dart';
 import 'package:oraculum/screens/auth/forgot_password_screen.dart';
 import 'package:oraculum/screens/auth/login_screen.dart';
 import 'package:oraculum/screens/auth/register_screen.dart';
-import 'package:oraculum/screens/credit_card/add_credit_card_screen.dart';
-import 'package:oraculum/screens/credit_card/credit_card_list_screen.dart';
 import 'package:oraculum/screens/home/home_screen.dart';
 import 'package:oraculum/screens/home/navigation_screen.dart';
 import 'package:oraculum/screens/mediums/booking_screen.dart';

@@ -5,7 +5,7 @@ import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/models/medium_model.dart';
 
 class MediumProfileScreen extends StatelessWidget {
-  const MediumProfileScreen({Key? key}) : super(key: key);
+  const MediumProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

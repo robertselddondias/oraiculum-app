@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:oraculum/config/theme.dart';
 
 class SuccessDialog {
   static Future<void> show({

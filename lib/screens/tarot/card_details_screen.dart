@@ -6,7 +6,7 @@ import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
 
 class CardDetailsScreen extends StatefulWidget {
-  const CardDetailsScreen({Key? key}) : super(key: key);
+  const CardDetailsScreen({super.key});
 
   @override
   State<CardDetailsScreen> createState() => _CardDetailsScreenState();

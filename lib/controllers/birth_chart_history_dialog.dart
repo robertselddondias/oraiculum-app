@@ -267,7 +267,7 @@ class BirthChartHistoryDialog {
                                               color: AppTheme.accentColor.withOpacity(0.1),
                                               borderRadius: BorderRadius.circular(8),
                                             ),
-                                            child: Icon(
+                                            child: const Icon(
                                               Icons.location_on,
                                               color: AppTheme.accentColor,
                                               size: 16,
@@ -314,7 +314,7 @@ class BirthChartHistoryDialog {
                                             color: AppTheme.successColor.withOpacity(0.1),
                                             borderRadius: BorderRadius.circular(8),
                                           ),
-                                          child: Icon(
+                                          child: const Icon(
                                             Icons.access_time,
                                             color: AppTheme.successColor,
                                             size: 16,

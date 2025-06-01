@@ -7,10 +7,10 @@ class BirthChartHeader extends StatelessWidget {
   final bool isTablet;
 
   const BirthChartHeader({
-    Key? key,
+    super.key,
     required this.isSmallScreen,
     required this.isTablet,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

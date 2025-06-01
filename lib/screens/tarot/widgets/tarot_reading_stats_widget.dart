@@ -4,7 +4,7 @@ import 'package:get/get.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
 
 class TarotReadingStatsWidget extends StatelessWidget {
-  const TarotReadingStatsWidget({Key? key}) : super(key: key);
+  const TarotReadingStatsWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -202,9 +202,9 @@ class TarotStatsDetailDialog extends StatelessWidget {
   final Map<String, dynamic> stats;
 
   const TarotStatsDetailDialog({
-    Key? key,
+    super.key,
     required this.stats,
-  }) : super(key: key);
+  });
 
   static Future<void> show(BuildContext context, Map<String, dynamic> stats) {
     return showDialog(

@@ -11,7 +11,7 @@ class AppCardImage extends StatelessWidget {
   final String? heroTag;
 
   const AppCardImage({
-    Key? key,
+    super.key,
     required this.imageUrl,
     this.width,
     this.height,
@@ -19,7 +19,7 @@ class AppCardImage extends StatelessWidget {
     this.overlay,
     this.addGradientOverlay = false,
     this.heroTag,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

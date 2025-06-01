@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
-import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/screens/payment/widgets/payment_header.dart';
 import 'package:oraculum/screens/payment/widgets/credit_packages_section.dart';
@@ -12,7 +10,7 @@ import 'package:oraculum/screens/payment/widgets/payment_button.dart';
 import 'package:oraculum/screens/payment/widgets/success_dialog.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {
-  const PaymentMethodsScreen({Key? key}) : super(key: key);
+  const PaymentMethodsScreen({super.key});
 
   @override
   State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();

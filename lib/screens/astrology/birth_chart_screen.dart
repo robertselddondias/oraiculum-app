@@ -17,7 +17,7 @@ import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:share_plus/share_plus.dart';
 
 class BirthChartScreen extends StatefulWidget {
-  const BirthChartScreen({Key? key}) : super(key: key);
+  const BirthChartScreen({super.key});
 
   @override
   State<BirthChartScreen> createState() => _BirthChartScreenState();
