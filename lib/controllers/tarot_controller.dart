@@ -7,6 +7,7 @@ import 'package:oraculum/controllers/payment_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/gemini_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TarotController extends GetxController {
   final GeminiService _geminiService = Get.find<GeminiService>();
@@ -27,11 +28,55 @@ class TarotController extends GetxController {
   RxBool isDailyStatusLoading = true.obs; // Para mostrar loading enquanto verifica
   final double additionalReadingCost = 10.0; // Custo em créditos para leituras extras
 
+  // Controle do diálogo místico usando SharedPreferences
+  RxBool hasShownMysticDialog = false.obs;
+  static const String _mysticDialogKey = 'has_shown_mystic_dialog';
+
   @override
   void onInit() {
     super.onInit();
     loadTarotCards();
     _initializeDailyReadingStatus();
+    _checkMysticDialogStatus();
+  }
+
+  /// Verifica se o diálogo místico já foi mostrado
+  Future<void> _checkMysticDialogStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      hasShownMysticDialog.value = prefs.getBool(_mysticDialogKey) ?? false;
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar status do diálogo místico: $e');
+      hasShownMysticDialog.value = false;
+    }
+  }
+
+  /// Marca que o diálogo místico foi mostrado
+  Future<void> markMysticDialogAsShown() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_mysticDialogKey, true);
+      hasShownMysticDialog.value = true;
+    } catch (e) {
+      debugPrint('❌ Erro ao salvar status do diálogo místico: $e');
+    }
+  }
+
+  /// Verifica se deve mostrar o diálogo místico
+  bool shouldShowMysticDialog() {
+    return !hasShownMysticDialog.value;
+  }
+
+  /// Reseta o status do diálogo místico (para testes ou reset)
+  Future<void> resetMysticDialogStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_mysticDialogKey);
+      hasShownMysticDialog.value = false;
+      debugPrint('✅ Status do diálogo místico resetado');
+    } catch (e) {
+      debugPrint('❌ Erro ao resetar status do diálogo místico: $e');
+    }
   }
 
   /// Inicializa e verifica o status das leituras diárias
@@ -475,44 +520,6 @@ class TarotController extends GetxController {
     } catch (e) {
       debugPrint('❌ Erro ao salvar leitura internamente: $e');
       return null;
-    }
-  }
-
-  Future<void> saveReading() async {
-    if (selectedCards.isEmpty || interpretation.value.isEmpty) {
-      Get.snackbar('Erro', 'Não há leitura para salvar.');
-      return;
-    }
-
-    try {
-      isLoading.value = true;
-
-      final authController = Get.find<AuthController>();
-      if (authController.currentUser.value == null) {
-        Get.snackbar('Erro', 'Você precisa estar logado para salvar a leitura.');
-        return;
-      }
-
-      final userId = authController.currentUser.value!.uid;
-      final cardIds = selectedCards.map((card) => card.id).toList();
-
-      final readingData = {
-        'userId': userId,
-        'cardIds': cardIds,
-        'interpretation': interpretation.value,
-        'createdAt': DateTime.now(),
-        'wasPaid': !hasFreeReadingToday.value,
-        'cost': !hasFreeReadingToday.value ? additionalReadingCost : 0.0,
-        'isFavorite': false,
-      };
-
-      await _firebaseService.saveTarotReading(readingData);
-      Get.snackbar('Sucesso', 'Leitura salva com sucesso!');
-    } catch (e) {
-      Get.snackbar('Erro', 'Não foi possível salvar a leitura: $e');
-    } finally {
-      isLoading.value = false;
-      Get.back();
     }
   }
 
