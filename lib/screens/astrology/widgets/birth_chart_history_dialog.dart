@@ -6,8 +6,8 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
-import 'package:oraculum/screens/astrology/widgets/interpretation_section.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
+import 'package:share_plus/share_plus.dart';
 
 class BirthChartHistoryDialog {
   static Future<void> show({
@@ -578,7 +578,7 @@ class BirthChartHistoryDialog {
     }
   }
 
-  // Novo método para mostrar detalhes com interpretação formatada
+  // Método para mostrar detalhes com interpretação formatada
   static void _showChartDetails(
       BuildContext context,
       Map<String, dynamic> chart,
@@ -696,6 +696,50 @@ class BirthChartHistoryDialog {
                           ),
                         ),
 
+                        // Botão de favorito
+                        IconButton(
+                          onPressed: () {
+                            // TODO: Implementar toggle de favorito
+                            Get.snackbar(
+                              'Info',
+                              'Funcionalidade de favorito em desenvolvimento',
+                              backgroundColor: AppTheme.infoColor,
+                              colorText: Colors.white,
+                            );
+                          },
+                          icon: Icon(
+                            chart['isFavorite'] == true ? Icons.star : Icons.star_border,
+                            color: chart['isFavorite'] == true ? Colors.amber : Colors.white,
+                            size: isTablet ? 28 : 24,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+
+                        // Botão de compartilhar
+                        IconButton(
+                          onPressed: () {
+                            final chartText = _generateShareText(chart);
+                            SharePlus.instance.share(ShareParams(text: chartText));
+                          },
+                          icon: Icon(
+                            Icons.share,
+                            color: Colors.white,
+                            size: isTablet ? 28 : 24,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+
+                        // Botão de fechar
                         IconButton(
                           onPressed: () => Get.back(),
                           icon: Icon(
@@ -721,14 +765,14 @@ class BirthChartHistoryDialog {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Informações básicas
+                          // Informações básicas do nascimento
                           _buildBasicInfoCard(chart, isSmallScreen, isTablet),
 
                           const SizedBox(height: 20),
 
                           // Interpretação formatada
                           _buildFormattedInterpretation(
-                            chart['interpretation'] ?? '',
+                            chart['interpretation'] ?? 'Interpretação não disponível',
                             isSmallScreen,
                             isTablet,
                           ),
@@ -743,6 +787,604 @@ class BirthChartHistoryDialog {
         ),
       ),
     );
+  }
+
+  // Widget para interpretação formatada - implementação própria
+  static Widget _buildFormattedInterpretation(
+      String interpretation,
+      bool isSmallScreen,
+      bool isTablet,
+      ) {
+    final sectionCardPadding = isTablet ? 24.0 : isSmallScreen ? 12.0 : 16.0;
+    final titleSize = isTablet ? 20.0 : isSmallScreen ? 16.0 : 18.0;
+    final sectionTitleSize = isTablet ? 18.0 : isSmallScreen ? 14.0 : 16.0;
+    final bodyTextSize = isTablet ? 16.0 : isSmallScreen ? 13.0 : 14.0;
+    final iconSize = isTablet ? 24.0 : isSmallScreen ? 18.0 : 20.0;
+
+    // Debug: Verificar se temos interpretação válida
+    if (interpretation.isEmpty || interpretation == 'Interpretação não disponível') {
+      return Container(
+        padding: EdgeInsets.all(sectionCardPadding),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.red.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.warning,
+              color: Colors.orange,
+              size: iconSize,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Interpretação não disponível',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: sectionTitleSize,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'A interpretação do mapa astral não foi encontrada ou está vazia.',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: bodyTextSize,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Parse da interpretação
+    final parsedSections = _parseInterpretation(interpretation);
+
+    // Debug: Verificar se conseguimos parsear seções
+    if (parsedSections.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(sectionCardPadding),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.orange.withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  color: Colors.orange,
+                  size: iconSize,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'Erro no Parse',
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontSize: sectionTitleSize,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Não foi possível parsear a interpretação. Mostrando conteúdo original:',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.8),
+                fontSize: bodyTextSize,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                interpretation.length > 500
+                    ? '${interpretation.substring(0, 500)}...'
+                    : interpretation,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: bodyTextSize - 1,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.public,
+                color: AppTheme.primaryColor,
+                size: iconSize,
+              ),
+            ),
+            SizedBox(width: isTablet ? 12 : 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Interpretação do Mapa Astral',
+                    style: TextStyle(
+                      fontSize: titleSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Text(
+                    '${parsedSections.length} ${parsedSections.length == 1 ? 'seção encontrada' : 'seções encontradas'}',
+                    style: TextStyle(
+                      fontSize: bodyTextSize - 2,
+                      color: Colors.white.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: isTablet ? 16 : 12),
+
+        // Construir cada seção da interpretação
+        ...parsedSections.entries.map((entry) {
+          final title = entry.key;
+          final content = entry.value;
+
+          // Skip empty sections
+          if (content.isEmpty) return const SizedBox.shrink();
+
+          // Determinar cor e ícone da seção
+          final sectionInfo = _getSectionInfo(title);
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: isTablet ? 20 : 16),
+            child: Card(
+              elevation: isTablet ? 4 : 2,
+              color: Colors.black.withOpacity(0.3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: sectionInfo.color.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(sectionCardPadding),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: sectionInfo.color.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            sectionInfo.icon,
+                            color: sectionInfo.color,
+                            size: iconSize,
+                          ),
+                        ),
+                        SizedBox(width: isTablet ? 12 : 8),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: sectionTitleSize,
+                              fontWeight: FontWeight.bold,
+                              color: sectionInfo.color,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: isTablet ? 16 : 12),
+                    Text(
+                      content,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: bodyTextSize,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ).animate().fadeIn(
+            delay: Duration(milliseconds: 200 + (100 * parsedSections.keys.toList().indexOf(title))),
+            duration: const Duration(milliseconds: 500),
+          ).slideY(
+            begin: 0.1,
+            end: 0,
+            duration: const Duration(milliseconds: 400),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  // Parse da interpretação string em seções
+  static Map<String, String> _parseInterpretation(String text) {
+    Map<String, String> sections = {};
+
+    // Debug: Imprimir o texto original
+    print('🔍 DEBUG - Texto original da interpretação:');
+    print(text);
+    print('📏 Tamanho do texto: ${text.length}');
+
+    try {
+      // Tentar parse como JSON primeiro
+      final jsonData = json.decode(text);
+      print('✅ JSON parseado com sucesso!');
+      print('🔍 Tipo do JSON: ${jsonData.runtimeType}');
+
+      if (jsonData is Map<String, dynamic>) {
+        print('📋 Chaves encontradas no JSON: ${jsonData.keys.toList()}');
+
+        // Processar estrutura JSON
+        jsonData.forEach((key, value) {
+          print('🔑 Processando chave: $key, tipo do valor: ${value.runtimeType}');
+
+          if (value is Map<String, dynamic>) {
+            print('📝 Valor é Map: $value');
+            if (value.containsKey('body')) {
+              // Usar título do JSON se disponível, senão capitalizar a chave
+              final title = value['title'] ?? _capitalizeSection(key);
+              final body = value['body'] ?? '';
+              sections[title] = body;
+              print('✅ Seção adicionada: $title -> ${body.substring(0, body.length > 50 ? 50 : body.length)}...');
+            } else if (value.containsKey('title') && value.containsKey('content')) {
+              // Formato alternativo com 'content' ao invés de 'body'
+              final title = value['title'] ?? _capitalizeSection(key);
+              final content = value['content'] ?? '';
+              sections[title] = content;
+              print('✅ Seção adicionada (content): $title -> ${content.substring(0, content.length > 50 ? 50 : content.length)}...');
+            } else {
+              // Se o Map não tem estrutura esperada, usar como texto simples
+              final title = _capitalizeSection(key);
+              final content = value.toString();
+              sections[title] = content;
+              print('✅ Seção adicionada (toString): $title -> ${content.substring(0, content.length > 50 ? 50 : content.length)}...');
+            }
+          } else if (value is String) {
+            // Par chave-valor simples
+            final title = _capitalizeSection(key);
+            sections[title] = value;
+            print('✅ Seção adicionada (string): $title -> ${value.substring(0, value.length > 50 ? 50 : value.length)}...');
+          } else if (value is List) {
+            // Se for uma lista, converter para string
+            final title = _capitalizeSection(key);
+            final content = value.join(', ');
+            sections[title] = content;
+            print('✅ Seção adicionada (lista): $title -> $content');
+          }
+        });
+
+        print('📊 Total de seções criadas: ${sections.length}');
+        print('🗂️ Seções finais: ${sections.keys.toList()}');
+        return sections;
+      } else {
+        print('❌ JSON não é um Map<String, dynamic>, é: ${jsonData.runtimeType}');
+      }
+    } catch (e) {
+      print('❌ Erro ao fazer parse do JSON: $e');
+      print('🔄 Tentando parse de texto...');
+    }
+
+    // Fallback: Tentar identificar seções por cabeçalhos
+    try {
+      // Padrões mais abrangentes de seção em interpretações de mapa astral
+      final sectionRegex = RegExp(
+          r'(SOL\s*:)|(LUA\s*:)|(ASCENDENTE\s*:)|'
+          r'(MERCÚRIO\s*:)|(VÊNUS\s*:)|(MARTE\s*:)|'
+          r'(JÚPITER\s*:)|(SATURNO\s*:)|(URANO\s*:)|(NETUNO\s*:)|(PLUTÃO\s*:)|'
+          r'(CASAS\s*:)|(ASPECTOS\s*:)|(CONCLUSÃO\s*:)|'
+          r'(VISÃO\s*GERAL\s*:)|(PERSONALIDADE\s*:)|(EMOÇÕES\s*:)|'
+          r'(###\s*.+?)|(\*\*\s*.+?\s*\*\*)',
+          caseSensitive: false,
+          multiLine: true
+      );
+
+      // Dividir por cabeçalhos de seção detectados
+      final matches = sectionRegex.allMatches(text);
+      print('🔍 Matches encontrados: ${matches.length}');
+
+      if (matches.isNotEmpty) {
+        int startIndex = 0;
+        String currentTitle = 'Visão Geral';
+
+        // Extrair texto inicial antes da primeira seção como "Visão Geral"
+        if (matches.first.start > 0) {
+          final initialText = text.substring(0, matches.first.start).trim();
+          if (initialText.isNotEmpty) {
+            sections[currentTitle] = initialText;
+            print('✅ Seção inicial adicionada: $currentTitle');
+          }
+        }
+
+        // Processar cada seção
+        for (final match in matches) {
+          // Salvar seção anterior
+          if (match.start > startIndex && currentTitle.isNotEmpty) {
+            final sectionText = text.substring(startIndex, match.start).trim();
+            if (sectionText.isNotEmpty) {
+              sections[currentTitle] = sectionText;
+              print('✅ Seção de texto adicionada: $currentTitle');
+            }
+          }
+
+          // Atualizar para próxima seção
+          currentTitle = text.substring(match.start, match.end)
+              .replaceAll(RegExp(r'[:#*]'), '')
+              .trim();
+          if (currentTitle.isEmpty) {
+            currentTitle = 'Seção ${sections.length + 1}';
+          }
+          startIndex = match.end;
+        }
+
+        // Adicionar última seção
+        if (startIndex < text.length && currentTitle.isNotEmpty) {
+          final sectionText = text.substring(startIndex).trim();
+          if (sectionText.isNotEmpty) {
+            sections[currentTitle] = sectionText;
+            print('✅ Última seção adicionada: $currentTitle');
+          }
+        }
+
+        if (sections.isNotEmpty) {
+          print('📊 Parse de texto bem-sucedido! Seções: ${sections.keys.toList()}');
+          return sections;
+        }
+      }
+    } catch (e) {
+      print('❌ Erro no parse de texto: $e');
+    }
+
+    // Se todo parse falhar, usar texto completo como seção geral
+    print('⚠️ Fallback: usando texto completo como seção única');
+    sections['Interpretação Completa'] = text;
+    return sections;
+  }
+
+  // Função helper para capitalizar nomes de seção
+  static String _capitalizeSection(String text) {
+    if (text.isEmpty) return 'Visão Geral';
+
+    // Limpar o texto primeiro
+    String cleanText = text.trim()
+        .replaceAll(RegExp(r'[:#*_-]'), '')
+        .trim();
+
+    // Tratamento especial para termos astrológicos comuns
+    switch (cleanText.toLowerCase()) {
+      case 'sol':
+      case 'solar':
+      case 'sun':
+        return 'Sol (Personalidade)';
+      case 'lua':
+      case 'lunar':
+      case 'moon':
+        return 'Lua (Emoções)';
+      case 'asc':
+      case 'ascendente':
+      case 'ascendant':
+        return 'Ascendente';
+      case 'mc':
+      case 'meio_do_ceu':
+      case 'meio do ceu':
+      case 'midheaven':
+        return 'Meio do Céu';
+      case 'venus':
+      case 'vênus':
+      case 'vênus em':
+      case 'amor':
+        return 'Vênus (Amor)';
+      case 'marte':
+      case 'mars':
+      case 'energia':
+        return 'Marte (Energia)';
+      case 'mercurio':
+      case 'mercúrio':
+      case 'mercury':
+      case 'comunicacao':
+      case 'comunicação':
+        return 'Mercúrio (Comunicação)';
+      case 'jupiter':
+      case 'júpiter':
+      case 'expansao':
+      case 'expansão':
+        return 'Júpiter (Expansão)';
+      case 'saturno':
+      case 'saturn':
+      case 'limitacoes':
+      case 'limitações':
+        return 'Saturno (Limitações)';
+      case 'urano':
+      case 'uranus':
+      case 'originalidade':
+        return 'Urano (Originalidade)';
+      case 'netuno':
+      case 'neptune':
+      case 'espiritualidade':
+        return 'Netuno (Espiritualidade)';
+      case 'plutao':
+      case 'plutão':
+      case 'pluto':
+      case 'transformacao':
+      case 'transformação':
+        return 'Plutão (Transformação)';
+      case 'casas':
+      case 'casas astrologicas':
+      case 'casas astrológicas':
+      case 'houses':
+        return 'Casas Astrológicas';
+      case 'aspectos':
+      case 'aspectos planetarios':
+      case 'aspectos planetários':
+      case 'aspects':
+        return 'Aspectos Planetários';
+      case 'geral':
+      case 'visao_geral':
+      case 'visão_geral':
+      case 'visao geral':
+      case 'visão geral':
+      case 'overview':
+        return 'Visão Geral';
+      case 'conclusao':
+      case 'conclusão':
+      case 'conclusion':
+        return 'Conclusão';
+      case 'personalidade':
+      case 'personality':
+        return 'Personalidade';
+      case 'emocoes':
+      case 'emoções':
+      case 'emotions':
+        return 'Vida Emocional';
+      case 'relacionamentos':
+      case 'relationships':
+        return 'Relacionamentos';
+      case 'carreira':
+      case 'career':
+        return 'Carreira';
+      case 'financas':
+      case 'finanças':
+      case 'money':
+        return 'Finanças';
+      case 'saude':
+      case 'saúde':
+      case 'health':
+        return 'Saúde';
+      case 'familia':
+      case 'família':
+      case 'family':
+        return 'Família';
+      case 'criatividade':
+      case 'creativity':
+        return 'Criatividade';
+      case 'espiritualidade':
+      case 'spirituality':
+        return 'Espiritualidade';
+      default:
+      // Capitalizar cada palavra e remover underscores
+        return cleanText.split(RegExp(r'[\s_]+'))
+            .map((word) => word.isNotEmpty ?
+        word[0].toUpperCase() + word.substring(1).toLowerCase() : '')
+            .join(' ');
+    }
+  }
+
+  // Informações de estilo da seção
+  static _SectionInfo _getSectionInfo(String sectionTitle) {
+    final title = sectionTitle.toLowerCase();
+
+    if (title.contains('sol') || title.contains('personalidade')) {
+      return _SectionInfo(
+        color: Colors.orange,
+        icon: Icons.wb_sunny_outlined,
+      );
+    } else if (title.contains('lua') || title.contains('emoções')) {
+      return _SectionInfo(
+        color: Colors.blueGrey,
+        icon: Icons.nightlight_round,
+      );
+    } else if (title.contains('mercúrio') || title.contains('comunicação')) {
+      return _SectionInfo(
+        color: Colors.lightBlue,
+        icon: Icons.message_outlined,
+      );
+    } else if (title.contains('vênus') || title.contains('amor')) {
+      return _SectionInfo(
+        color: Colors.pink,
+        icon: Icons.favorite_outline,
+      );
+    } else if (title.contains('marte') || title.contains('energia')) {
+      return _SectionInfo(
+        color: Colors.red,
+        icon: Icons.flash_on_outlined,
+      );
+    } else if (title.contains('ascendente')) {
+      return _SectionInfo(
+        color: Colors.amber,
+        icon: Icons.arrow_upward,
+      );
+    } else if (title.contains('casas')) {
+      return _SectionInfo(
+        color: Colors.teal,
+        icon: Icons.home_outlined,
+      );
+    } else if (title.contains('aspectos')) {
+      return _SectionInfo(
+        color: Colors.deepPurple,
+        icon: Icons.connecting_airports_outlined,
+      );
+    } else if (title.contains('conclusão')) {
+      return _SectionInfo(
+        color: Colors.green,
+        icon: Icons.check_circle_outline,
+      );
+    } else {
+      // Padrão
+      return _SectionInfo(
+        color: Colors.deepPurple,
+        icon: Icons.public,
+      );
+    }
+  }
+
+  // Gerar texto para compartilhamento
+  static String _generateShareText(Map<String, dynamic> chart) {
+    final buffer = StringBuffer();
+
+    buffer.writeln('🌟 MEU MAPA ASTRAL - ${chart['name'] ?? 'Oraculum'}');
+    buffer.writeln('═══════════════════════════════');
+    buffer.writeln();
+
+    buffer.writeln('📅 Data: ${chart['birthDate'] ?? 'Não informado'}');
+    buffer.writeln('🕐 Horário: ${chart['birthTime'] ?? 'Não informado'}');
+    buffer.writeln('📍 Local: ${chart['birthPlace'] ?? 'Não informado'}');
+
+    if (chart['zodiacSign']?.isNotEmpty ?? false) {
+      buffer.writeln('♈ Signo Solar: ${chart['zodiacSign']}');
+    }
+
+    buffer.writeln();
+    buffer.writeln('Descubra seu destino também no app Oraculum! ✨');
+
+    return buffer.toString();
   }
 
   // Widget para informações básicas do mapa
@@ -769,13 +1411,30 @@ class BirthChartHistoryDialog {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Dados do Nascimento',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
-              fontWeight: FontWeight.bold,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.info_outline,
+                  color: AppTheme.primaryColor,
+                  size: iconSize,
+                ),
+              ),
+              SizedBox(width: isTablet ? 12 : 8),
+              Text(
+                'Dados do Nascimento',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
 
@@ -881,25 +1540,118 @@ class BirthChartHistoryDialog {
               ),
             ],
           ),
+
+          // Mostrar informações adicionais se disponíveis
+          if (chart['zodiacSign']?.isNotEmpty ?? false) ...[
+            const SizedBox(height: 16),
+            Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.white.withOpacity(0.3),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Informações astrológicas
+            Row(
+              children: [
+                // Signo Solar
+                Expanded(
+                  child: _buildAstroInfo(
+                    icon: Icons.wb_sunny,
+                    label: 'Signo Solar',
+                    value: chart['zodiacSign'],
+                    color: ZodiacUtils.getSignColor(chart['zodiacSign']),
+                    isSmallScreen: isSmallScreen,
+                    isTablet: isTablet,
+                  ),
+                ),
+
+                SizedBox(width: isTablet ? 16 : 12),
+
+                // Elemento
+                Expanded(
+                  child: _buildAstroInfo(
+                    icon: Icons.eco,
+                    label: 'Elemento',
+                    value: ZodiacUtils.getElement(chart['zodiacSign']),
+                    color: AppTheme.accentColor,
+                    isSmallScreen: isSmallScreen,
+                    isTablet: isTablet,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  // Widget para interpretação formatada usando o componente existente
-  static Widget _buildFormattedInterpretation(
-      String interpretation,
-      bool isSmallScreen,
-      bool isTablet,
-      ) {
-    return BirthChartInterpretation(
-      interpretation: interpretation,
-      isSmallScreen: isSmallScreen,
-      isTablet: isTablet,
+  // Widget para informações astrológicas
+  static Widget _buildAstroInfo({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+    required bool isSmallScreen,
+    required bool isTablet,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 12 : 8),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: isTablet ? 12 : isSmallScreen ? 10 : 11,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: isTablet ? 18 : isSmallScreen ? 14 : 16,
+              ),
+              SizedBox(width: isTablet ? 8 : 6),
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isTablet ? 14 : isSmallScreen ? 11 : 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  // Método helper para formatar dados do mapa astral seguindo o padrão da BirthChartDetailsScreen
+  // Método helper para formatar dados do mapa astral
   static Map<String, dynamic> _formatChartData(Map<String, dynamic> chart) {
     final name = chart['name'] ?? 'Sem nome';
     final birthDateRaw = chart['birthDate'];
@@ -913,7 +1665,7 @@ class BirthChartHistoryDialog {
     String zodiacSign = '';
     DateTime? birthDateTime;
 
-    // Formatar datas seguindo o padrão da BirthChartDetailsScreen
+    // Formatar datas
     if (birthDateRaw != null) {
       if (birthDateRaw is DateTime) {
         birthDateTime = birthDateRaw;
@@ -979,7 +1731,7 @@ class BirthChartHistoryDialog {
       }
     }
 
-    // Retornar dados formatados compatíveis com BirthChartDetailsScreen
+    // Retornar dados formatados
     return {
       ...chart,
       'name': name,
@@ -1052,10 +1804,9 @@ class BirthChartHistoryDialog {
       ],
     );
   }
-
 }
 
-// Classe helper para informações de seção (mantida para compatibilidade se necessário)
+// Classe helper para informações de seção
 class _SectionInfo {
   final Color color;
   final IconData icon;

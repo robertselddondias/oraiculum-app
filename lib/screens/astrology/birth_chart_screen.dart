@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
-import 'package:oraculum/screens/astrology/widgets/birth_chart_History_dialog.dart';
+import 'package:oraculum/screens/astrology/widgets/birth_chart_history_dialog.dart';
 import 'package:oraculum/screens/astrology/widgets/birth_chart_action_buttons.dart';
 import 'package:oraculum/screens/astrology/widgets/birth_chart_form_fields.dart';
 import 'package:oraculum/screens/astrology/widgets/birth_chart_header.dart';
@@ -127,7 +127,8 @@ class _BirthChartScreenState extends State<BirthChartScreen> with SingleTickerPr
       final result = await _controller.getBirthChartInterpretation(
           _birthDateController.text,
           _timeController.text,
-          _birthPlaceController.text
+          _birthPlaceController.text,
+          _nameController.text
       );
 
       _chartResult.value = result;

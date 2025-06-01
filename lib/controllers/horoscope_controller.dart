@@ -446,9 +446,9 @@ class HoroscopeController extends GetxController {
   Future<Map<String, dynamic>> getBirthChartInterpretation(
       String birthDate,
       String birthTime,
-      String birthPlace, {
-        String? name,
-      }) async {
+      String birthPlace,
+      String name
+      ) async {
     try {
       isLoading.value = true;
 
@@ -472,11 +472,10 @@ class HoroscopeController extends GetxController {
       // Salvar no histórico do usuário
       if (_authController.currentUser.value != null) {
         final userId = _authController.currentUser.value!.uid;
-        final userName = name ?? _authController.userModel.value?.name ?? 'Usuário';
 
         final chartId = await _firebaseService.saveBirthChart(
           userId: userId,
-          name: userName,
+          name: name!,
           birthDate: birthDate,
           birthTime: birthTime,
           birthPlace: birthPlace,

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
+import 'package:oraculum/screens/astrology/widgets/interpretation_section.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:share_plus/share_plus.dart';
@@ -827,6 +828,9 @@ class _BirthChartHistoryScreenState extends State<BirthChartHistoryScreen>
   }
 
   Widget _buildChartDetailsBottomSheet(Map<String, dynamic> chart) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth >= 600;
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
       decoration: const BoxDecoration(
@@ -877,7 +881,11 @@ class _BirthChartHistoryScreenState extends State<BirthChartHistoryScreen>
                         ],
                       ),
                       const SizedBox(height: 24),
-                      _buildInterpretationSection(chart['interpretation'] ?? ''),
+                      BirthChartInterpretation(
+                        interpretation: chart['interpretation'] ?? '',
+                        isSmallScreen: isSmallScreen,
+                        isTablet: isTablet,
+                      ),
                       const SizedBox(height: 24),
                       _buildActionButtons(chart),
                       const SizedBox(height: 32),
