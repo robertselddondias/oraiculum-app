@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/models/user_model.dart';
 import 'package:oraculum/services/firebase_service.dart';
@@ -9,6 +10,10 @@ import 'package:oraculum/services/firebase_service.dart';
 class AuthController extends GetxController {
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
   final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
 
   // Estados observáveis
   Rx<User?> currentUser = Rx<User?>(null);
@@ -541,6 +546,139 @@ class AuthController extends GetxController {
       Get.snackbar(
         'Erro',
         'Erro inesperado no registro',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return null;
+    } finally {
+      isLoading.value = false;
+      update();
+    }
+  }
+
+  // Login com Google - NOVO MÉTODO
+  Future<User?> signInWithGoogle() async {
+    try {
+      debugPrint('=== signInWithGoogle() ===');
+
+      isLoading.value = true;
+      authError.value = '';
+      _reauthAttempts = 0; // Reset contador
+
+      // Primeiro, deslogar qualquer conta Google anterior
+      await _googleSignIn.signOut();
+
+      // Iniciar o processo de login do Google
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        // O usuário cancelou o login
+        debugPrint('Login com Google cancelado pelo usuário');
+        return null;
+      }
+
+      debugPrint('Usuário Google selecionado: ${googleUser.email}');
+
+      // Obter os detalhes de autenticação do Google
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Criar credencial do Firebase
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Fazer login no Firebase com a credencial do Google
+      final userCredential = await _auth.signInWithCredential(credential);
+
+      if (userCredential.user != null) {
+        debugPrint('Login com Google bem-sucedido');
+
+        // Verificar se é um novo usuário ou usuário existente
+        final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+
+        if (isNewUser) {
+          debugPrint('Novo usuário - criando perfil...');
+
+          // Criar dados do usuário no Firestore para novos usuários
+          await _firebaseService.createUserData(userCredential.user!.uid, {
+            'name': userCredential.user!.displayName ?? 'Usuário',
+            'email': userCredential.user!.email ?? '',
+            'birthDate': DateTime.now().subtract(const Duration(days: 365 * 25)), // Padrão: 25 anos
+            'createdAt': DateTime.now(),
+            'profileImageUrl': userCredential.user!.photoURL ?? '',
+            'favoriteReadings': [],
+            'favoriteReaders': [],
+            'credits': 0.0,
+            'loginProvider': 'google',
+          });
+
+          debugPrint('✅ Perfil de novo usuário criado');
+        } else {
+          debugPrint('Usuário existente - atualizando informações...');
+
+          // Atualizar informações do usuário existente se necessário
+          await _firebaseService.updateUserData(userCredential.user!.uid, {
+            'lastLogin': DateTime.now(),
+            'profileImageUrl': userCredential.user!.photoURL ?? '',
+          });
+        }
+
+        // Garantir que o token seja obtido
+        await userCredential.user!.getIdToken(true);
+        isAuthenticated.value = true;
+        debugPrint('✅ Token obtido após login com Google');
+
+        await _loadUserData();
+
+        debugPrint('Redirecionando para navegação...');
+        Get.offAllNamed(AppRoutes.navigation);
+
+        Get.snackbar(
+          'Sucesso',
+          'Login realizado com sucesso!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+
+        return userCredential.user;
+      }
+
+      return null;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('❌ Erro de autenticação Firebase no Google: ${e.code} - ${e.message}');
+      authError.value = _handleAuthException(e);
+      isAuthenticated.value = false;
+
+      Get.snackbar(
+        'Erro no Login Google',
+        authError.value,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro geral no login com Google: $e');
+      authError.value = 'Erro no login com Google';
+      isAuthenticated.value = false;
+
+      String errorMessage = 'Erro no login com Google';
+
+      if (e.toString().contains('network_error')) {
+        errorMessage = 'Erro de conexão. Verifique sua internet.';
+      } else if (e.toString().contains('sign_in_canceled')) {
+        errorMessage = 'Login cancelado pelo usuário';
+      } else if (e.toString().contains('sign_in_failed')) {
+        errorMessage = 'Falha no login. Tente novamente.';
+      }
+
+      Get.snackbar(
+        'Erro',
+        errorMessage,
         backgroundColor: Colors.red,
         colorText: Colors.white,
         snackPosition: SnackPosition.BOTTOM,

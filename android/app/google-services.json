@@ -12,7 +12,12 @@
           "package_name": "com.selddon.oraculum"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "558056975643-b92nq2l8v49k6j2mg1tqkj6ho45t3rj7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyD3cZd7uPj_9GKstUJvCoRqarcYQcSSMC0"
@@ -20,26 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:558056975643:android:c875807249417bdd0937be",
-        "android_client_info": {
-          "package_name": "com.selddon.oraculum.oraculum_app"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyD3cZd7uPj_9GKstUJvCoRqarcYQcSSMC0"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "558056975643-b92nq2l8v49k6j2mg1tqkj6ho45t3rj7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "558056975643-pfmb1t0ita25kfc49a5hmnvs71hbf6g7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.selddon.oraculum"
+              }
+            }
+          ]
         }
       }
     }
