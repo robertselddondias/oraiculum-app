@@ -1121,6 +1121,7 @@ class _BirthChartHistoryScreenState extends State<BirthChartHistoryScreen>
       children: [
         // Primeira linha de botões
         Row(
+
           children: [
             Expanded(
               child: OutlinedButton.icon(

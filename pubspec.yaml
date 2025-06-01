@@ -110,6 +110,6 @@ flutter:
 # Platform-specific configurations
 flutter_platforms:
   android:
-    package: com.oraculum.app
+    package: com.selddon.oraculum
   ios:
-    bundle_id: com.oraculum.app
+    bundle_id: com.selddon.oraculum

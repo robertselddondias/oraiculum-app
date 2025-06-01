@@ -1709,21 +1709,6 @@ class _TarotReadingScreenState extends State<TarotReadingScreen> with TickerProv
                 fontSizes: fontSizes,
               ),
             ),
-            SizedBox(width: isTablet ? 20 : 16),
-            // Botão Salvar
-            Expanded(
-              child: _buildActionButton(
-                icon: Icons.save,
-                label: 'Salvar',
-                color: const Color(0xFF6C63FF),
-                textColor: Colors.white,
-                onPressed: () => _controller.saveReading(),
-                isPrimary: true,
-                isSmallScreen: isSmallScreen,
-                isTablet: isTablet,
-                fontSizes: fontSizes,
-              ),
-            ),
           ],
         ),
         SizedBox(height: isTablet ? 20 : 16),
