@@ -1,9 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:oraculum/config/theme.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
+import 'package:oraculum/screens/astrology/widgets/interpretation_section.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
 class BirthChartHistoryDialog {
@@ -312,8 +315,13 @@ class BirthChartHistoryDialog {
                               child: InkWell(
                                 onTap: () {
                                   Get.back();
-                                  // Passar dados formatados para compatibilidade com BirthChartDetailsScreen
-                                  onChartSelected(formattedChart);
+                                  // Mostrar detalhes do mapa astral com interpretação formatada
+                                  _showChartDetails(
+                                    context,
+                                    formattedChart,
+                                    isSmallScreen,
+                                    isTablet,
+                                  );
                                 },
                                 borderRadius: BorderRadius.circular(16),
                                 child: Padding(
@@ -441,7 +449,7 @@ class BirthChartHistoryDialog {
                                               borderRadius: BorderRadius.circular(10),
                                             ),
                                             child: Icon(
-                                              Icons.arrow_forward_ios,
+                                              Icons.visibility,
                                               color: Colors.white,
                                               size: isTablet ? 18 : isSmallScreen ? 14 : 16,
                                             ),
@@ -570,6 +578,327 @@ class BirthChartHistoryDialog {
     }
   }
 
+  // Novo método para mostrar detalhes com interpretação formatada
+  static void _showChartDetails(
+      BuildContext context,
+      Map<String, dynamic> chart,
+      bool isSmallScreen,
+      bool isTablet,
+      ) {
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+        child: Container(
+          width: double.maxFinite,
+          height: MediaQuery.of(context).size.height * 0.9,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF392F5A),
+                Color(0xFF483D8B),
+                Color(0xFF8C6BAE),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Partículas de fundo
+              ...ZodiacUtils.buildStarParticles(context, 20, maxHeight: 300),
+
+              Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: EdgeInsets.all(isTablet ? 24 : 20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.black.withOpacity(0.3),
+                          Colors.black.withOpacity(0.1),
+                        ],
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Avatar do signo
+                        if (chart['zodiacSign']?.isNotEmpty ?? false)
+                          ZodiacUtils.buildSignAvatar(
+                            context: context,
+                            sign: chart['zodiacSign'],
+                            size: isTablet ? 60 : 50,
+                            highlight: true,
+                          )
+                        else
+                          Container(
+                            width: isTablet ? 60 : 50,
+                            height: isTablet ? 60 : 50,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [AppTheme.primaryColor, AppTheme.secondaryColor],
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.public,
+                              color: Colors.white,
+                              size: isTablet ? 30 : 25,
+                            ),
+                          ),
+
+                        SizedBox(width: isTablet ? 16 : 12),
+
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                chart['name'] ?? 'Sem nome',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: isTablet ? 20 : isSmallScreen ? 16 : 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              if (chart['zodiacSign']?.isNotEmpty ?? false)
+                                Text(
+                                  'Signo Solar: ${chart['zodiacSign']}',
+                                  style: TextStyle(
+                                    color: ZodiacUtils.getSignColor(chart['zodiacSign']),
+                                    fontSize: isTablet ? 16 : isSmallScreen ? 12 : 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+
+                        IconButton(
+                          onPressed: () => Get.back(),
+                          icon: Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: isTablet ? 28 : 24,
+                          ),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.white.withOpacity(0.1),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Conteúdo scrollável
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(isTablet ? 20 : 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Informações básicas
+                          _buildBasicInfoCard(chart, isSmallScreen, isTablet),
+
+                          const SizedBox(height: 20),
+
+                          // Interpretação formatada
+                          _buildFormattedInterpretation(
+                            chart['interpretation'] ?? '',
+                            isSmallScreen,
+                            isTablet,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Widget para informações básicas do mapa
+  static Widget _buildBasicInfoCard(
+      Map<String, dynamic> chart,
+      bool isSmallScreen,
+      bool isTablet,
+      ) {
+    final cardPadding = isTablet ? 20.0 : isSmallScreen ? 12.0 : 16.0;
+    final textSize = isTablet ? 14.0 : isSmallScreen ? 12.0 : 13.0;
+    final iconSize = isTablet ? 20.0 : isSmallScreen ? 16.0 : 18.0;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(cardPadding),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Dados do Nascimento',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isTablet ? 18 : isSmallScreen ? 14 : 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Data
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                color: Colors.white.withOpacity(0.7),
+                size: iconSize,
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Data de Nascimento',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: textSize - 1,
+                    ),
+                  ),
+                  Text(
+                    chart['birthDate'] ?? 'Não informado',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: textSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Horário
+          Row(
+            children: [
+              Icon(
+                Icons.access_time,
+                color: Colors.white.withOpacity(0.7),
+                size: iconSize,
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Horário',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: textSize - 1,
+                    ),
+                  ),
+                  Text(
+                    chart['birthTime'] ?? 'Não informado',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: textSize,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Local
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.location_on,
+                color: Colors.white.withOpacity(0.7),
+                size: iconSize,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Local de Nascimento',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: textSize - 1,
+                      ),
+                    ),
+                    Text(
+                      chart['birthPlace'] ?? 'Não informado',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: textSize,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget para interpretação formatada usando o componente existente
+  static Widget _buildFormattedInterpretation(
+      String interpretation,
+      bool isSmallScreen,
+      bool isTablet,
+      ) {
+    return BirthChartInterpretation(
+      interpretation: interpretation,
+      isSmallScreen: isSmallScreen,
+      isTablet: isTablet,
+    );
+  }
+
   // Método helper para formatar dados do mapa astral seguindo o padrão da BirthChartDetailsScreen
   static Map<String, dynamic> _formatChartData(Map<String, dynamic> chart) {
     final name = chart['name'] ?? 'Sem nome';
@@ -655,11 +984,12 @@ class BirthChartHistoryDialog {
       ...chart,
       'name': name,
       'birthDate': formattedDate, // String formatada para exibição
+      'birthDateString': formattedDate, // Alias para compatibilidade
       'birthDateTime': birthDateTime, // DateTime original para cálculos
       'birthTime': time,
       'birthPlace': place,
       'zodiacSign': zodiacSign,
-      'createdAtFormatted': formattedCreatedAt,
+      'formattedCreatedAt': formattedCreatedAt,
       'isFavorite': isFavorite,
       // Manter campos originais para compatibilidade
       'interpretation': chart['interpretation'] ?? '',
@@ -722,4 +1052,16 @@ class BirthChartHistoryDialog {
       ],
     );
   }
+
+}
+
+// Classe helper para informações de seção (mantida para compatibilidade se necessário)
+class _SectionInfo {
+  final Color color;
+  final IconData icon;
+
+  _SectionInfo({
+    required this.color,
+    required this.icon,
+  });
 }
