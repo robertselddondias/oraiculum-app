@@ -87,6 +87,7 @@ class StripePaymentService extends GetxService {
 
   Future<Map<String, dynamic>> processCardPayment({
     required double amount,
+    required int bonus,
     required String description,
     required String serviceId,
     required String serviceType,
@@ -169,7 +170,7 @@ class StripePaymentService extends GetxService {
           status: 'succeeded',
         );
 
-        await _addCreditsToUser(userId, amount);
+        await _addCreditsToUser(userId, amount, bonus);
 
         if (saveCard) {
           await _saveCardFromPaymentIntent(userId, customerId, paymentIntentId);
@@ -198,6 +199,7 @@ class StripePaymentService extends GetxService {
   Future<Map<String, dynamic>> processPaymentWithSavedCard({
     required String paymentMethodId,
     required double amount,
+    required int bonus,
     required String description,
     required String serviceId,
     required String serviceType,
@@ -242,7 +244,7 @@ class StripePaymentService extends GetxService {
           status: 'succeeded',
         );
 
-        await _addCreditsToUser(userId, amount);
+        await _addCreditsToUser(userId, amount, bonus);
 
         return {
           'success': true,
@@ -267,7 +269,7 @@ class StripePaymentService extends GetxService {
               status: 'succeeded',
             );
 
-            await _addCreditsToUser(userId, amount);
+            await _addCreditsToUser(userId, amount, bonus);
 
             return {
               'success': true,
@@ -300,6 +302,7 @@ class StripePaymentService extends GetxService {
 
   Future<Map<String, dynamic>> processApplePayPayment({
     required double amount,
+    required int bonus,
     required String description,
     required String serviceId,
     required String serviceType,
@@ -357,7 +360,7 @@ class StripePaymentService extends GetxService {
           status: 'succeeded',
         );
 
-        await _addCreditsToUser(userId, amount);
+        await _addCreditsToUser(userId, amount, bonus);
 
         return {
           'success': true,
@@ -391,6 +394,7 @@ class StripePaymentService extends GetxService {
 
   Future<Map<String, dynamic>> processGooglePayPayment({
     required double amount,
+    required int bonus,
     required String description,
     required String serviceId,
     required String serviceType,
@@ -454,7 +458,7 @@ class StripePaymentService extends GetxService {
           status: 'succeeded',
         );
 
-        await _addCreditsToUser(userId, amount);
+        await _addCreditsToUser(userId, amount, bonus);
 
         return {
           'success': true,
@@ -911,7 +915,7 @@ class StripePaymentService extends GetxService {
     }
   }
 
-  Future<void> _addCreditsToUser(String userId, double amount) async {
+  Future<void> _addCreditsToUser(String userId, double amount, int bonus) async {
     try {
       final userDoc = await _firebaseService.firestore
           .collection('users')
@@ -919,6 +923,11 @@ class StripePaymentService extends GetxService {
           .get();
 
       final currentCredits = (userDoc.data()?['credits'] ?? 0.0) as num;
+
+      if (bonus > 0) {
+        amount = amount + (amount * bonus / 100);
+      }
+
       final newCredits = currentCredits.toDouble() + amount;
 
       await _firebaseService.firestore

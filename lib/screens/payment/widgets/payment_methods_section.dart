@@ -49,34 +49,6 @@ class PaymentMethodsSection extends StatelessWidget {
             );
           }).toList(),
         )),
-
-        Obx(() {
-          if (paymentController.savedCards.isNotEmpty) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                Text(
-                  'Cartões Salvos',
-                  style: TextStyle(
-                    fontSize: isSmallScreen ? 14 : 16,
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                ...paymentController.savedCards.map((card) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: _buildSavedCardTile(context, card),
-                  );
-                }),
-              ],
-            );
-          }
-          return const SizedBox.shrink();
-        }),
       ],
     ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2, end: 0);
   }

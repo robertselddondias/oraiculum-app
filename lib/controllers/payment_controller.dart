@@ -126,6 +126,7 @@ class PaymentController extends GetxController {
   /// Processar pagamento com cartão novo usando tela nativa da SDK
   Future<String> processCardPayment({
     required double amount,
+    required int bonus,
     required String description,
     required String serviceId,
     required String serviceType,
@@ -141,6 +142,7 @@ class PaymentController extends GetxController {
 
       final result = await _stripeService.processCardPayment(
         amount: amount,
+        bonus: bonus,
         description: description,
         serviceId: serviceId,
         serviceType: serviceType,
@@ -195,6 +197,7 @@ class PaymentController extends GetxController {
   Future<String> processPaymentWithSavedCard({
     required String paymentMethodId,
     required double amount,
+    required int bonus,
     required String description,
     required String serviceId,
     required String serviceType,
@@ -210,6 +213,7 @@ class PaymentController extends GetxController {
       final result = await _stripeService.processPaymentWithSavedCard(
         paymentMethodId: paymentMethodId,
         amount: amount,
+        bonus: bonus,
         description: description,
         serviceId: serviceId,
         serviceType: serviceType,
@@ -259,6 +263,7 @@ class PaymentController extends GetxController {
   /// Processar pagamento com Apple Pay
   Future<String> processApplePayPayment({
     required double amount,
+    required int bonus,
     required String description,
     required String serviceId,
     required String serviceType,
@@ -285,6 +290,7 @@ class PaymentController extends GetxController {
 
       final result = await _stripeService.processApplePayPayment(
         amount: amount,
+        bonus: bonus,
         description: description,
         serviceId: serviceId,
         serviceType: serviceType,
@@ -334,6 +340,7 @@ class PaymentController extends GetxController {
   /// Processar pagamento com Google Pay
   Future<String> processGooglePayPayment({
     required double amount,
+    required int bonus,
     required String description,
     required String serviceId,
     required String serviceType,
@@ -360,6 +367,7 @@ class PaymentController extends GetxController {
 
       final result = await _stripeService.processGooglePayPayment(
         amount: amount,
+        bonus: bonus,
         description: description,
         serviceId: serviceId,
         serviceType: serviceType,
@@ -621,6 +629,7 @@ class PaymentController extends GetxController {
     required BuildContext context,
     required String description,
     required double amount,
+    required int bonus,
     required String serviceId,
     required String serviceType,
     required String paymentMethod,
@@ -638,6 +647,7 @@ class PaymentController extends GetxController {
             paymentId = await processPaymentWithSavedCard(
               paymentMethodId: specificCardId,
               amount: amount,
+              bonus: bonus,
               description: description,
               serviceId: serviceId,
               serviceType: serviceType,
@@ -645,6 +655,7 @@ class PaymentController extends GetxController {
           } else {
             paymentId = await processCardPayment(
               amount: amount,
+              bonus: bonus,
               description: description,
               serviceId: serviceId,
               serviceType: serviceType,
@@ -657,6 +668,7 @@ class PaymentController extends GetxController {
         case 'apple pay':
           paymentId = await processApplePayPayment(
             amount: amount,
+            bonus: bonus,
             description: description,
             serviceId: serviceId,
             serviceType: serviceType,
@@ -667,6 +679,7 @@ class PaymentController extends GetxController {
         case 'google pay':
           paymentId = await processGooglePayPayment(
             amount: amount,
+            bonus: bonus,
             description: description,
             serviceId: serviceId,
             serviceType: serviceType,

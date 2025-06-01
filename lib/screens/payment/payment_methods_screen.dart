@@ -44,7 +44,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen>
     {
       'amount': 50.0,
       'description': 'Pacote Popular',
-      'bonus': 8,
+      'bonus': 5,
       'popular': true,
       'icon': Icons.star,
       'color': Colors.orange.shade300
@@ -52,7 +52,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen>
     {
       'amount': 100.0,
       'description': 'Pacote Premium',
-      'bonus': 20,
+      'bonus': 10,
       'popular': false,
       'icon': Icons.workspace_premium,
       'color': Colors.purple.shade300
@@ -60,7 +60,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen>
     {
       'amount': 200.0,
       'description': 'Pacote VIP',
-      'bonus': 50,
+      'bonus': 15,
       'popular': false,
       'icon': Icons.diamond,
       'color': Colors.indigo.shade300
@@ -237,6 +237,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen>
     });
 
     try {
+      final bonus = _selectedPackage!['bonus'] as int;
       final amount = _selectedPackage!['amount'] as double;
       final description = 'Compra de créditos: ${_selectedPackage!['description']}';
       final serviceId = 'credit-purchase-${DateTime.now().millisecondsSinceEpoch}';
@@ -262,6 +263,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen>
         result = await _paymentController.processPaymentWithSavedCard(
           paymentMethodId: cardId,
           amount: amount,
+          bonus: bonus,
           description: description,
           serviceId: serviceId,
           serviceType: 'credit_purchase',
@@ -271,6 +273,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen>
           context: context,
           description: description,
           amount: amount,
+          bonus: bonus,
           serviceId: serviceId,
           serviceType: 'credit_purchase',
           paymentMethod: _selectedPaymentMethod,
