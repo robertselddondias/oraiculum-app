@@ -32,7 +32,14 @@
              <string>oraculum</string>
           </array>
        </dict>
-       <!-- Adicionado para Google Sign-In -->
+       <dict>
+           <key>CFBundleURLName</key>
+           <string>oraculum.app</string>
+           <key>CFBundleURLSchemes</key>
+           <array>
+              <string>oraculum</string>
+           </array>
+       </dict>
        <dict>
           <key>CFBundleURLName</key>
           <string>GoogleSignIn</string>
@@ -83,9 +90,13 @@
     <true/>
     <key>UIBackgroundModes</key>
     <array>
-       <string>remote-notification</string>
-       <string>background-fetch</string>
+        <string>background-fetch</string>
+        <string>remote-notification</string>
+        <string>background-processing</string>
     </array>
+    <key>FirebaseAppDelegateProxyEnabled</key>
+    <false/>
+
     <key>UILaunchStoryboardName</key>
     <string>LaunchScreen</string>
     <key>UIMainStoryboardFile</key>

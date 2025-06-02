@@ -278,21 +278,16 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_outlined),
-          onPressed: () {
-            // Implementar notificações
-            Get.snackbar(
-              'Notificações',
-              'Função em desenvolvimento',
-              snackPosition: SnackPosition.BOTTOM,
-            );
-          },
-          tooltip: 'Notificações',
-        ),
-        const SizedBox(width: 8),
-      ],
+      // actions: [
+      //   IconButton(
+      //     icon: const Icon(Icons.notifications_outlined),
+      //     onPressed: () {
+      //       Get.toNamed('/notificationList');
+      //     },
+      //     tooltip: 'Notificações',
+      //   ),
+      //   const SizedBox(width: 8),
+      // ],
     );
   }
 

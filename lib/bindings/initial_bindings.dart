@@ -4,12 +4,13 @@ import 'package:oraculum/controllers/card_list_controller.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
-import 'package:oraculum/controllers/settings_controller.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
+import 'package:oraculum/controllers/notification_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/gemini_service.dart';
 import 'package:oraculum/services/payment_service.dart';
 import 'package:oraculum/services/stripe_payment_service.dart';
+import 'package:oraculum/services/push_notification_service.dart';
 
 class InitialBinding implements Bindings {
   @override
@@ -22,16 +23,20 @@ class InitialBinding implements Bindings {
     // Stripe Service - deve ser inicializado após Firebase
     Get.put(StripePaymentService(), permanent: true);
 
+    // Push Notification Service - inicializar após Firebase
+    Get.put(PushNotificationService(), permanent: true);
+
     // Base controllers
     Get.put(AuthController(), permanent: true);
     Get.put(PaymentController(), permanent: true);
+
+    // Notification Controller - deve ser inicializado após o serviço de notificações
+    Get.put(NotificationController(), permanent: true);
 
     // Feature controllers
     Get.put(MediumController(), permanent: true);
     Get.put(TarotController(), permanent: true);
     Get.put(HoroscopeController(), permanent: true);
     Get.put(CardListController(), permanent: true);
-
-    Get.lazyPut(() => SettingsController(), fenix: true);
   }
 }

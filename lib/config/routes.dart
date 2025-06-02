@@ -17,6 +17,8 @@ import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
 import 'package:oraculum/screens/onboarding_screen.dart';
 import 'package:oraculum/screens/payment/payment_history_screen.dart';
 import 'package:oraculum/screens/payment/payment_methods_screen.dart';
+import 'package:oraculum/screens/profile/notification_settings_screen.dart';
+import 'package:oraculum/screens/profile/notifications_list_screen.dart';
 import 'package:oraculum/screens/profile/profile_screen.dart';
 import 'package:oraculum/screens/profile/settings_screen.dart';
 import 'package:oraculum/screens/splash_screen.dart';
@@ -53,6 +55,11 @@ class AppRoutes {
   static const String creditcardList = '/creditcard-list';
   static const String addCreditCard = '/add-credit-card';
   static const String googleRegisterComplete = '/google-register-complete';
+  static const String notificationSettings = '/notificationSettings';
+  static const String notificationList = '/notificationList';
+
+
+
 
   static final routes = [
     GetPage(name: splash, page: () => const SplashScreen()),
@@ -99,6 +106,18 @@ class AppRoutes {
     GetPage(
       name: googleRegisterComplete,
       page: () => const GoogleRegisterCompleteScreen(),
+      transition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+    GetPage(
+      name: notificationSettings,
+      page: () => const NotificationSettingsScreen(),
+      transition: Transition.fadeIn,
+      transitionDuration: const Duration(milliseconds: 300),
+    ),
+    GetPage(
+      name: notificationList,
+      page: () => const NotificationsListScreen(),
       transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 300),
     ),
