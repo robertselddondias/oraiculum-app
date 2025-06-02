@@ -143,7 +143,7 @@ class SettingsController extends GetxController {
     } catch (e) {
       debugPrint('❌ Erro ao salvar configuração $key: $e');
       // Re-throw o erro para que os métodos acima possam reverter as mudanças
-      throw e;
+      rethrow;
     }
   }
 

@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -282,6 +285,7 @@ class AuthController extends GetxController {
         }
 
         isAuthenticated.value = true;
+        await updateUserFcmToken();
       } catch (e) {
         debugPrint('❌ Erro ao carregar dados do usuário: $e');
         authError.value = 'Não foi possível carregar os dados do usuário';
@@ -1308,6 +1312,56 @@ class AuthController extends GetxController {
       debugPrint('✅ Configurações do usuário verificadas/criadas');
     } catch (e) {
       debugPrint('❌ Erro ao garantir configurações do usuário: $e');
+      // Não fazer throw para não quebrar o fluxo de login
+    }
+  }
+
+  Future<void> updateUserFcmToken() async {
+    try {
+      debugPrint('=== updateUserFcmToken() ===');
+
+      final user = currentUser.value;
+      if (user == null) {
+        debugPrint('❌ Usuário não está logado, não é possível atualizar FCM token');
+        return;
+      }
+
+      // Obter o token FCM atual
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+
+      if (fcmToken == null || fcmToken.isEmpty) {
+        debugPrint('❌ FCM Token não disponível');
+        return;
+      }
+
+      debugPrint('✅ FCM Token obtido: ${fcmToken.substring(0, 20)}...');
+
+      // Verificar se é um token diferente do armazenado
+      final userDoc = await _firebaseService.getUserData(user.uid);
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        final storedToken = userData['fcmToken'] as String?;
+
+        if (storedToken == fcmToken) {
+          debugPrint('✅ FCM Token já está atualizado');
+          return;
+        }
+      }
+
+      // Atualizar o token no Firestore
+      await _firebaseService.updateUserData(user.uid, {
+        'fcmToken': fcmToken,
+        'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        'lastAppOpen': FieldValue.serverTimestamp(),
+        'platform': Platform.isIOS ? 'ios' : 'android',
+        'appVersion': '1.0.0', // Você pode pegar isso do package_info
+        'tokenSource': 'auth_controller',
+      });
+
+      debugPrint('✅ FCM Token atualizado no Firestore com sucesso');
+
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar FCM Token: $e');
       // Não fazer throw para não quebrar o fluxo de login
     }
   }

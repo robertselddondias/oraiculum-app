@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:get/get.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/screens/astrology/horoscope_screen.dart';
 import 'package:oraculum/screens/home/home_screen.dart';
 import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
@@ -35,12 +37,34 @@ class _NavigationScreenState extends State<NavigationScreen> {
     super.initState();
     _pageController = PageController(initialPage: _selectedIndex);
     _setStatusBarColor();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateFcmTokenOnAppStart();
+    });
   }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateFcmTokenOnAppStart() async {
+    try {
+      debugPrint('📱 App iniciado - atualizando FCM Token...');
+
+      final authController = Get.find<AuthController>();
+
+      // Aguardar um pouco para garantir que tudo esteja inicializado
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Atualizar via AuthController
+      await authController.updateUserFcmToken();
+
+      debugPrint('✅ FCM Token atualizado na inicialização do app');
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar FCM Token na inicialização: $e');
+    }
   }
 
   void _setStatusBarColor() {

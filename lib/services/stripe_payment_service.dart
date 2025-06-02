@@ -8,8 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:oraculum/services/firebase_service.dart';
 
 class StripePaymentService extends GetxService {
-  static const String _publishableKey = 'pk_test_51RTpqm4TyzboYffk5IRBTmwEqPvKtBftyepU82rkCK5j0Bh6TYJ7Ld6e9lqvxoJoNe1xefeE58iFS2Igwvsfnc5q00R2Aztn0o';
-  static const String _secretKey = 'sk_test_51RTpqm4TyzboYffkLCT1uIvlITbGX3vgRC6rNnduYStBy2wg99c4DxrraH75S4ATZiPEOdk3KxsYlR8fVQ661CkV00r5Yt8XgO';
+  static const String _publishableKey = 'pk_live_51RTpqdGBYInScAnoXT5vqiOUP4HKd5E5ptAbiHqS3iqTPxI7GCSj1kyII47CPqrDeLJB56E3OwrTiw70F9Bjixkn00lkQrlzoN';
+  static const String _secretKey = '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';
   static const String _baseUrl = 'https://api.stripe.com/v1';
 
   final FirebaseService _firebaseService = Get.find<FirebaseService>();
@@ -1035,7 +1035,7 @@ class StripePaymentService extends GetxService {
       // features['apple_pay'] = await isApplePaySupported();
       // features['google_pay'] = await isGooglePaySupported();
       features['card_payments'] = true;
-      features['pix'] = true;
+      // features['pix'] = false;
       features['save_cards'] = true;
 
       return features;

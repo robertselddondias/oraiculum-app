@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/services/firebase_service.dart';
@@ -59,7 +61,7 @@ class PushNotificationService extends GetxService {
 
       isInitialized.value = true;
       debugPrint('✅ PushNotificationService inicializado com sucesso');
-
+      await checkAndUpdateToken();
     } catch (e) {
       debugPrint('❌ Erro ao inicializar PushNotificationService: $e');
       isInitialized.value = false;
@@ -156,10 +158,18 @@ class PushNotificationService extends GetxService {
       }
 
       // Listener para atualizações do token
-      _firebaseMessaging.onTokenRefresh.listen((newToken) {
-        debugPrint('🔄 Token atualizado: ${newToken.substring(0, 20)}...');
+      _firebaseMessaging.onTokenRefresh.listen((newToken) async {
+        debugPrint('🔄 Token atualizado automaticamente: ${newToken.substring(0, 20)}...');
         deviceToken.value = newToken;
-        _saveTokenToFirestore(newToken);
+
+        await _saveTokenToFirestore(newToken);
+
+        try {
+          final authController = Get.find<AuthController>();
+          await authController.updateUserFcmToken();
+        } catch (e) {
+          debugPrint('⚠️ AuthController não disponível: $e');
+        }
       });
 
     } catch (e) {
@@ -174,10 +184,14 @@ class PushNotificationService extends GetxService {
       if (userId != null) {
         await _firebaseService.updateUserData(userId, {
           'fcmToken': token,
-          'tokenUpdatedAt': DateTime.now(),
+          'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+          'lastTokenUpdate': DateTime.now().toIso8601String(),
           'platform': Platform.isIOS ? 'ios' : 'android',
+          'appVersion': '1.0.0',
+          'tokenSource': 'push_notification_service',
         });
-        debugPrint('💾 Token salvo no Firestore');
+
+        debugPrint('💾 Token FCM salvo no Firestore via PushNotificationService');
       }
     } catch (e) {
       debugPrint('❌ Erro ao salvar token no Firestore: $e');
@@ -577,6 +591,67 @@ class PushNotificationService extends GetxService {
       debugPrint('🔄 PushNotificationService resetado');
     } catch (e) {
       debugPrint('❌ Erro ao resetar serviço: $e');
+    }
+  }
+
+  Future<void> forceTokenUpdate() async {
+    try {
+      debugPrint('🔄 Forçando atualização do FCM Token...');
+
+      // Deletar o token atual
+      await _firebaseMessaging.deleteToken();
+
+      // Obter um novo token
+      final newToken = await _firebaseMessaging.getToken();
+
+      if (newToken != null) {
+        deviceToken.value = newToken;
+        debugPrint('✅ Novo token FCM obtido: ${newToken.substring(0, 20)}...');
+
+        // Salvar o novo token
+        await _saveTokenToFirestore(newToken);
+
+        // Atualizar também via AuthController se estiver disponível
+        try {
+          final authController = Get.find<AuthController>();
+          await authController.updateUserFcmToken();
+        } catch (e) {
+          debugPrint('⚠️ AuthController não disponível: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao forçar atualização do token: $e');
+    }
+  }
+
+  /// Verificar e atualizar token se necessário
+  Future<void> checkAndUpdateToken() async {
+    try {
+      debugPrint('🔍 Verificando necessidade de atualização do token...');
+
+      final userId = _firebaseService.userId;
+      if (userId == null) return;
+
+      // Obter token atual
+      final currentToken = await _firebaseMessaging.getToken();
+      if (currentToken == null) return;
+
+      // Verificar se é diferente do armazenado
+      final userDoc = await _firebaseService.getUserData(userId);
+      if (userDoc.exists) {
+        final userData = userDoc.data() as Map<String, dynamic>;
+        final storedToken = userData['fcmToken'] as String?;
+
+        if (storedToken != currentToken) {
+          debugPrint('🔄 Token FCM mudou, atualizando...');
+          deviceToken.value = currentToken;
+          await _saveTokenToFirestore(currentToken);
+        } else {
+          debugPrint('✅ Token FCM está atualizado');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar token: $e');
     }
   }
 

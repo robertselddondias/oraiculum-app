@@ -13,6 +13,7 @@ import 'package:oraculum/services/stripe_payment_service.dart';
 import 'package:oraculum/services/push_notification_service.dart';
 
 class InitialBinding implements Bindings {
+
   @override
   void dependencies() {
     // Services - ordem de inicialização importante
@@ -23,7 +24,7 @@ class InitialBinding implements Bindings {
     // Stripe Service - deve ser inicializado após Firebase
     Get.put(StripePaymentService(), permanent: true);
 
-    // Push Notification Service - inicializar após Firebase
+    // IMPORTANTE: Push Notification Service ANTES do AuthController
     Get.put(PushNotificationService(), permanent: true);
 
     // Base controllers

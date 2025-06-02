@@ -59,8 +59,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       }
     });
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _updateFcmTokenOnHomeStart();
+    });
+
     // Iniciar animações
     _animationController.forward();
+  }
+
+  Future<void> _updateFcmTokenOnHomeStart() async {
+    try {
+      debugPrint('🏠 Home iniciada - verificando FCM Token...');
+
+      // Aguardar carregamento inicial
+      await Future.delayed(const Duration(seconds: 1));
+
+      final authController = Get.find<AuthController>();
+      await authController.updateUserFcmToken();
+
+      debugPrint('✅ FCM Token verificado na home');
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar FCM Token na home: $e');
+    }
   }
 
   @override
