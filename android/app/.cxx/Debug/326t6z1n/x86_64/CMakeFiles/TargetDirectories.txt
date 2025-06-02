@@ -1,0 +1,2 @@
+/Users/robertselddon/projetos/guardiao-estrutura/guardiao-cliente/android/app/.cxx/Debug/326t6z1n/x86_64/CMakeFiles/edit_cache.dir
+/Users/robertselddon/projetos/guardiao-estrutura/guardiao-cliente/android/app/.cxx/Debug/326t6z1n/x86_64/CMakeFiles/rebuild_cache.dir
