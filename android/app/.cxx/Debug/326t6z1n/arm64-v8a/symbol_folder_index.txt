@@ -1,1 +1,0 @@
-/Users/robertselddon/projetos/guardiao-estrutura/guardiao-cliente/build/app/intermediates/cxx/Debug/326t6z1n/obj/arm64-v8a
