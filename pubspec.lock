@@ -1382,7 +1382,7 @@ packages:
     source: hosted
     version: "1.4.1"
   stripe_android:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: stripe_android
       sha256: a666352e0c20753ecd8feebb5944882bf597167be4f020641266515a495bd55f

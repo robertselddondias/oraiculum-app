@@ -22,7 +22,6 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
-
 def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
 if (flutterVersionCode == null) {
     flutterVersionCode = '1'
@@ -35,16 +34,26 @@ if (flutterVersionName == null) {
 
 android {
     namespace 'com.selddon.oraculum'
-    compileSdkVersion 35
-    ndkVersion flutter.ndkVersion
+    compileSdk 35
+    // NDK atualizado para versão 27 conforme exigido pelos plugins
+    ndkVersion "27.0.12077973"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+        // Habilita core library desugaring obrigatório para flutter_local_notifications
+        coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
         jvmTarget = '17'
+        // Configuração para Kotlin 2.1.0
+        languageVersion = "2.0"
+        apiVersion = "2.0"
+        freeCompilerArgs += [
+                "-Xjvm-default=all",
+                "-Xopt-in=kotlin.RequiresOptIn"
+        ]
     }
 
     sourceSets {
@@ -53,8 +62,8 @@ android {
 
     defaultConfig {
         applicationId "com.selddon.oraculum"
-        minSdkVersion 23
-        targetSdkVersion 35
+        minSdk 24  // Atualizado para suportar recursos mais recentes
+        targetSdk 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
@@ -74,10 +83,17 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled true
             shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             signingConfig signingConfigs.debug
+            applicationIdSuffix ".debug"
         }
+    }
+
+    packagingOptions {
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsc.so'
     }
 }
 
@@ -86,7 +102,9 @@ flutter {
 }
 
 dependencies {
-    implementation 'com.android.support:multidex:1.0.3'
+    implementation 'androidx.multidex:multidex:2.0.1'
+
+    // Firebase BOM mais recente
     implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-auth-ktx'
     implementation 'com.google.firebase:firebase-analytics-ktx'
@@ -94,5 +112,13 @@ dependencies {
     implementation 'com.google.firebase:firebase-appcheck-playintegrity'
     implementation 'com.google.firebase:firebase-appcheck-debug'
 
+    // Mantém a versão específica para compatibilidade com Flutter
     implementation 'io.card:android-sdk:5.5.1'
+
+    // Dependências adicionais para suportar versões mais recentes
+    implementation 'androidx.work:work-runtime-ktx:2.9.1'
+    implementation 'androidx.lifecycle:lifecycle-process:2.8.7'
+
+    // Core library desugaring obrigatório para flutter_local_notifications
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.2'
 }
