@@ -18,14 +18,13 @@ pluginManagement {
 
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    // Android Gradle Plugin mais recente
-    id "com.android.application" version "8.7.2" apply false
-    // START: FlutterFire Configuration - versões mais recentes
-    id "com.google.gms.google-services" version "4.4.2" apply false
-    id "com.google.firebase.crashlytics" version "3.0.2" apply false
-    // END: FlutterFire Configuration
-    // Kotlin mais recente que suporta o stripe_android 11.5.0
-    id "org.jetbrains.kotlin.android" version "2.1.0" apply false
+    // Android Gradle Plugin - versão estável para Flutter 3.29.3
+    id "com.android.application" version "8.1.4" apply false
+    // FlutterFire Configuration - versões compatíveis
+    id "com.google.gms.google-services" version "4.4.0" apply false
+    id "com.google.firebase.crashlytics" version "2.9.9" apply false
+    // Kotlin compatível com Flutter 3.29.3
+    id "org.jetbrains.kotlin.android" version "1.8.22" apply false
 }
 
 include ":app"

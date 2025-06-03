@@ -1,9 +1,7 @@
 plugins {
     id "com.android.application"
-    // START: FlutterFire Configuration
     id 'com.google.gms.google-services'
     id 'com.google.firebase.crashlytics'
-    // END: FlutterFire Configuration
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
 }
@@ -34,26 +32,20 @@ if (flutterVersionName == null) {
 
 android {
     namespace 'com.selddon.oraculum'
-    compileSdk 35
-    // NDK atualizado para versão 27 conforme exigido pelos plugins
-    ndkVersion "27.0.12077973"
+    // Versões recomendadas para Flutter 3.29.3
+    compileSdk 34
+    ndkVersion "25.1.8937393"
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-        // Habilita core library desugaring obrigatório para flutter_local_notifications
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
         coreLibraryDesugaringEnabled true
     }
 
     kotlinOptions {
-        jvmTarget = '17'
-        // Configuração para Kotlin 2.1.0
-        languageVersion = "2.0"
-        apiVersion = "2.0"
-        freeCompilerArgs += [
-                "-Xjvm-default=all",
-                "-Xopt-in=kotlin.RequiresOptIn"
-        ]
+        jvmTarget = '1.8'
+        languageVersion = "1.8"
+        apiVersion = "1.8"
     }
 
     sourceSets {
@@ -62,8 +54,8 @@ android {
 
     defaultConfig {
         applicationId "com.selddon.oraculum"
-        minSdk 24  // Atualizado para suportar recursos mais recentes
-        targetSdk 35
+        minSdk 21  // Padrão para Flutter 3.29.3
+        targetSdk 34  // Compatível com compileSdk
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
@@ -71,10 +63,13 @@ android {
 
     signingConfigs {
         release {
-            storeFile file('release-key.jks')
-            storePassword '@@22anakin31'
-            keyAlias 'chave_release'
-            keyPassword '@@22anakin31'
+            // 🔒 SEGURANÇA: Use key.properties para credenciais
+            if (keystorePropertiesFile.exists()) {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
@@ -104,21 +99,19 @@ flutter {
 dependencies {
     implementation 'androidx.multidex:multidex:2.0.1'
 
-    // Firebase BOM mais recente
-    implementation platform('com.google.firebase:firebase-bom:33.7.0')
+    // Firebase BOM compatível com Flutter 3.29.3
+    implementation platform('com.google.firebase:firebase-bom:32.5.0')
     implementation 'com.google.firebase:firebase-auth-ktx'
     implementation 'com.google.firebase:firebase-analytics-ktx'
     implementation 'com.google.firebase:firebase-crashlytics-ktx'
     implementation 'com.google.firebase:firebase-appcheck-playintegrity'
     implementation 'com.google.firebase:firebase-appcheck-debug'
 
-    // Mantém a versão específica para compatibilidade com Flutter
+    // Dependências estáveis
     implementation 'io.card:android-sdk:5.5.1'
+    implementation 'androidx.work:work-runtime-ktx:2.8.1'
+    implementation 'androidx.lifecycle:lifecycle-process:2.6.2'
 
-    // Dependências adicionais para suportar versões mais recentes
-    implementation 'androidx.work:work-runtime-ktx:2.9.1'
-    implementation 'androidx.lifecycle:lifecycle-process:2.8.7'
-
-    // Core library desugaring obrigatório para flutter_local_notifications
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.2'
+    // Core library desugaring
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
 }
