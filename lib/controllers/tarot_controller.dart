@@ -329,15 +329,6 @@ class TarotController extends GetxController {
         );
         return false;
       }
-
-      Get.snackbar(
-        'Sucesso',
-        'Pagamento processado com sucesso! Você pode fazer sua leitura adicional.',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-      );
-
       return true;
     } catch (e) {
       debugPrint('❌ Erro ao processar pagamento para leitura: $e');
