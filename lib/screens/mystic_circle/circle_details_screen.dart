@@ -1,4 +1,4 @@
-// lib/screens/circles/circle_details_screen.dart
+// lib/screens/mystic_circle/circle_details_screen.dart - PART 1
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
@@ -136,7 +136,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
     final isAdmin = circle.isAdmin(_controller.currentUserId ?? '');
 
     return SliverAppBar(
-      expandedHeight: 280,
+      expandedHeight: 275, // Aumentei um pouco mais
       floating: false,
       pinned: true,
       backgroundColor: Colors.transparent,
@@ -198,78 +198,112 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
               ],
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40), // Space for app bar
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: _getCircleTypeColor(circle.type).withOpacity(0.2),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _getCircleTypeColor(circle.type).withOpacity(0.5),
-                      width: 2,
+          child: SafeArea( // Adicionar SafeArea aqui
+            child: SingleChildScrollView( // Adicionar ScrollView para evitar overflow
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 60), // Espaço para app bar
+                  Container(
+                    padding: const EdgeInsets.all(16), // Reduzir padding
+                    decoration: BoxDecoration(
+                      color: _getCircleTypeColor(circle.type).withOpacity(0.2),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _getCircleTypeColor(circle.type).withOpacity(0.5),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      _getCircleTypeIcon(circle.type),
+                      color: _getCircleTypeColor(circle.type),
+                      size: 32, // Reduzir tamanho do ícone
                     ),
                   ),
-                  child: Icon(
-                    _getCircleTypeIcon(circle.type),
-                    color: _getCircleTypeColor(circle.type),
-                    size: 40,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  circle.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  circle.description,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildStatColumn(
-                      icon: Icons.people,
-                      value: '${circle.totalMembers}',
-                      label: 'Membros',
-                      color: Colors.blue,
+                  const SizedBox(height: 12), // Reduzir espaçamento
+                  Text(
+                    circle.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22, // Reduzir tamanho da fonte
+                      fontWeight: FontWeight.bold,
                     ),
-                    _buildStatColumn(
-                      icon: Icons.auto_stories,
-                      value: '${circle.stats.totalReadings}',
-                      label: 'Leituras',
-                      color: Colors.purple,
+                    textAlign: TextAlign.center,
+                    maxLines: 2, // Limitar linhas
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6), // Reduzir espaçamento
+                  Text(
+                    circle.description,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14, // Reduzir tamanho da fonte
                     ),
-                    _buildStatColumn(
-                      icon: Icons.comment,
-                      value: '${circle.stats.totalComments}',
-                      label: 'Comentários',
-                      color: Colors.green,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12), // Reduzir espaçamento
+                  // Estatísticas em layout mais compacto
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ],
-                ),
-              ],
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildCompactStat(
+                          icon: Icons.people,
+                          value: '${circle.totalMembers}',
+                          color: Colors.blue,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildCompactStat(
+                          icon: Icons.auto_stories,
+                          value: '${circle.stats.totalReadings}',
+                          color: Colors.purple,
+                        ),
+                        const SizedBox(width: 16),
+                        _buildCompactStat(
+                          icon: Icons.comment,
+                          value: '${circle.stats.totalComments}',
+                          color: Colors.green,
+                        ),
+                      ],
+                    ),
+                  ), // Espaço final
+                ],
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // Novo widget para estatísticas compactas
+  Widget _buildCompactStat({
+    required IconData icon,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -282,9 +316,9 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white54,
           tabs: const [
-            Tab(text: 'Leituras', icon: Icon(Icons.auto_stories, size: 20)),
-            Tab(text: 'Membros', icon: Icon(Icons.people, size: 20)),
-            Tab(text: 'Sobre', icon: Icon(Icons.info, size: 20)),
+            Tab(text: 'Leituras', icon: Icon(Icons.auto_stories, size: 18)), // Reduzir ícones
+            Tab(text: 'Membros', icon: Icon(Icons.people, size: 18)),
+            Tab(text: 'Sobre', icon: Icon(Icons.info, size: 18)),
           ],
         ),
       ),
@@ -642,6 +676,8 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
     );
   }
 
+  // lib/screens/mystic_circle/circle_details_screen.dart - PART 2
+
   // ========== MEMBERS TAB ==========
 
   Widget _buildMembersTab() {
@@ -674,8 +710,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
             ),
           ),
         ),
-        // Aqui você precisaria implementar a busca de dados dos membros
-        // Por simplicidade, vou mostrar apenas o conceito
         ...circle.memberIds.map((memberId) {
           final isCreator = circle.isCreator(memberId);
           final isAdmin = circle.isAdmin(memberId);
@@ -710,7 +744,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
           title: Row(
             children: [
               Text(
-                'Membro $memberId', // Aqui você carregaria o nome real
+                'Membro $memberId',
                 style: const TextStyle(color: Colors.white),
               ),
               if (isCurrentUser) ...[
@@ -1581,7 +1615,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
             onPressed: () {
               Navigator.pop(context);
               _controller.deleteCircle(circle.id).then((_) {
-                Navigator.pop(context); // Voltar para a tela anterior
+                Navigator.pop(context);
               });
             },
             style: ElevatedButton.styleFrom(
@@ -1623,7 +1657,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
                 circleId: circle.id,
                 memberId: _controller.currentUserId!,
               ).then((_) {
-                Navigator.pop(context); // Voltar para a tela anterior
+                Navigator.pop(context);
               });
             },
             style: ElevatedButton.styleFrom(
@@ -1638,7 +1672,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
   }
 
   void _showCircleSettingsDialog(MysticCircle circle) {
-    // Implementar dialog de configurações do círculo
     Get.snackbar(
       'Em Desenvolvimento',
       'Funcionalidade de configurações em breve!',
@@ -1656,7 +1689,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
   }
 
   void _promoteMember(String memberId) {
-    // Implementar promoção de membro
     Get.snackbar(
       'Em Desenvolvimento',
       'Funcionalidade de promoção em breve!',
@@ -1667,7 +1699,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
   }
 
   void _shareReading(SharedReading reading) {
-    // Implementar compartilhamento externo
     Get.snackbar(
       'Compartilhar',
       'Funcionalidade de compartilhamento em desenvolvimento',
