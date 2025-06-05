@@ -22,6 +22,8 @@ dependencies:
   smooth_page_indicator: ^1.2.0+3
   lottie: ^3.1.2
   fui_kit: ^2.0.0
+  in_app_review: ^2.0.9
+  store_redirect: ^2.0.2
 
   # Input Formatting & Validation
   mask_text_input_formatter: ^2.9.0

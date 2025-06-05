@@ -715,4 +715,71 @@ class FirebaseService {
       // Não fazer throw aqui para não quebrar o fluxo
     }
   }
+
+  /// Deletar todos os dados do usuário no Firestore
+  Future<void> deleteAllUserData(String userId) async {
+    try {
+      debugPrint('=== deleteAllUserData($userId) ===');
+
+      final batch = _firestore.batch();
+
+      // 1. Deletar documento principal do usuário
+      final userDocRef = _firestore.collection('users').doc(userId);
+      batch.delete(userDocRef);
+
+      // 2. Deletar configurações do usuário
+      final settingsDocRef = _firestore.collection('user_settings').doc(userId);
+      batch.delete(settingsDocRef);
+
+      // 3. Deletar histórico de pagamentos
+      final paymentsQuery = await _firestore
+          .collection('payments')
+          .where('userId', isEqualTo: userId)
+          .get();
+      for (final doc in paymentsQuery.docs) {
+        batch.delete(doc.reference);
+      }
+
+      // 4. Deletar outros dados relacionados (adapte conforme suas coleções)
+      final collectionsToCheck = [
+        'user_favorites',
+        'readings_history',
+        'user_notifications',
+        'user_sessions'
+      ];
+
+      for (final collection in collectionsToCheck) {
+        try {
+          final query = await _firestore
+              .collection(collection)
+              .where('userId', isEqualTo: userId)
+              .get();
+          for (final doc in query.docs) {
+            batch.delete(doc.reference);
+          }
+        } catch (e) {
+          debugPrint('Collection $collection não existe ou erro: $e');
+        }
+      }
+
+      await batch.commit();
+      debugPrint('✅ Todos os dados do usuário foram deletados');
+
+    } catch (e) {
+      debugPrint('❌ Erro ao deletar dados do usuário: $e');
+      rethrow;
+    }
+  }
+
+  /// Deletar imagem de perfil do Storage
+  Future<void> deleteProfileImage(String userId) async {
+    try {
+      final ref = _storage.ref().child('profile_images/$userId');
+      await ref.delete();
+      debugPrint('✅ Imagem de perfil deletada do Storage');
+    } catch (e) {
+      debugPrint('❌ Erro ao deletar imagem: $e');
+      // Não re-throw pois a imagem pode não existir
+    }
+  }
 }

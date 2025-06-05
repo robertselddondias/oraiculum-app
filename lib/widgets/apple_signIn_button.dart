@@ -85,7 +85,6 @@ class CustomAppleSignInButton extends StatelessWidget {
     final AuthController authController = Get.find<AuthController>();
 
     return FutureBuilder<bool>(
-      future: authController.isAppleSignInAvailable(),
       builder: (context, snapshot) {
         if (!snapshot.hasData || !snapshot.data!) {
           return const SizedBox.shrink();
@@ -138,6 +137,7 @@ class CustomAppleSignInButton extends StatelessWidget {
           );
         });
       },
+      future: authController.isAppleSignInAvailable(),
     );
   }
 

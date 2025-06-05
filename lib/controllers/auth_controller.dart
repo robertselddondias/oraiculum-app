@@ -27,7 +27,7 @@ class AuthController extends GetxController {
   RxString authError = ''.obs;
 
   // Apple Sign In availability
-  RxBool isAppleSignInAvailable = false.obs;
+  RxBool appleSignInAvailable = false.obs;
 
   // Timer para refresh automático do token
   Timer? _tokenRefreshTimer;
@@ -164,20 +164,26 @@ class AuthController extends GetxController {
   Future<void> _checkAppleSignInAvailability() async {
     if (Platform.isIOS) {
       try {
-        isAppleSignInAvailable.value = await SignInWithApple.isAvailable();
-        debugPrint('Apple Sign In disponível: ${isAppleSignInAvailable.value}');
+        appleSignInAvailable.value = await SignInWithApple.isAvailable();
+        debugPrint('Apple Sign In disponível: ${appleSignInAvailable.value}');
       } catch (e) {
         debugPrint('Erro ao verificar Apple Sign In: $e');
-        isAppleSignInAvailable.value = false;
+        appleSignInAvailable.value = false;
       }
     } else {
-      isAppleSignInAvailable.value = false;
+      appleSignInAvailable.value = false;
     }
   }
 
   /// Método público para verificar disponibilidade
   Future<void> checkAppleSignInAvailability() async {
     await _checkAppleSignInAvailability();
+  }
+
+  /// Método público para verificar disponibilidade do Apple Sign In (usado pelos widgets)
+  Future<bool> isAppleSignInAvailable() async {
+    await _checkAppleSignInAvailability();
+    return appleSignInAvailable.value;
   }
 
   /// Login com Apple
@@ -189,7 +195,7 @@ class AuthController extends GetxController {
       authError.value = '';
       _reauthAttempts = 0;
 
-      if (!isAppleSignInAvailable.value) {
+      if (!appleSignInAvailable.value) {
         throw Exception('Apple Sign In não está disponível neste dispositivo');
       }
 
@@ -1087,6 +1093,59 @@ class AuthController extends GetxController {
     }
   }
 
+  // ========== EMAIL VERIFICATION ==========
+
+  Future<void> sendEmailVerification() async {
+    try {
+      debugPrint('=== sendEmailVerification() ===');
+
+      final user = currentUser.value;
+      if (user == null) {
+        _showErrorSnackbar('Erro', 'Usuário não está logado');
+        return;
+      }
+
+      if (user.emailVerified) {
+        _showSuccessSnackbar('Info', 'Seu email já está verificado');
+        return;
+      }
+
+      isLoading.value = true;
+      authError.value = '';
+
+      await user.sendEmailVerification();
+
+      _showSuccessSnackbar('Email Enviado',
+          'Um email de verificação foi enviado para ${user.email}');
+
+    } on FirebaseAuthException catch (e) {
+      debugPrint('❌ Erro ao enviar email de verificação: ${e.code} - ${e.message}');
+      authError.value = _handleAuthException(e);
+      _showErrorSnackbar('Erro', authError.value);
+    } finally {
+      isLoading.value = false;
+      update();
+    }
+  }
+
+  Future<void> checkEmailVerification() async {
+    try {
+      final user = currentUser.value;
+      if (user == null) return;
+
+      await user.reload();
+      final updatedUser = _auth.currentUser;
+
+      if (updatedUser != null && updatedUser.emailVerified) {
+        currentUser.value = updatedUser;
+        _showSuccessSnackbar('Email Verificado', 'Seu email foi verificado com sucesso!');
+        update();
+      }
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar status do email: $e');
+    }
+  }
+
   // ========== DIAGNOSTIC METHODS ==========
 
   Future<Map<String, dynamic>> testAuthentication() async {
@@ -1151,9 +1210,221 @@ class AuthController extends GetxController {
     results['authTest'] = await testAuthentication();
 
     // 3. Teste de disponibilidade do Apple Sign In
-    results['appleSignInAvailable'] = isAppleSignInAvailable.value;
+    results['appleSignInAvailable'] = appleSignInAvailable.value;
+
+    // 4. Estado do timer de refresh
+    results['tokenRefreshTimer'] = {
+      'isActive': _tokenRefreshTimer != null && _tokenRefreshTimer!.isActive,
+      'reauthAttempts': _reauthAttempts,
+    };
+
+    // 5. Informações do usuário atual
+    if (currentUser.value != null) {
+      results['currentUserInfo'] = {
+        'uid': currentUser.value!.uid,
+        'email': currentUser.value!.email,
+        'displayName': currentUser.value!.displayName,
+        'emailVerified': currentUser.value!.emailVerified,
+        'isAnonymous': currentUser.value!.isAnonymous,
+        'creationTime': currentUser.value!.metadata.creationTime?.toIso8601String(),
+        'lastSignInTime': currentUser.value!.metadata.lastSignInTime?.toIso8601String(),
+        'providers': currentUser.value!.providerData.map((p) => {
+          'providerId': p.providerId,
+          'uid': p.uid,
+          'email': p.email,
+          'displayName': p.displayName,
+        }).toList(),
+      };
+    }
+
+    // 6. Informações do modelo do usuário
+    if (userModel.value != null) {
+      results['userModelInfo'] = {
+        'name': userModel.value!.name,
+        'email': userModel.value!.email,
+        'hasProfileImage': userModel.value!.profileImageUrl?.isNotEmpty,
+        'credits': userModel.value!.credits,
+        'favoriteReadingsCount': userModel.value!.favoriteReadings.length,
+        'favoriteReadersCount': userModel.value!.favoriteReaders.length,
+      };
+    }
 
     debugPrint('Diagnósticos completos concluídos');
     return results;
+  }
+
+  // ========== STATISTICS & ANALYTICS ==========
+
+  Future<Map<String, dynamic>> getUserStatistics() async {
+    try {
+      if (currentUser.value == null || userModel.value == null) {
+        return {};
+      }
+
+      return {
+        'accountAge': DateTime.now().difference(
+            currentUser.value!.metadata.creationTime ?? DateTime.now()
+        ).inDays,
+        'lastLoginDays': DateTime.now().difference(
+            currentUser.value!.metadata.lastSignInTime ?? DateTime.now()
+        ).inDays,
+        'totalCredits': userModel.value!.credits,
+        'favoriteReadings': userModel.value!.favoriteReadings.length,
+        'favoriteReaders': userModel.value!.favoriteReaders.length,
+        'emailVerified': currentUser.value!.emailVerified,
+        'loginProvider': userModel.value!.loginProvider ?? 'unknown',
+      };
+    } catch (e) {
+      debugPrint('❌ Erro ao obter estatísticas do usuário: $e');
+      return {};
+    }
+  }
+
+  // ========== PRIVACY & SECURITY ==========
+
+  Future<void> updatePrivacySettings(Map<String, bool> settings) async {
+    try {
+      final user = currentUser.value;
+      if (user == null) {
+        _showErrorSnackbar('Erro', 'Usuário não está logado');
+        return;
+      }
+
+      await _firebaseService.updateUserData(user.uid, {
+        'privacySettings': settings,
+        'privacyUpdatedAt': FieldValue.serverTimestamp(),
+      });
+
+      await _loadUserData();
+      _showSuccessSnackbar('Sucesso', 'Configurações de privacidade atualizadas');
+
+    } catch (e) {
+      debugPrint('❌ Erro ao atualizar configurações de privacidade: $e');
+      _showErrorSnackbar('Erro', 'Não foi possível atualizar as configurações');
+    }
+  }
+
+  Future<Map<String, bool>> getPrivacySettings() async {
+    try {
+      final user = currentUser.value;
+      if (user == null) return {};
+
+      final userData = await _firebaseService.getUserData(user.uid);
+      if (userData.exists) {
+        final data = userData.data() as Map<String, dynamic>;
+        final privacySettings = data['privacySettings'] as Map<String, dynamic>?;
+
+        if (privacySettings != null) {
+          return privacySettings.map((key, value) => MapEntry(key, value as bool));
+        }
+      }
+
+      // Configurações padrão
+      return {
+        'allowNotifications': true,
+        'allowEmailMarketing': false,
+        'allowDataAnalytics': true,
+        'showProfileToOthers': true,
+        'allowContactFromReaders': true,
+      };
+    } catch (e) {
+      debugPrint('❌ Erro ao obter configurações de privacidade: $e');
+      return {};
+    }
+  }
+
+  /// Deletar conta do usuário permanentemente
+  Future<bool> deleteAccount({String? password}) async {
+    try {
+      debugPrint('=== deleteAccount() ===');
+
+      if (currentUser.value == null) {
+        _showErrorSnackbar('Erro', 'Você precisa estar logado para deletar a conta');
+        return false;
+      }
+
+      isLoading.value = true;
+      authError.value = '';
+
+      final user = currentUser.value!;
+      final userId = user.uid;
+      final email = user.email;
+
+      // Se for login com email/senha, reautenticar primeiro
+      if (password != null && email != null) {
+        debugPrint('Reautenticando usuário antes da deleção...');
+        final credential = EmailAuthProvider.credential(
+          email: email,
+          password: password,
+        );
+        await user.reauthenticateWithCredential(credential);
+      }
+
+      // Deletar dados do Firestore primeiro
+      await _firebaseService.deleteAllUserData(userId);
+
+      // Tentar deletar imagem de perfil
+      try {
+        if (userModel.value?.profileImageUrl != null &&
+            userModel.value!.profileImageUrl!.isNotEmpty) {
+          await _firebaseService.deleteProfileImage(userId);
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erro ao deletar imagem: $e');
+      }
+
+      // Logout do Google se necessário
+      try {
+        await _googleSignIn.signOut();
+      } catch (e) {
+        debugPrint('⚠️ Erro logout Google: $e');
+      }
+
+      // Deletar conta do Firebase Auth
+      await user.delete();
+
+      // Limpar dados locais
+      _clearUserData();
+      _stopTokenRefreshTimer();
+
+      // Mostrar sucesso e redirecionar
+      Get.snackbar(
+        'Conta Deletada',
+        'Sua conta foi deletada permanentemente',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+        duration: const Duration(seconds: 4),
+      );
+
+      Get.offAllNamed(AppRoutes.login);
+      return true;
+
+    } on FirebaseAuthException catch (e) {
+      String errorMessage = 'Erro ao deletar conta';
+      switch (e.code) {
+        case 'requires-recent-login':
+          errorMessage = 'Você precisa fazer login novamente antes de deletar a conta';
+          break;
+        case 'wrong-password':
+          errorMessage = 'Senha incorreta';
+          break;
+        default:
+          errorMessage = e.message ?? 'Erro ao deletar conta';
+      }
+
+      authError.value = errorMessage;
+      _showErrorSnackbar('Erro', errorMessage);
+      return false;
+
+    } catch (e) {
+      authError.value = 'Erro inesperado ao deletar conta';
+      _showErrorSnackbar('Erro', 'Erro inesperado ao deletar conta');
+      return false;
+
+    } finally {
+      isLoading.value = false;
+      update();
+    }
   }
 }

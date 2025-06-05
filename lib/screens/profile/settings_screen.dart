@@ -8,6 +8,8 @@ import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/controllers/settings_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
+import 'package:oraculum/services/rating_service.dart';
+import 'package:oraculum/services/url_service.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -87,6 +89,218 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       'spacing': isTablet ? 24.0 : isSmallScreen ? 16.0 : 20.0,
       'sectionSpacing': isTablet ? 32.0 : isSmallScreen ? 20.0 : 24.0,
     };
+  }
+
+  void _showDeleteAccountDialog() {
+    Get.dialog(
+        AlertDialog(
+            backgroundColor: const Color(0xFF2A2A40),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.warning, color: Colors.red, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Text('Deletar Conta', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ATENÇÃO: Esta ação é irreversível!',
+                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Todos os seus dados serão deletados permanentemente.',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Get.back(),
+                child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Get.back();
+                  _confirmDeleteAccount();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Continuar'),
+              ),
+            ],
+        ),
+    );
+  }
+
+  void _confirmDeleteAccount() {
+    final passwordController = TextEditingController();
+    final user = _authController.currentUser.value;
+
+    // Verificar se é login com email/senha
+    final needsPassword = user?.providerData.any(
+            (provider) => provider.providerId == 'password'
+    ) ?? false;
+
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF2A2A40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_forever, color: Colors.red, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Text('Confirmar Deleção', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (needsPassword) ...[
+              const Text(
+                'Digite sua senha para confirmar:',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Senha',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  prefixIcon: const Icon(Icons.lock_outline, color: Colors.red),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withOpacity(0.2)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                  ),
+                ),
+              ),
+            ] else ...[
+              const Text(
+                'Esta ação não pode ser desfeita. Sua conta será deletada permanentemente.',
+                style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.red, size: 16),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Esta ação é irreversível!',
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
+          ),
+          Obx(() => ElevatedButton(
+            onPressed: _authController.isLoading.value
+                ? null
+                : () async {
+              if (needsPassword && passwordController.text.trim().isEmpty) {
+                Get.snackbar(
+                  'Erro',
+                  'Por favor, digite sua senha',
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                  snackPosition: SnackPosition.BOTTOM,
+                );
+                return;
+              }
+
+              Get.back();
+
+              final success = await _authController.deleteAccount(
+                password: needsPassword ? passwordController.text.trim() : null,
+              );
+
+              if (!success) {
+                Get.snackbar(
+                  'Erro',
+                  'Não foi possível deletar a conta. Tente fazer login novamente.',
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                  snackPosition: SnackPosition.BOTTOM,
+                  duration: const Duration(seconds: 5),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: _authController.isLoading.value
+                ? const SizedBox(
+              height: 16,
+              width: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            )
+                : const Text('Deletar Conta'),
+          )),
+        ],
+      ),
+    );
   }
 
   @override
@@ -241,6 +455,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               subtitle: 'Veja suas transações',
               color: Colors.green,
               onTap: () => Get.toNamed(AppRoutes.paymentHistory),
+              dimensions: dimensions,
+            ),
+            SizedBox(height: dimensions['spacing']! / 2),
+            _buildSettingItem(
+              icon: Icons.delete_forever,
+              title: 'Deletar Conta',
+              subtitle: 'Remover permanentemente sua conta',
+              color: Colors.red,
+              onTap: _showDeleteAccountDialog,
               dimensions: dimensions,
             ),
           ],
@@ -572,13 +795,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               title: 'Termos de Uso',
               subtitle: 'Leia nossos termos',
               color: Colors.green,
-              onTap: () {
-                // TODO: Implementar visualização dos termos de uso
-                Get.snackbar(
-                  'Em breve',
-                  'Funcionalidade será implementada em breve',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
+              onTap: () async {
+                await UrlService.openTermsOfService();
               },
               dimensions: dimensions,
             ),
@@ -588,13 +806,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               title: 'Política de Privacidade',
               subtitle: 'Como protegemos seus dados',
               color: Colors.orange,
-              onTap: () {
-                // TODO: Implementar visualização da política de privacidade
-                Get.snackbar(
-                  'Em breve',
-                  'Funcionalidade será implementada em breve',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
+              onTap: () async {
+                await UrlService.openPrivacyPolicy();
               },
               dimensions: dimensions,
             ),
@@ -604,13 +817,19 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               title: 'Avaliar o App',
               subtitle: 'Nos ajude com sua avaliação',
               color: Colors.amber,
-              onTap: () {
-                // TODO: Implementar avaliação do app
-                Get.snackbar(
-                  'Obrigado!',
-                  'Em breve você poderá avaliar o app',
-                  snackPosition: SnackPosition.BOTTOM,
-                );
+              onTap: () async {
+                await RatingService.showCustomRatingDialog();
+              },
+              dimensions: dimensions,
+            ),
+            SizedBox(height: dimensions['spacing']! / 2),
+            _buildSettingItem(
+              icon: Icons.support_agent,
+              title: 'Suporte',
+              subtitle: 'Central de ajuda e contato',
+              color: Colors.purple,
+              onTap: () async {
+                await UrlService.openSupport();
               },
               dimensions: dimensions,
             ),
