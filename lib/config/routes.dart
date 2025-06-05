@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
+import 'package:oraculum/controllers/mystic_circles_controller.dart';
 import 'package:oraculum/screens/astrology/birth_chart_details_screen.dart';
 import 'package:oraculum/screens/astrology/birth_chart_history_screen.dart';
 import 'package:oraculum/screens/astrology/birth_chart_screen.dart';
@@ -14,6 +15,8 @@ import 'package:oraculum/screens/home/navigation_screen.dart';
 import 'package:oraculum/screens/mediums/booking_screen.dart';
 import 'package:oraculum/screens/mediums/medium_profile_screen.dart';
 import 'package:oraculum/screens/mediums/mediums_list_screen.dart';
+import 'package:oraculum/screens/mystic_circle/circle_details_screen.dart';
+import 'package:oraculum/screens/mystic_circle/mystic_circles_screen.dart';
 import 'package:oraculum/screens/onboarding_screen.dart';
 import 'package:oraculum/screens/payment/payment_history_screen.dart';
 import 'package:oraculum/screens/payment/payment_methods_screen.dart';
@@ -26,6 +29,7 @@ import 'package:oraculum/screens/tarot/card_details_screen.dart';
 import 'package:oraculum/screens/tarot/saved_reading_detail_screen.dart';
 import 'package:oraculum/screens/tarot/saved_readings_list_screen.dart';
 import 'package:oraculum/screens/tarot/tarot_reading_screen.dart';
+import 'package:oraculum/services/mystic_circles_service.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -57,6 +61,9 @@ class AppRoutes {
   static const String googleRegisterComplete = '/google-register-complete';
   static const String notificationSettings = '/notificationSettings';
   static const String notificationList = '/notificationList';
+
+  static const String mysticCircles = '/mystic-circles';
+  static const String circleDetails = '/circle-details';
 
 
 
@@ -120,6 +127,24 @@ class AppRoutes {
       page: () => const NotificationsListScreen(),
       transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 300),
+    ),
+
+    GetPage(
+      name: mysticCircles,
+      page: () => const MysticCirclesScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut(() => MysticCirclesService());
+        Get.lazyPut(() => MysticCirclesController());
+      }),
+    ),
+
+    GetPage(
+      name: circleDetails,
+      page: () => const CircleDetailsScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut(() => MysticCirclesService());
+        Get.lazyPut(() => MysticCirclesController());
+      }),
     ),
   ];
 }
