@@ -515,602 +515,604 @@ class _MysticCirclesScreenState extends State<MysticCirclesScreen>
       ),
     );
   }
-}
 
 // ========== DESCOBRIR TAB ==========
 
-Widget _buildDiscoverTab() {
-  return Column(
-    children: [
-      _buildSearchBar(),
-      _buildFilterChips(),
-      Expanded(
-        child: RefreshIndicator(
-          onRefresh: () async => _controller.loadDiscoveredCircles(),
-          color: const Color(0xFF6C63FF),
-          child: Obx(() {
-            if (_controller.discoveredCircles.isEmpty) {
-              return _buildEmptyState(
-                icon: Icons.explore_outlined,
-                title: 'Nenhum círculo encontrado',
-                subtitle: 'Tente ajustar os filtros de busca\nou criar seu próprio círculo',
-                buttonText: 'Limpar Filtros',
-                onButtonPressed: _controller.clearFilters,
-              );
-            }
+  Widget _buildDiscoverTab() {
+    return Column(
+      children: [
+        _buildSearchBar(),
+        _buildFilterChips(),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async => _controller.loadDiscoveredCircles(),
+            color: const Color(0xFF6C63FF),
+            child: Obx(() {
+              if (_controller.discoveredCircles.isEmpty) {
+                return _buildEmptyState(
+                  icon: Icons.explore_outlined,
+                  title: 'Nenhum círculo encontrado',
+                  subtitle: 'Tente ajustar os filtros de busca\nou criar seu próprio círculo',
+                  buttonText: 'Limpar Filtros',
+                  onButtonPressed: _controller.clearFilters,
+                );
+              }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: _controller.discoveredCircles.length,
-              itemBuilder: (context, index) {
-                final circle = _controller.discoveredCircles[index];
-                return _buildDiscoverCircleCard(circle, index);
-              },
-            );
-          }),
+              return ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: _controller.discoveredCircles.length,
+                itemBuilder: (context, index) {
+                  final circle = _controller.discoveredCircles[index];
+                  return _buildDiscoverCircleCard(circle, index);
+                },
+              );
+            }),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      child: TextField(
+        onChanged: _controller.searchCircles,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Buscar círculos...',
+          hintStyle: const TextStyle(color: Colors.white54),
+          prefixIcon: const Icon(Icons.search, color: Colors.white54),
+          filled: true,
+          fillColor: Colors.black.withOpacity(0.3),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: const BorderSide(
+              color: Color(0xFF6C63FF),
+              width: 2,
+            ),
+          ),
         ),
       ),
-    ],
-  );
-}
+    );
+  }
 
-Widget _buildSearchBar() {
-  return Container(
-    margin: const EdgeInsets.all(20),
-    child: TextField(
-      onChanged: _controller.searchCircles,
-      style: const TextStyle(color: Colors.white),
-      decoration: InputDecoration(
-        hintText: 'Buscar círculos...',
-        hintStyle: const TextStyle(color: Colors.white54),
-        prefixIcon: const Icon(Icons.search, color: Colors.white54),
-        filled: true,
-        fillColor: Colors.black.withOpacity(0.3),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(25),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(25),
-          borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+  Widget _buildFilterChips() {
+    final tags = ['Tarô', 'Astrologia', 'Numerologia', 'Meditação', 'Cristais', 'Runas'];
+
+    return Container(
+      height: 50,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      child: Obx(() => ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: tags.length,
+        itemBuilder: (context, index) {
+          final tag = tags[index];
+          final isSelected = _controller.selectedTags.contains(tag);
+
+          return Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: FilterChip(
+              label: Text(tag),
+              selected: isSelected,
+              onSelected: (_) => _controller.toggleTag(tag),
+              backgroundColor: Colors.black.withOpacity(0.3),
+              selectedColor: const Color(0xFF6C63FF).withOpacity(0.3),
+              labelStyle: TextStyle(
+                color: isSelected ? const Color(0xFF6C63FF) : Colors.white70,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              side: BorderSide(
+                color: isSelected ? const Color(0xFF6C63FF) : Colors.white.withOpacity(0.2),
+              ),
+            ),
+          );
+        },
+      )),
+    );
+  }
+
+  Widget _buildDiscoverCircleCard(MysticCircle circle, int index) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        elevation: 8,
+        color: Colors.black.withOpacity(0.4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: _getCircleTypeColor(circle.type).withOpacity(0.3),
             width: 1,
           ),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(25),
-          borderSide: const BorderSide(
-            color: Color(0xFF6C63FF),
-            width: 2,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-Widget _buildFilterChips() {
-  final tags = ['Tarô', 'Astrologia', 'Numerologia', 'Meditação', 'Cristais', 'Runas'];
-
-  return Container(
-    height: 50,
-    margin: const EdgeInsets.symmetric(horizontal: 20),
-    child: Obx(() => ListView.builder(
-      scrollDirection: Axis.horizontal,
-      itemCount: tags.length,
-      itemBuilder: (context, index) {
-        final tag = tags[index];
-        final isSelected = _controller.selectedTags.contains(tag);
-
-        return Container(
-          margin: const EdgeInsets.only(right: 8),
-          child: FilterChip(
-            label: Text(tag),
-            selected: isSelected,
-            onSelected: (_) => _controller.toggleTag(tag),
-            backgroundColor: Colors.black.withOpacity(0.3),
-            selectedColor: const Color(0xFF6C63FF).withOpacity(0.3),
-            labelStyle: TextStyle(
-              color: isSelected ? const Color(0xFF6C63FF) : Colors.white70,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-            side: BorderSide(
-              color: isSelected ? const Color(0xFF6C63FF) : Colors.white.withOpacity(0.2),
-            ),
-          ),
-        );
-      },
-    )),
-  );
-}
-
-Widget _buildDiscoverCircleCard(MysticCircle circle, int index) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    child: Card(
-      elevation: 8,
-      color: Colors.black.withOpacity(0.4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: _getCircleTypeColor(circle.type).withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: _getCircleTypeColor(circle.type).withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _getCircleTypeIcon(circle.type),
-                    color: _getCircleTypeColor(circle.type),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        circle.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        circle.description,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                _buildStatChip(
-                  icon: Icons.people,
-                  value: '${circle.totalMembers}',
-                  label: 'membros',
-                  color: Colors.blue,
-                ),
-                const SizedBox(width: 8),
-                _buildStatChip(
-                  icon: Icons.auto_stories,
-                  value: '${circle.stats.totalReadings}',
-                  label: 'leituras',
-                  color: Colors.purple,
-                ),
-                const Spacer(),
-                ElevatedButton(
-                  onPressed: () => _controller.requestToJoinCircle(circleId: circle.id),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF6C63FF),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.add, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        circle.settings.requireApproval ? 'Solicitar' : 'Entrar',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            if (circle.tags.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: circle.tags.take(4).map((tag) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      color: _getCircleTypeColor(circle.type).withOpacity(0.2),
+                      shape: BoxShape.circle,
                     ),
-                    child: Text(
-                      '#$tag',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
+                    child: Icon(
+                      _getCircleTypeIcon(circle.type),
+                      color: _getCircleTypeColor(circle.type),
+                      size: 24,
                     ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ],
-        ),
-      ),
-    ),
-  ).animate(delay: Duration(milliseconds: index * 100))
-      .fadeIn(duration: 600.ms)
-      .slideX(begin: 0.1, end: 0);
-}
-
-// ========== CONVITES TAB ==========
-
-Widget _buildInvitesTab() {
-  return RefreshIndicator(
-    onRefresh: () async => _controller.loadPendingInvitations(),
-    color: const Color(0xFF6C63FF),
-    child: Obx(() {
-      if (_controller.pendingInvitations.isEmpty) {
-        return _buildEmptyState(
-          icon: Icons.mail_outline,
-          title: 'Nenhum convite pendente',
-          subtitle: 'Quando alguém te convidar para\num círculo, aparecerá aqui',
-          buttonText: 'Descobrir Círculos',
-          onButtonPressed: () => _controller.changeTab(1),
-        );
-      }
-
-      return ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: _controller.pendingInvitations.length,
-        itemBuilder: (context, index) {
-          final invitation = _controller.pendingInvitations[index];
-          return _buildInvitationCard(invitation, index);
-        },
-      );
-    }),
-  );
-}
-
-Widget _buildInvitationCard(CircleInvitation invitation, int index) {
-  return AnimatedContainer(
-    duration: Duration(milliseconds: 300 + (index * 50)),
-    curve: Curves.easeOutQuad,
-    margin: const EdgeInsets.only(bottom: 16),
-    child: Card(
-      elevation: 8,
-      color: Colors.black.withOpacity(0.4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: const Color(0xFF6C63FF).withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6C63FF).withOpacity(0.2),
-                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.mail,
-                    color: Color(0xFF6C63FF),
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Convite para ${invitation.circleName}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          circle.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Convidado por ${invitation.inviterName}',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
+                        const SizedBox(height: 4),
+                        Text(
+                          circle.description,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-            if (invitation.message != null && invitation.message!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  invitation.message!,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
+                ],
               ),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Text(
-                  _formatDate(invitation.createdAt),
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _buildStatChip(
+                    icon: Icons.people,
+                    value: '${circle.totalMembers}',
+                    label: 'membros',
+                    color: Colors.blue,
                   ),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: 70,
-                  height: 32,
-                  child: TextButton(
-                    onPressed: () => _controller.respondToInvitation(
-                      invitationId: invitation.id,
-                      accept: false,
-                    ),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                    ),
-                    child: const FittedBox(
-                      child: Text(
-                        'Recusar',
-                        style: TextStyle(fontSize: 11),
-                      ),
-                    ),
+                  const SizedBox(width: 8),
+                  _buildStatChip(
+                    icon: Icons.auto_stories,
+                    value: '${circle.stats.totalReadings}',
+                    label: 'leituras',
+                    color: Colors.purple,
                   ),
-                ),
-                const SizedBox(width: 6),
-                SizedBox(
-                  width: 70,
-                  height: 32,
-                  child: ElevatedButton(
-                    onPressed: () => _controller.respondToInvitation(
-                      invitationId: invitation.id,
-                      accept: true,
-                    ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: () => _controller.requestToJoinCircle(circleId: circle.id),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6C63FF),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
-                    child: const FittedBox(
-                      child: Text(
-                        'Aceitar',
-                        style: TextStyle(fontSize: 11),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add, size: 16),
+                        const SizedBox(width: 4),
+                        Text(
+                          circle.settings.requireApproval ? 'Solicitar' : 'Entrar',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (circle.tags.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: circle.tags.take(4).map((tag) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: Text(
+                        '#$tag',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    ).animate(delay: Duration(milliseconds: index * 100))
+        .fadeIn(duration: 600.ms)
+        .slideX(begin: 0.1, end: 0);
+  }
+
+// ========== CONVITES TAB ==========
+
+  Widget _buildInvitesTab() {
+    return RefreshIndicator(
+      onRefresh: () async => _controller.loadPendingInvitations(),
+      color: const Color(0xFF6C63FF),
+      child: Obx(() {
+        if (_controller.pendingInvitations.isEmpty) {
+          return _buildEmptyState(
+            icon: Icons.mail_outline,
+            title: 'Nenhum convite pendente',
+            subtitle: 'Quando alguém te convidar para\num círculo, aparecerá aqui',
+            buttonText: 'Descobrir Círculos',
+            onButtonPressed: () => _controller.changeTab(1),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: _controller.pendingInvitations.length,
+          itemBuilder: (context, index) {
+            final invitation = _controller.pendingInvitations[index];
+            return _buildInvitationCard(invitation, index);
+          },
+        );
+      }),
+    );
+  }
+
+  Widget _buildInvitationCard(CircleInvitation invitation, int index) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300 + (index * 50)),
+      curve: Curves.easeOutQuad,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        elevation: 8,
+        color: Colors.black.withOpacity(0.4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: const Color(0xFF6C63FF).withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6C63FF).withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.mail,
+                      color: Color(0xFF6C63FF),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Convite para ${invitation.circleName}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Convidado por ${invitation.inviterName}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (invitation.message != null &&
+                  invitation.message!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    invitation.message!,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ),
               ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Text(
+                    _formatDate(invitation.createdAt),
+                    style: const TextStyle(
+                      color: Colors.white54,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: 70,
+                    height: 32,
+                    child: TextButton(
+                      onPressed: () =>
+                          _controller.respondToInvitation(
+                            invitationId: invitation.id,
+                            accept: false,
+                          ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      child: const FittedBox(
+                        child: Text(
+                          'Recusar',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  SizedBox(
+                    width: 70,
+                    height: 32,
+                    child: ElevatedButton(
+                      onPressed: () =>
+                          _controller.respondToInvitation(
+                            invitationId: invitation.id,
+                            accept: true,
+                          ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C63FF),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      child: const FittedBox(
+                        child: Text(
+                          'Aceitar',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+// ========== HELPER WIDGETS ==========
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String buttonText,
+    required VoidCallback onButtonPressed,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(40),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 64,
+                color: Colors.white54,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: onButtonPressed,
+              icon: const Icon(Icons.add),
+              label: Text(buttonText),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+              ),
             ),
           ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-// ========== HELPER WIDGETS ==========
-
-Widget _buildEmptyState({
-  required IconData icon,
-  required String title,
-  required String subtitle,
-  required String buttonText,
-  required VoidCallback onButtonPressed,
-}) {
-  return Center(
-    child: Padding(
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildStatChip({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              size: 64,
-              color: Colors.white54,
-            ),
-          ),
-          const SizedBox(height: 24),
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 3),
           Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
-            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 16,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton.icon(
-            onPressed: onButtonPressed,
-            icon: const Icon(Icons.add),
-            label: Text(buttonText),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(25),
+          const SizedBox(width: 2),
+          Flexible(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 10,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],
       ),
-    ),
-  );
-}
-
-Widget _buildStatChip({
-  required IconData icon,
-  required String value,
-  required String label,
-  required Color color,
-}) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withOpacity(0.1),
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: color.withOpacity(0.3)),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 14),
-        const SizedBox(width: 3),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(width: 2),
-        Flexible(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 10,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildFloatingActionButton() {
-  if (_controller.selectedTabIndex.value != 0) {
-    return const SizedBox.shrink();
+    );
   }
 
-  return FloatingActionButton.extended(
-    onPressed: _showCreateCircleDialog,
-    backgroundColor: const Color(0xFF6C63FF),
-    foregroundColor: Colors.white,
-    icon: const Icon(Icons.add),
-    label: const Text('Criar Círculo'),
-  );
-}
+  Widget _buildFloatingActionButton() {
+    if (_controller.selectedTabIndex.value != 0) {
+      return const SizedBox.shrink();
+    }
+
+    return FloatingActionButton.extended(
+      onPressed: _showCreateCircleDialog,
+      backgroundColor: const Color(0xFF6C63FF),
+      foregroundColor: Colors.white,
+      icon: const Icon(Icons.add),
+      label: const Text('Criar Círculo'),
+    );
+  }
 
 // ========== HELPER METHODS ==========
 
-Color _getCircleTypeColor(CircleType type) {
-  switch (type) {
-    case CircleType.friends:
-      return Colors.blue;
-    case CircleType.family:
-      return Colors.green;
-    case CircleType.studyGroup:
-      return Colors.purple;
-    case CircleType.open:
-      return Colors.orange;
+  Color _getCircleTypeColor(CircleType type) {
+    switch (type) {
+      case CircleType.friends:
+        return Colors.blue;
+      case CircleType.family:
+        return Colors.green;
+      case CircleType.studyGroup:
+        return Colors.purple;
+      case CircleType.open:
+        return Colors.orange;
+    }
   }
-}
 
-IconData _getCircleTypeIcon(CircleType type) {
-  switch (type) {
-    case CircleType.friends:
-      return Icons.people;
-    case CircleType.family:
-      return Icons.family_restroom;
-    case CircleType.studyGroup:
-      return Icons.school;
-    case CircleType.open:
-      return Icons.public;
+  IconData _getCircleTypeIcon(CircleType type) {
+    switch (type) {
+      case CircleType.friends:
+        return Icons.people;
+      case CircleType.family:
+        return Icons.family_restroom;
+      case CircleType.studyGroup:
+        return Icons.school;
+      case CircleType.open:
+        return Icons.public;
+    }
   }
-}
 
-String _formatDate(DateTime date) {
-  final now = DateTime.now();
-  final difference = now.difference(date);
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
 
-  if (difference.inDays > 0) {
-    return '${difference.inDays}d atrás';
-  } else if (difference.inHours > 0) {
-    return '${difference.inHours}h atrás';
-  } else if (difference.inMinutes > 0) {
-    return '${difference.inMinutes}m atrás';
-  } else {
-    return 'Agora';
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d atrás';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h atrás';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m atrás';
+    } else {
+      return 'Agora';
+    }
   }
-}
 
-void _openCircleDetails(MysticCircle circle) {
-  _controller.selectCircle(circle.id);
-  Get.toNamed(AppRoutes.circleDetails, parameters: {'circleId': circle.id});
-}
+  void _openCircleDetails(MysticCircle circle) {
+    _controller.selectCircle(circle.id);
+    Get.toNamed(AppRoutes.circleDetails, parameters: {'circleId': circle.id});
+  }
 
-void _showCreateCircleDialog() {
-  Get.dialog(_CreateCircleDialog(controller: _controller));
-}
+  void _showCreateCircleDialog() {
+    Get.dialog(_CreateCircleDialog(controller: _controller));
+  }
 }
 
 // ========== CREATE CIRCLE DIALOG ==========
