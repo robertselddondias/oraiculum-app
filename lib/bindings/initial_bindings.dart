@@ -1,6 +1,5 @@
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:oraculum/controllers/card_list_controller.dart';
 import 'package:oraculum/controllers/horoscope_controller.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
@@ -38,6 +37,5 @@ class InitialBinding implements Bindings {
     Get.put(MediumController(), permanent: true);
     Get.put(TarotController(), permanent: true);
     Get.put(HoroscopeController(), permanent: true);
-    Get.put(CardListController(), permanent: true);
   }
 }
