@@ -42,6 +42,29 @@ class PushNotificationService extends GetxService {
     await initialize();
   }
 
+  /// Valida e limpa o nome do tópico para Firebase
+  String _sanitizeTopicName(String topic) {
+    // Remove caracteres inválidos e substitui por underscore
+    String sanitized = topic
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-zA-Z0-9\-_.~%]'), '_')
+        .replaceAll(RegExp(r'_{2,}'), '_') // Remove underscores duplos
+        .replaceAll(RegExp(r'^_+|_+$'), ''); // Remove underscores no início/fim
+
+    // Garantir que não exceda o limite de caracteres
+    if (sanitized.length > 900) {
+      sanitized = sanitized.substring(0, 900);
+    }
+
+    // Garantir que não está vazio
+    if (sanitized.isEmpty) {
+      sanitized = 'default_topic';
+    }
+
+    debugPrint('📮 Tópico original: "$topic" -> Sanitizado: "$sanitized"');
+    return sanitized;
+  }
+
   /// Inicializa o serviço de push notifications
   Future<void> initialize() async {
     try {
@@ -321,13 +344,13 @@ class PushNotificationService extends GetxService {
       case 'horoscope':
         Get.toNamed(AppRoutes.horoscope);
         break;
-      // case 'appointment':
-      //   if (targetId.isNotEmpty) {
-      //     Get.toNamed('${AppRoutes.mediumDetail}/$targetId');
-      //   } else {
-      //     Get.toNamed(AppRoutes.mediums);
-      //   }
-      //   break;
+    // case 'appointment':
+    //   if (targetId.isNotEmpty) {
+    //     Get.toNamed('${AppRoutes.mediumDetail}/$targetId');
+    //   } else {
+    //     Get.toNamed(AppRoutes.mediums);
+    //   }
+    //   break;
       case 'tarot':
         Get.toNamed(AppRoutes.tarotReading);
         break;
@@ -497,8 +520,11 @@ class PushNotificationService extends GetxService {
   /// Subscreve a um tópico de notificação
   Future<void> subscribeToTopic(String topic) async {
     try {
-      await _firebaseMessaging.subscribeToTopic(topic);
-      debugPrint('📮 Inscrito no tópico: $topic');
+      // Sanitizar o nome do tópico antes de usar
+      final sanitizedTopic = _sanitizeTopicName(topic);
+
+      await _firebaseMessaging.subscribeToTopic(sanitizedTopic);
+      debugPrint('📮 Inscrito no tópico: $sanitizedTopic (original: $topic)');
     } catch (e) {
       debugPrint('❌ Erro ao se inscrever no tópico $topic: $e');
     }
@@ -507,8 +533,11 @@ class PushNotificationService extends GetxService {
   /// Desinscreve de um tópico de notificação
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
-      await _firebaseMessaging.unsubscribeFromTopic(topic);
-      debugPrint('📭 Desinscrito do tópico: $topic');
+      // Sanitizar o nome do tópico antes de usar
+      final sanitizedTopic = _sanitizeTopicName(topic);
+
+      await _firebaseMessaging.unsubscribeFromTopic(sanitizedTopic);
+      debugPrint('📭 Desinscrito do tópico: $sanitizedTopic (original: $topic)');
     } catch (e) {
       debugPrint('❌ Erro ao se desinscrever do tópico $topic: $e');
     }
@@ -543,10 +572,46 @@ class PushNotificationService extends GetxService {
         await unsubscribeFromTopic('promotions');
       }
 
+      // Subscrever baseado no signo do usuário (se disponível)
+      final birthDate = userData['birthDate'];
+      if (birthDate != null) {
+        DateTime userBirthDate;
+        if (birthDate is Timestamp) {
+          userBirthDate = birthDate.toDate();
+        } else if (birthDate is DateTime) {
+          userBirthDate = birthDate;
+        } else {
+          userBirthDate = DateTime.parse(birthDate.toString());
+        }
+
+        final zodiacSign = _getZodiacSign(userBirthDate);
+        await subscribeToTopic('horoscope_$zodiacSign');
+        debugPrint('📮 Inscrito em horóscopo específico: horoscope_$zodiacSign');
+      }
+
       debugPrint('✅ Inscrições de tópicos atualizadas');
     } catch (e) {
       debugPrint('❌ Erro ao gerenciar inscrições: $e');
     }
+  }
+
+  /// Obtém o signo zodiacal baseado na data de nascimento
+  String _getZodiacSign(DateTime birthDate) {
+    final month = birthDate.month;
+    final day = birthDate.day;
+
+    if ((month == 3 && day >= 21) || (month == 4 && day <= 19)) return 'aries';
+    if ((month == 4 && day >= 20) || (month == 5 && day <= 20)) return 'touro';
+    if ((month == 5 && day >= 21) || (month == 6 && day <= 20)) return 'gemeos';
+    if ((month == 6 && day >= 21) || (month == 7 && day <= 22)) return 'cancer';
+    if ((month == 7 && day >= 23) || (month == 8 && day <= 22)) return 'leao';
+    if ((month == 8 && day >= 23) || (month == 9 && day <= 22)) return 'virgem';
+    if ((month == 9 && day >= 23) || (month == 10 && day <= 22)) return 'libra';
+    if ((month == 10 && day >= 23) || (month == 11 && day <= 21)) return 'escorpiao';
+    if ((month == 11 && day >= 22) || (month == 12 && day <= 21)) return 'sagitario';
+    if ((month == 12 && day >= 22) || (month == 1 && day <= 19)) return 'capricornio';
+    if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 'aquario';
+    return 'peixes'; // (month == 2 && day >= 19) || (month == 3 && day <= 20)
   }
 
   /// Retorna estatísticas das notificações
@@ -577,10 +642,17 @@ class PushNotificationService extends GetxService {
       await cancelAllNotifications();
       clearHistory();
 
-      // Desinscrever de tópicos conhecidos
+      // Desinscrever de tópicos conhecidos (usando nomes sanitizados)
       final topics = ['all_users', 'horoscope_daily', 'promotions'];
       for (final topic in topics) {
         await unsubscribeFromTopic(topic);
+      }
+
+      // Desinscrever de tópicos de signos
+      final signs = ['aries', 'touro', 'gemeos', 'cancer', 'leao', 'virgem',
+        'libra', 'escorpiao', 'sagitario', 'capricornio', 'aquario', 'peixes'];
+      for (final sign in signs) {
+        await unsubscribeFromTopic('horoscope_$sign');
       }
 
       isInitialized.value = false;
