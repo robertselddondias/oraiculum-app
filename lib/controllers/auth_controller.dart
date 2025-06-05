@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart'; // NOVO IMPORT
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/models/user_model.dart';
 import 'package:oraculum/services/firebase_service.dart';
@@ -398,10 +399,7 @@ class AuthController extends GetxController {
     }
   }
 
-  // Registro com email e senha - VERSÃO MELHORADA
-  // Substitua o método registerWithEmailAndPassword existente no AuthController por este:
-
-// Registro com email e senha - VERSÃO ATUALIZADA COM GÊNERO
+  // Registro com email e senha - VERSÃO ATUALIZADA COM GÊNERO
   Future<User?> registerWithEmailAndPassword(
       String email,
       String password,
@@ -649,6 +647,229 @@ class AuthController extends GetxController {
       update();
     }
   }
+
+  // =========== NOVO: LOGIN COM APPLE ===========
+  /// Verificar se o Apple Sign In está disponível
+  Future<bool> isAppleSignInAvailable() async {
+    try {
+      return await SignInWithApple.isAvailable();
+    } catch (e) {
+      debugPrint('❌ Erro ao verificar disponibilidade do Apple Sign In: $e');
+      return false;
+    }
+  }
+
+  /// Login com Apple
+  Future<User?> signInWithApple() async {
+    try {
+      debugPrint('=== signInWithApple() ===');
+
+      isLoading.value = true;
+      authError.value = '';
+      _reauthAttempts = 0; // Reset contador
+
+      // Verificar se o Apple Sign In está disponível
+      if (!await isAppleSignInAvailable()) {
+        throw Exception('Apple Sign In não está disponível neste dispositivo');
+      }
+
+      // Solicitar credenciais do Apple
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        webAuthenticationOptions: WebAuthenticationOptions(
+          clientId: 'com.selddon.oraculum', // Seu bundle ID
+          redirectUri: Uri.parse('https://oraculum-app.firebaseapp.com/__/auth/handler'),
+        ),
+      );
+
+      debugPrint('Apple credential obtido: ${appleCredential.userIdentifier}');
+
+      // Criar credencial do Firebase com dados do Apple
+      final oauthCredential = OAuthProvider("apple.com").credential(
+        idToken: appleCredential.identityToken,
+        accessToken: appleCredential.authorizationCode,
+      );
+
+      // Fazer login no Firebase com a credencial do Apple
+      final userCredential = await _auth.signInWithCredential(oauthCredential);
+
+      if (userCredential.user != null) {
+        debugPrint('Login com Apple bem-sucedido');
+
+        // Verificar se é um novo usuário ou usuário existente
+        final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+
+        // Garantir que o token seja obtido
+        await userCredential.user!.getIdToken(true);
+        isAuthenticated.value = true;
+        debugPrint('✅ Token obtido após login com Apple');
+
+        // Extrair nome do usuário do Apple (se disponível)
+        String displayName = userCredential.user!.displayName ?? 'Usuário';
+
+        // Se o Apple forneceu nome completo, usar ele
+        if (appleCredential.givenName != null && appleCredential.familyName != null) {
+          displayName = '${appleCredential.givenName} ${appleCredential.familyName}';
+        } else if (appleCredential.givenName != null) {
+          displayName = appleCredential.givenName!;
+        }
+
+        // Atualizar displayName no Firebase Auth se necessário
+        if (userCredential.user!.displayName != displayName) {
+          await userCredential.user!.updateDisplayName(displayName);
+        }
+
+        if (isNewUser) {
+          debugPrint('Novo usuário Apple - criando perfil básico...');
+
+          // Criar dados básicos do usuário no Firestore para novos usuários
+          await _firebaseService.createUserData(userCredential.user!.uid, {
+            'name': displayName,
+            'email': userCredential.user!.email ?? appleCredential.email ?? '',
+            'createdAt': DateTime.now(),
+            'profileImageUrl': userCredential.user!.photoURL ?? '',
+            'favoriteReadings': [],
+            'favoriteReaders': [],
+            'credits': 0.0,
+            'loginProvider': 'apple',
+            'registrationCompleted': false, // Importante: marca como incompleto
+            'appleUserIdentifier': appleCredential.userIdentifier, // Salvar identificador do Apple
+          });
+
+          debugPrint('✅ Perfil básico de novo usuário Apple criado');
+
+          // Carregar dados básicos
+          await _loadUserData();
+          await ensureUserSettingsExist();
+
+          // Redirecionar para completar cadastro
+          debugPrint('Redirecionando para completar cadastro...');
+          Get.offAllNamed(AppRoutes.googleRegisterComplete);
+
+        } else {
+          debugPrint('Usuário Apple existente - verificando se completou o registro...');
+
+          // Verificar se o usuário já completou o registro
+          final registrationCompleted = await checkRegistrationCompleted(userCredential.user!.uid);
+
+          if (!registrationCompleted) {
+            debugPrint('Usuário Apple existente mas registro incompleto - redirecionando para completar...');
+
+            // Carregar dados básicos
+            await _loadUserData();
+
+            // Redirecionar para completar cadastro
+            Get.offAllNamed(AppRoutes.googleRegisterComplete);
+          } else {
+            debugPrint('Usuário Apple existente com registro completo - atualizando informações...');
+
+            // Atualizar informações do usuário existente se necessário
+            await _firebaseService.updateUserData(userCredential.user!.uid, {
+              'lastLogin': DateTime.now(),
+              'name': displayName, // Atualizar nome se mudou
+            });
+
+            await _loadUserData();
+
+            debugPrint('Redirecionando para navegação...');
+            Get.offAllNamed(AppRoutes.navigation);
+          }
+        }
+
+        Get.snackbar(
+          'Sucesso',
+          'Login com Apple realizado com sucesso!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 2),
+        );
+
+        return userCredential.user;
+      }
+
+      return null;
+    } on SignInWithAppleAuthorizationException catch (e) {
+      debugPrint('❌ Erro de autorização Apple: ${e.code} - ${e.message}');
+
+      String errorMessage = 'Erro no login com Apple';
+      switch (e.code) {
+        case AuthorizationErrorCode.canceled:
+          errorMessage = 'Login cancelado pelo usuário';
+          break;
+        case AuthorizationErrorCode.failed:
+          errorMessage = 'Falha na autenticação com Apple';
+          break;
+        case AuthorizationErrorCode.invalidResponse:
+          errorMessage = 'Resposta inválida do Apple';
+          break;
+        case AuthorizationErrorCode.notHandled:
+          errorMessage = 'Erro não tratado pelo Apple';
+          break;
+        case AuthorizationErrorCode.unknown:
+          errorMessage = 'Erro desconhecido no Apple Sign In';
+          break;
+        case AuthorizationErrorCode.notInteractive:
+          // TODO: Handle this case.
+          throw UnimplementedError();
+      }
+
+      authError.value = errorMessage;
+      isAuthenticated.value = false;
+
+      if (e.code != AuthorizationErrorCode.canceled) {
+        Get.snackbar(
+          'Erro no Login Apple',
+          errorMessage,
+          backgroundColor: Colors.red,
+          colorText: Colors.white,
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+      return null;
+    } on FirebaseAuthException catch (e) {
+      debugPrint('❌ Erro de autenticação Firebase no Apple: ${e.code} - ${e.message}');
+      authError.value = _handleAuthException(e);
+      isAuthenticated.value = false;
+
+      Get.snackbar(
+        'Erro no Login Apple',
+        authError.value,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return null;
+    } catch (e) {
+      debugPrint('❌ Erro geral no login com Apple: $e');
+      authError.value = 'Erro no login com Apple';
+      isAuthenticated.value = false;
+
+      String errorMessage = 'Erro no login com Apple';
+
+      if (e.toString().contains('not available')) {
+        errorMessage = 'Apple Sign In não está disponível neste dispositivo';
+      } else if (e.toString().contains('network')) {
+        errorMessage = 'Erro de conexão. Verifique sua internet.';
+      }
+
+      Get.snackbar(
+        'Erro',
+        errorMessage,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return null;
+    } finally {
+      isLoading.value = false;
+      update();
+    }
+  }
+  // =========== FIM DO LOGIN COM APPLE ===========
 
   // Recuperação de senha
   Future<void> sendPasswordResetEmail(String email) async {
@@ -934,58 +1155,6 @@ class AuthController extends GetxController {
     }
   }
 
-  /// Verificar conectividade com Firebase
-  Future<Map<String, dynamic>> testFirebaseConnection() async {
-    try {
-      debugPrint('=== testFirebaseConnection() ===');
-
-      // Testar Firestore
-      await _firebaseService.firestore
-          .collection('test')
-          .doc('connection')
-          .get();
-      debugPrint('✅ Firestore conectado');
-
-      return {
-        'success': true,
-        'firestore': true,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-
-    } catch (e) {
-      debugPrint('❌ Erro de conexão com Firestore: $e');
-      return {
-        'success': false,
-        'firestore': false,
-        'error': e.toString(),
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-    }
-  }
-
-  /// Forçar atualização do token
-  Future<bool> refreshToken() async {
-    try {
-      debugPrint('=== refreshToken() ===');
-
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await user.reload();
-        final token = await user.getIdToken(true);
-        authError.value = '';
-        debugPrint('✅ Token atualizado manualmente com sucesso');
-        return true;
-      } else {
-        debugPrint('❌ Usuário não logado');
-        return false;
-      }
-    } catch (e) {
-      debugPrint('❌ Erro ao atualizar token: $e');
-      authError.value = 'Erro ao atualizar token';
-      return false;
-    }
-  }
-
   /// Executar diagnóstico completo da autenticação
   Future<Map<String, dynamic>> runCompleteDiagnostics() async {
     debugPrint('=== runCompleteDiagnostics() ===');
@@ -1004,186 +1173,11 @@ class AuthController extends GetxController {
     // 2. Teste de autenticação
     results['authTest'] = await testAuthentication();
 
-    // 3. Teste de conectividade Firebase
-    results['firebaseTest'] = await testFirebaseConnection();
-
-    // 4. Teste de refresh de token
-    try {
-      final refreshResult = await refreshToken();
-      results['tokenRefreshTest'] = {
-        'success': refreshResult,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-    } catch (e) {
-      results['tokenRefreshTest'] = {
-        'success': false,
-        'error': e.toString(),
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-    }
-
-    // 5. Verificação de operações de pagamento
-    try {
-      final canPerform = await canPerformPaymentOperations();
-      results['paymentOperationsTest'] = {
-        'success': canPerform,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-    } catch (e) {
-      results['paymentOperationsTest'] = {
-        'success': false,
-        'error': e.toString(),
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-    }
-
-    // 6. Informações do timer
-    results['timerInfo'] = {
-      'timerActive': _tokenRefreshTimer != null,
-      'reauthAttempts': _reauthAttempts,
-      'maxReauthAttempts': _maxReauthAttempts,
-    };
+    // 3. Teste de disponibilidade do Apple Sign In
+    results['appleSignInAvailable'] = await isAppleSignInAvailable();
 
     debugPrint('Diagnósticos completos concluídos');
     return results;
-  }
-
-  /// Método para verificar se é necessário reautenticar para operações sensíveis
-  Future<bool> checkIfRecentAuthRequired() async {
-    try {
-      if (currentUser.value == null) return false;
-
-      // Verificar quando foi o último login
-      final metadata = currentUser.value!.metadata;
-      final lastSignIn = metadata.lastSignInTime;
-
-      if (lastSignIn == null) return true;
-
-      // Se o último login foi há mais de 5 minutos, pode precisar reautenticar
-      final now = DateTime.now();
-      final timeDifference = now.difference(lastSignIn);
-
-      return timeDifference.inMinutes > 5;
-    } catch (e) {
-      debugPrint('Erro ao verificar necessidade de reautenticação: $e');
-      return true; // Por segurança, assumir que precisa reautenticar
-    }
-  }
-
-  /// Método para limpar completamente o estado de autenticação
-  Future<void> clearAuthState() async {
-    debugPrint('=== clearAuthState() ===');
-
-    _stopTokenRefreshTimer();
-
-    currentUser.value = null;
-    userModel.value = null;
-    isAuthenticated.value = false;
-    authError.value = '';
-    _reauthAttempts = 0;
-    isLoading.value = false;
-
-    debugPrint('✅ Estado de autenticação limpo');
-    update();
-  }
-
-  /// Método para verificar conectividade de rede
-  Future<bool> checkNetworkConnectivity() async {
-    try {
-      // Tentativa simples de conexão com o Firebase
-      await _firebaseService.firestore
-          .collection('_test_connectivity')
-          .doc('test')
-          .get()
-          .timeout(const Duration(seconds: 5));
-
-      return true;
-    } catch (e) {
-      debugPrint('❌ Sem conectividade de rede: $e');
-      return false;
-    }
-  }
-
-  /// Método para mostrar diálogo de erro de rede
-  void showNetworkErrorDialog() {
-    Get.dialog(
-      AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.wifi_off, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Sem Conexão'),
-          ],
-        ),
-        content: const Text(
-          'Verifique sua conexão com a internet e tente novamente.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('OK'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Get.back();
-              final hasConnection = await checkNetworkConnectivity();
-              if (hasConnection) {
-                _showSuccessSnackbar('Conectado', 'Conexão restaurada!');
-              } else {
-                _showErrorSnackbar('Ainda sem conexão', 'Verifique sua internet');
-              }
-            },
-            child: const Text('Tentar Novamente'),
-          ),
-        ],
-      ),
-      barrierDismissible: false,
-    );
-  }
-
-  /// Método para mostrar status detalhado da autenticação
-  void showAuthStatus() {
-    final user = currentUser.value;
-
-    String status = '';
-    if (user == null) {
-      status = '❌ Usuário não logado';
-    } else {
-      status = '''
-✅ Usuário: ${user.email}
-✅ UID: ${user.uid}
-✅ Email verificado: ${user.emailVerified ? 'Sim' : 'Não'}
-✅ Último login: ${user.metadata.lastSignInTime}
-✅ Autenticado: ${isAuthenticated.value ? 'Sim' : 'Não'}
-✅ Timer ativo: ${_tokenRefreshTimer != null ? 'Sim' : 'Não'}
-✅ Tentativas reauth: $_reauthAttempts/$_maxReauthAttempts
-      ''';
-    }
-
-    Get.dialog(
-      AlertDialog(
-        title: const Text('Status da Autenticação'),
-        content: SingleChildScrollView(
-          child: Text(status),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Fechar'),
-          ),
-          if (user != null)
-            ElevatedButton(
-              onPressed: () async {
-                Get.back();
-                final diagnostics = await runCompleteDiagnostics();
-                debugPrint('Diagnósticos completos: $diagnostics');
-                _showSuccessSnackbar('Diagnósticos', 'Executados com sucesso (veja o console)');
-              },
-              child: const Text('Executar Diagnósticos'),
-            ),
-        ],
-      ),
-    );
   }
 
   // Tratamento de exceções do Firebase Auth
@@ -1276,24 +1270,6 @@ class AuthController extends GetxController {
       borderRadius: 8,
       icon: const Icon(
         Icons.check_circle_outline,
-        color: Colors.white,
-      ),
-    );
-  }
-
-  /// Método de conveniência para mostrar snackbars de aviso
-  void _showWarningSnackbar(String title, String message) {
-    Get.snackbar(
-      title,
-      message,
-      backgroundColor: Colors.orange,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-      duration: const Duration(seconds: 3),
-      margin: const EdgeInsets.all(16),
-      borderRadius: 8,
-      icon: const Icon(
-        Icons.warning_outlined,
         color: Colors.white,
       ),
     );
