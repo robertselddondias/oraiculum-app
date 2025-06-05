@@ -147,7 +147,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.people_outline),
                 activeIcon: Icon(Icons.people),
-                label: 'Círculo Místico',
+                label: 'Círculo',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person_outline),

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:oraculum/config/app_constants.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class UrlService {
   // URLs dos documentos legais (substitua pelas URLs reais)
-  static const String termsOfServiceUrl = 'https://oraculum-app.com/termos-de-uso';
-  static const String privacyPolicyUrl = 'https://oraculum-app.com/politica-de-privacidade';
+  static const String termsOfServiceUrl = AppConstants.termsOfServiceUrl;
+  static const String privacyPolicyUrl = AppConstants.privacyPolicyUrl;
   static const String supportUrl = 'https://oraculum-app.com/suporte';
   static const String websiteUrl = 'https://oraculum-app.com';
 

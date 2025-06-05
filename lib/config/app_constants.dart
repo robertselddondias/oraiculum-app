@@ -1,7 +1,7 @@
 class AppConstants {
   // URLs legais
-  static const String termsOfServiceUrl = 'https://www.guardiaojus.com.br/terms';
-  static const String privacyPolicyUrl = 'https://oraculum-app.com/privacy';
+  static const String termsOfServiceUrl = 'https://oraculum-app-dcde3.web.app/termos';
+  static const String privacyPolicyUrl = 'https://oraculum-app-dcde3.web.app/privacidade';
   static const String supportUrl = 'https://oraculum-app.com/support';
 
   // App Store URLs para avaliação

@@ -311,15 +311,6 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: () => Get.back(),
-            icon: Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.white,
-              size: dimensions['iconSize']!,
-            ),
-            splashRadius: 24,
-          ),
           Expanded(
             child: Text(
               'Meu Perfil',
