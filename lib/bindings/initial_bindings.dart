@@ -7,6 +7,7 @@ import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/controllers/notification_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/gemini_service.dart';
+import 'package:oraculum/services/mystic_circles_service.dart';
 import 'package:oraculum/services/payment_service.dart';
 import 'package:oraculum/services/stripe_payment_service.dart';
 import 'package:oraculum/services/push_notification_service.dart';
@@ -37,5 +38,7 @@ class InitialBinding implements Bindings {
     Get.put(MediumController(), permanent: true);
     Get.put(TarotController(), permanent: true);
     Get.put(HoroscopeController(), permanent: true);
+
+    Get.put(MysticCirclesService(), permanent: true);
   }
 }
