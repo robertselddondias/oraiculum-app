@@ -108,18 +108,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedGender.isEmpty) {
-      Get.snackbar(
-        'Campos obrigatórios',
-        'Por favor, selecione seu gênero',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        icon: const Icon(Icons.warning, color: Colors.white),
-      );
-      return;
-    }
-
     if (_passwordController.text != _confirmPasswordController.text) {
       Get.snackbar(
         'Erro',
@@ -169,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Gênero *',
+          'Gênero',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w500,
             color: Theme.of(context).colorScheme.onSurface,

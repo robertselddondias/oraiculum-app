@@ -47,7 +47,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
     // Verificar se o usuário está logado e tem um perfil
     if (_authController.userModel.value != null && _authController.isLoggedIn) {
       final birthDate = _authController.userModel.value!.birthDate;
-      final userSign = _getZodiacSignFromDate(birthDate);
+      final userSign = _getZodiacSignFromDate(birthDate!);
 
       // Carregar o horóscopo para o signo do usuário
       await _controller.getDailyHoroscope(userSign);
@@ -260,7 +260,7 @@ class _HoroscopeScreenState extends State<HoroscopeScreen> {
 
             // Destacar o signo do usuário se estiver logado
             final isUserSign = _authController.userModel.value != null &&
-                _getZodiacSignFromDate(_authController.userModel.value!.birthDate) == sign;
+                _getZodiacSignFromDate(_authController.userModel.value!.birthDate!) == sign;
 
             return GestureDetector(
               onTap: () => _controller.getDailyHoroscope(sign),

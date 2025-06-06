@@ -169,7 +169,7 @@ class NotificationController extends GetxController {
       if (user == null) return;
 
       // Inscrever em tópicos baseados no perfil do usuário
-      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate);
+      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate!);
 
       // Inscrições básicas
       await _notificationService.subscribeToTopic('all_users');
@@ -199,7 +199,7 @@ class NotificationController extends GetxController {
       final user = _authController.userModel.value;
       if (user == null || !horoscopeNotifications.value) return;
 
-      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate);
+      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate!);
 
       // Gerar horóscopo usando o Gemini
       final horoscopeText = await _geminiService.getDailyHoroscope(userSign);
@@ -445,7 +445,7 @@ class NotificationController extends GetxController {
       final user = _authController.userModel.value;
       if (user == null) return;
 
-      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate);
+      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate!);
       final timeParts = horoscopeTime.value.split(':');
       final hour = int.parse(timeParts[0]);
       final minute = int.parse(timeParts[1]);
@@ -488,7 +488,7 @@ class NotificationController extends GetxController {
       if (user == null) return;
 
       // Configurar baseado no signo
-      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate);
+      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate!);
       final element = ZodiacUtils.getElement(userSign);
 
       // Personalizar mensagens baseadas no elemento
@@ -519,7 +519,7 @@ class NotificationController extends GetxController {
       if (user == null) return;
 
       final firstName = user.name.split(' ').first;
-      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate);
+      final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate!);
 
       await _notificationService.sendTestNotification(
         title: 'Bem-vindo(a) ao Oraculum, $firstName! 🌟',
@@ -548,7 +548,7 @@ class NotificationController extends GetxController {
       final birthday = user.birthDate;
 
       // Verificar se é aniversário hoje
-      if (now.month == birthday.month && now.day == birthday.day) {
+      if (now.month == birthday!.month && now.day == birthday!.day) {
         final age = now.year - birthday.year;
         final firstName = user.name.split(' ').first;
 

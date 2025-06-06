@@ -136,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       if (_authController.userModel.value != null) {
         // Determinar o signo do usuário com base na data de nascimento
         final birthDate = _authController.userModel.value!.birthDate;
-        final sign = ZodiacUtils.getZodiacSignFromDate(birthDate);
+        final sign = ZodiacUtils.getZodiacSignFromDate(birthDate!);
 
         // Carregar horóscopo do usuário
         await _horoscopeController.getDailyHoroscope(sign);
@@ -220,7 +220,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildSliverAppBar(bool isSmallScreen) {
     final userSign = _authController.userModel.value != null
-        ? ZodiacUtils.getZodiacSignFromDate(_authController.userModel.value!.birthDate)
+        ? ZodiacUtils.getZodiacSignFromDate(_authController.userModel.value!.birthDate!)
         : 'Áries';
     final signColor = ZodiacUtils.getSignColor(userSign);
 
@@ -319,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
       // Determinar o signo do usuário
       final userSign = user != null
-          ? ZodiacUtils.getZodiacSignFromDate(user.birthDate)
+          ? ZodiacUtils.getZodiacSignFromDate(user.birthDate!)
           : 'Áries';
 
       final signColor = ZodiacUtils.getSignColor(userSign);

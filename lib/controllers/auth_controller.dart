@@ -273,7 +273,7 @@ class AuthController extends GetxController {
   }
 
   String _extractDisplayName(User user, AuthorizationCredentialAppleID appleCredential) {
-    String displayName = user.displayName ?? 'Usuário';
+    String displayName = user.displayName ?? 'Não Informado';
 
     if (appleCredential.givenName != null && appleCredential.familyName != null) {
       displayName = '${appleCredential.givenName} ${appleCredential.familyName}';
@@ -725,8 +725,6 @@ class AuthController extends GetxController {
     } else {
       await _handleExistingGoogleUser(userCredential.user!);
     }
-
-    _showSuccessSnackbar('Sucesso', 'Login realizado com sucesso!');
   }
 
   Future<void> _createGoogleUserProfile(User user) async {

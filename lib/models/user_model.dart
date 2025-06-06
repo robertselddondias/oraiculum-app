@@ -4,7 +4,7 @@ class UserModel {
   final String id;
   final String name;
   final String email;
-  final DateTime birthDate;
+  final DateTime? birthDate;
   final String? profileImageUrl;
   final List<String> favoriteReadings;
   final List<String> favoriteReaders;
@@ -36,7 +36,7 @@ class UserModel {
       id: id,
       name: map['name'] ?? '',
       email: map['email'] ?? '',
-      birthDate: (map['birthDate'] as Timestamp).toDate(),
+      birthDate: map['birthDate'] != null ? (map['birthDate'] as Timestamp).toDate() : null,
       profileImageUrl: map['profileImageUrl'],
       favoriteReadings: List<String>.from(map['favoriteReadings'] ?? []),
       favoriteReaders: List<String>.from(map['favoriteReaders'] ?? []),
@@ -55,7 +55,7 @@ class UserModel {
     return {
       'name': name,
       'email': email,
-      'birthDate': Timestamp.fromDate(birthDate),
+      'birthDate': Timestamp.fromDate(birthDate!),
       'profileImageUrl': profileImageUrl,
       'favoriteReadings': favoriteReadings,
       'favoriteReaders': favoriteReaders,
@@ -103,9 +103,9 @@ class UserModel {
   /// Retorna a idade do usuário baseada na data de nascimento
   int get age {
     final now = DateTime.now();
-    int age = now.year - birthDate.year;
-    if (now.month < birthDate.month ||
-        (now.month == birthDate.month && now.day < birthDate.day)) {
+    int age = now.year - birthDate!.year;
+    if (now.month < birthDate!.month ||
+        (now.month == birthDate!.month && now.day < birthDate!.day)) {
       age--;
     }
     return age;
@@ -113,8 +113,8 @@ class UserModel {
 
   /// Retorna o signo zodiacal baseado na data de nascimento
   String get zodiacSign {
-    final day = birthDate.day;
-    final month = birthDate.month;
+    final day = birthDate!.day;
+    final month = birthDate!.month;
 
     if ((month == 1 && day >= 20) || (month == 2 && day <= 18)) return 'Aquário';
     if ((month == 2 && day >= 19) || (month == 3 && day <= 20)) return 'Peixes';

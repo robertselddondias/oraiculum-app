@@ -100,18 +100,6 @@ class _GoogleRegisterCompleteScreenState extends State<GoogleRegisterCompleteScr
   Future<void> _completeRegistration() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedGender.isEmpty) {
-      Get.snackbar(
-        'Campos obrigatórios',
-        'Por favor, selecione seu gênero',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        icon: const Icon(Icons.warning, color: Colors.white),
-      );
-      return;
-    }
-
     // Validar a data digitada
     final parsedDate = _parseDate(_birthDateController.text);
     if (parsedDate == null) {
@@ -192,7 +180,7 @@ class _GoogleRegisterCompleteScreenState extends State<GoogleRegisterCompleteScr
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Gênero *',
+          'Gênero',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w500,
             color: Theme.of(context).colorScheme.onSurface,

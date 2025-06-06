@@ -142,7 +142,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               BottomNavigationBarItem(
                 icon: Icon(Icons.style_outlined),
                 activeIcon: Icon(Icons.grid_view),
-                label: 'Tarot',
+                label: 'Tarô',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.people_outline),

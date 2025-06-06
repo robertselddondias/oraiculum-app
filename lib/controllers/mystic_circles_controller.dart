@@ -5,11 +5,15 @@ import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/models/mystic_circle_model.dart';
 import 'package:oraculum/models/shared_reading_model.dart';
 import 'package:oraculum/models/circle_invitation_model.dart';
+import 'package:oraculum/models/user_model.dart';
+import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/mystic_circles_service.dart';
 
 class MysticCirclesController extends GetxController {
   final MysticCirclesService _circlesService = Get.find<MysticCirclesService>();
   final AuthController _authController = Get.find<AuthController>();
+
+  final FirebaseService _firebaseService = Get.find<FirebaseService>();
 
   // Estados observáveis
   RxBool isLoading = false.obs;
@@ -741,6 +745,10 @@ class MysticCirclesController extends GetxController {
         loadPendingInvitations();
         break;
     }
+  }
+
+  Future<UserModel?> getUser(String uuid) async {
+    return await _firebaseService.getUser(uuid);
   }
 
   @override

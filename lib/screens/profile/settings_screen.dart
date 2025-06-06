@@ -523,7 +523,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       );
     }
 
-    final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate);
+    final userSign = ZodiacUtils.getZodiacSignFromDate(user.birthDate!);
     final signColor = ZodiacUtils.getSignColor(userSign);
 
     return Container(

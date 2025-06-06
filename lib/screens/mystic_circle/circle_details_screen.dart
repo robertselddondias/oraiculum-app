@@ -1,11 +1,15 @@
-// lib/screens/mystic_circle/circle_details_screen.dart - PART 1
+// lib/screens/mystic_circle/circle_details_screen.dart - VERSÃO ATUALIZADA
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/mystic_circles_controller.dart';
 import 'package:oraculum/models/mystic_circle_model.dart';
 import 'package:oraculum/models/shared_reading_model.dart';
+import 'package:oraculum/models/user_model.dart';
+import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
+import 'package:oraculum/widgets/app_avatar.dart';
 
 class CircleDetailsScreen extends StatefulWidget {
   const CircleDetailsScreen({super.key});
@@ -22,7 +26,13 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
   late Animation<Alignment> _topAlignmentAnimation;
   late Animation<Alignment> _bottomAlignmentAnimation;
 
+  final FirebaseService _firebaseService = Get.find<FirebaseService>();
+
   final String circleId = Get.parameters['circleId'] ?? '';
+
+  // Cache para armazenar dados dos membros
+  final Map<String, UserModel> _membersCache = {};
+  final RxBool _loadingMembers = false.obs;
 
   @override
   void initState() {
@@ -32,6 +42,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
 
     if (circleId.isNotEmpty) {
       _controller.selectCircle(circleId);
+      _loadMembersData();
     }
   }
 
@@ -60,6 +71,39 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
         curve: Curves.easeInOut,
       ),
     );
+  }
+
+  /// Carrega os dados dos membros do círculo
+  Future<void> _loadMembersData() async {
+    _loadingMembers.value = true;
+
+    try {
+      final circle = _controller.selectedCircle.value;
+      if (circle == null) return;
+
+      debugPrint('=== _loadMembersData() ===');
+      debugPrint('Carregando dados para ${circle.memberIds.length} membros');
+
+      for (final memberId in circle.memberIds) {
+        if (!_membersCache.containsKey(memberId)) {
+          try {
+            final userData = await _firebaseService.getUser(memberId);
+            if (userData != null) {
+              _membersCache[memberId] = userData;
+              debugPrint('✅ Dados carregados para: ${userData.name}');
+            } else {
+              debugPrint('⚠️ Usuário não encontrado: $memberId');
+            }
+          } catch (e) {
+            debugPrint('❌ Erro ao carregar usuário $memberId: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Erro geral ao carregar membros: $e');
+    } finally {
+      _loadingMembers.value = false;
+    }
   }
 
   @override
@@ -136,7 +180,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
     final isAdmin = circle.isAdmin(_controller.currentUserId ?? '');
 
     return SliverAppBar(
-      expandedHeight: 275, // Aumentei um pouco mais
+      expandedHeight: 275,
       floating: false,
       pinned: true,
       backgroundColor: Colors.transparent,
@@ -198,15 +242,15 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
               ],
             ),
           ),
-          child: SafeArea( // Adicionar SafeArea aqui
-            child: SingleChildScrollView( // Adicionar ScrollView para evitar overflow
+          child: SafeArea(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const SizedBox(height: 60), // Espaço para app bar
+                  const SizedBox(height: 60),
                   Container(
-                    padding: const EdgeInsets.all(16), // Reduzir padding
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: _getCircleTypeColor(circle.type).withOpacity(0.2),
                       shape: BoxShape.circle,
@@ -218,34 +262,33 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
                     child: Icon(
                       _getCircleTypeIcon(circle.type),
                       color: _getCircleTypeColor(circle.type),
-                      size: 32, // Reduzir tamanho do ícone
+                      size: 32,
                     ),
                   ),
-                  const SizedBox(height: 12), // Reduzir espaçamento
+                  const SizedBox(height: 12),
                   Text(
                     circle.name,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 22, // Reduzir tamanho da fonte
+                      fontSize: 22,
                       fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2, // Limitar linhas
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6), // Reduzir espaçamento
-                  Text(
-                    circle.description,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14, // Reduzir tamanho da fonte
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12), // Reduzir espaçamento
-                  // Estatísticas em layout mais compacto
+                  const SizedBox(height: 6),
+                  Text(
+                    circle.description,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                     decoration: BoxDecoration(
@@ -274,7 +317,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
                         ),
                       ],
                     ),
-                  ), // Espaço final
+                  ),
                 ],
               ),
             ),
@@ -284,7 +327,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
     );
   }
 
-  // Novo widget para estatísticas compactas
   Widget _buildCompactStat({
     required IconData icon,
     required String value,
@@ -316,7 +358,7 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white54,
           tabs: const [
-            Tab(text: 'Leituras', icon: Icon(Icons.auto_stories, size: 18)), // Reduzir ícones
+            Tab(text: 'Leituras', icon: Icon(Icons.auto_stories, size: 18)),
             Tab(text: 'Membros', icon: Icon(Icons.people, size: 18)),
             Tab(text: 'Sobre', icon: Icon(Icons.info, size: 18)),
           ],
@@ -326,40 +368,692 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
     );
   }
 
-  Widget _buildStatColumn({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
+  // ========== MEMBERS TAB - VERSÃO ATUALIZADA ==========
+
+  Widget _buildMembersTab() {
+    final circle = _controller.selectedCircle.value;
+    if (circle == null) return const SizedBox.shrink();
+
+    return Obx(() {
+      return RefreshIndicator(
+        onRefresh: _loadMembersData,
+        color: const Color(0xFF6C63FF),
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Header dos membros
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: Text(
+                      'Membros (${circle.totalMembers})',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ]),
+              ),
+            ),
+
+            // Lista de membros usando SliverList para performance
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                    final memberId = circle.memberIds[index];
+                    final isCreator = circle.isCreator(memberId);
+                    final isAdmin = circle.isAdmin(memberId);
+                    final isCurrentUser = memberId == _controller.currentUserId;
+
+                    return FutureBuilder<UserModel?>(
+                      future: _controller.getUser(memberId),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return _buildMemberCardLoading(
+                            memberId: memberId,
+                            isCreator: isCreator,
+                            isAdmin: isAdmin,
+                            isCurrentUser: isCurrentUser,
+                          );
+                        }
+
+                        final userData = snapshot.data;
+
+                        return _buildMemberCard(
+                          memberId: memberId,
+                          userData: userData,
+                          isCreator: isCreator,
+                          isAdmin: isAdmin,
+                          isCurrentUser: isCurrentUser,
+                        );
+                      },
+                    );
+                  },
+                  childCount: circle.memberIds.length,
+                ),
+              ),
+            ),
+
+            // Botão de convite (se for admin)
+            if (circle.isAdmin(_controller.currentUserId ?? ''))
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    const SizedBox(height: 8),
+                    _buildInviteButton(),
+                  ]),
+                ),
+              ),
+          ],
+        ),
+      );
+    });
+  }
+
+  Future<Widget> _buildMembersList(MysticCircle circle) async {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            shape: BoxShape.circle,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Row(
+            children: [
+              Text(
+                'Membros (${circle.totalMembers})',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const Spacer(),
+              Obx(() {
+                if (_loadingMembers.value) {
+                  return const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFF6C63FF),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              }),
+            ],
           ),
-          child: Icon(icon, color: color, size: 20),
         ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-        ),
+        const SizedBox(height: 8),
+        // Separar criador, admins e membros
+        ...circle.memberIds.map((memberId) {
+          final isCreator = circle.isCreator(memberId);
+          final isAdmin = circle.isAdmin(memberId);
+          final isCurrentUser = memberId == _controller.currentUserId;
+
+          return FutureBuilder<UserModel?>(
+            future: _controller.getUser(memberId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _buildMemberCardLoading(
+                  memberId: memberId,
+                  isCreator: isCreator,
+                  isAdmin: isAdmin,
+                  isCurrentUser: isCurrentUser,
+                );
+              }
+
+              final userData = snapshot.data;
+
+              return _buildMemberCard(
+                memberId: memberId,
+                userData: userData,
+                isCreator: isCreator,
+                isAdmin: isAdmin,
+                isCurrentUser: isCurrentUser,
+              );
+            },
+          );
+        }).toList(),
       ],
     );
+  }
+
+  // Método atualizado para _buildMemberCard
+  Widget _buildMemberCard({
+    required String memberId,
+    required UserModel? userData,
+    required bool isCreator,
+    required bool isAdmin,
+    required bool isCurrentUser,
+  }) {
+    // Nome do usuário - usar o nome real se disponível, senão usar ID
+    final displayName = userData?.name ?? 'Usuário $memberId';
+    final userInitials = userData?.initials ?? '?';
+
+    // Verificar se a URL da imagem é válida
+    final imageUrl = userData?.profileImageUrl;
+    final hasValidImage = imageUrl != null &&
+        imageUrl.isNotEmpty &&
+        imageUrl.startsWith('http');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Card(
+        color: Colors.black.withOpacity(0.3),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundImage: hasValidImage
+                ? NetworkImage(imageUrl!)
+                : null,
+            backgroundColor: const Color(0xFF6C63FF).withOpacity(0.3),
+            child: !hasValidImage
+                ? Text(
+              userInitials,
+              style: const TextStyle(
+                color: Color(0xFF6C63FF),
+                fontWeight: FontWeight.bold,
+              ),
+            )
+                : null,
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  displayName,
+                  style: const TextStyle(color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (isCurrentUser) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'VOCÊ',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          subtitle: Row(
+            children: [
+              Text(
+                isCreator ? 'Criador' : isAdmin ? 'Administrador' : 'Membro',
+                style: TextStyle(
+                  color: isCreator ? Colors.amber : isAdmin ? Colors.blue : Colors.white70,
+                ),
+              ),
+              if (userData?.zodiacSign != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    userData!.zodiacSign,
+                    style: const TextStyle(
+                      color: Colors.purple,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          trailing: !isCurrentUser && _controller.isCurrentUserAdmin
+              ? PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white54),
+            color: const Color(0xFF2A2A40),
+            onSelected: (value) => _handleMemberAction(value, memberId, userData),
+            itemBuilder: (context) => [
+              if (!isCreator) ...[
+                const PopupMenuItem(
+                  value: 'remove',
+                  child: Row(
+                    children: [
+                      Icon(Icons.remove_circle, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Remover', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                ),
+                if (!isAdmin && _controller.isCurrentUserCreator)
+                  const PopupMenuItem(
+                    value: 'promote',
+                    child: Row(
+                      children: [
+                        Icon(Icons.admin_panel_settings, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('Tornar Admin', style: TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  ),
+              ],
+            ],
+          )
+              : null,
+        ),
+      ),
+    );
+  }
+
+// Método para mostrar loading enquanto carrega dados do usuário
+  Widget _buildMemberCardLoading({
+    required String memberId,
+    required bool isCreator,
+    required bool isAdmin,
+    required bool isCurrentUser,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Card(
+        color: Colors.black.withOpacity(0.3),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: const Color(0xFF6C63FF).withOpacity(0.3),
+            child: const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6C63FF)),
+              ),
+            ),
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              if (isCurrentUser) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'VOCÊ',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          subtitle: Text(
+            isCreator ? 'Criador' : isAdmin ? 'Administrador' : 'Membro',
+            style: TextStyle(
+              color: isCreator ? Colors.amber : isAdmin ? Colors.blue : Colors.white70,
+            ),
+          ),
+          trailing: !isCurrentUser && _controller.isCurrentUserAdmin
+              ? const Icon(Icons.more_vert, color: Colors.white24)
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInviteButton() {
+    return Container(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _showInviteDialog,
+        icon: const Icon(Icons.person_add, size: 20),
+        label: const Text('Convidar Novos Membros'),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF6C63FF),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 2,
+        ),
+      ),
+    );
+  }
+
+  // ========== HELPER METHODS ==========
+
+  void _handleMemberAction(String action, String memberId, UserModel? userData) {
+    switch (action) {
+      case 'remove':
+        _showRemoveMemberDialog(memberId, userData);
+        break;
+      case 'promote':
+        _promoteMember(memberId, userData);
+        break;
+      case 'demote':
+        _demoteMember(memberId, userData);
+        break;
+      case 'view_profile':
+        _viewMemberProfile(memberId, userData);
+        break;
+    }
+  }
+
+  void _showRemoveMemberDialog(String memberId, UserModel? userData) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF2A2A40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.remove_circle, color: Colors.red),
+            SizedBox(width: 12),
+            Text('Remover Membro', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Text(
+          'Tem certeza que deseja remover ${userData?.name ?? 'este membro'} do círculo?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _removeMember(memberId);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Remover'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _promoteMember(String memberId, UserModel? userData) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF2A2A40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.admin_panel_settings, color: Colors.blue),
+            SizedBox(width: 12),
+            Text('Promover a Admin', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Text(
+          'Deseja tornar ${userData?.name ?? 'este membro'} um administrador do círculo?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Implementar promoção
+              Get.snackbar(
+                'Em Desenvolvimento',
+                'Funcionalidade de promoção em breve!',
+                backgroundColor: const Color(0xFF6C63FF),
+                colorText: Colors.white,
+                snackPosition: SnackPosition.BOTTOM,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Promover'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _demoteMember(String memberId, UserModel? userData) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF2A2A40),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.person, color: Colors.orange),
+            SizedBox(width: 12),
+            Text('Remover Admin', style: TextStyle(color: Colors.white)),
+          ],
+        ),
+        content: Text(
+          'Deseja remover ${userData?.name ?? 'este membro'} da função de administrador?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.white70)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Implementar rebaixamento
+              Get.snackbar(
+                'Em Desenvolvimento',
+                'Funcionalidade de rebaixamento em breve!',
+                backgroundColor: const Color(0xFF6C63FF),
+                colorText: Colors.white,
+                snackPosition: SnackPosition.BOTTOM,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Remover Admin'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _viewMemberProfile(String memberId, UserModel? userData) {
+    if (userData == null) {
+      Get.snackbar(
+        'Erro',
+        'Dados do usuário não disponíveis',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+      return;
+    }
+
+    Get.dialog(
+      Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 400),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1A2E),
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(
+              color: const Color(0xFF6C63FF).withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.person, color: Color(0xFF6C63FF)),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'Perfil do Membro',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Colors.white54),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                AppAvatar(
+                  imageUrl: userData.profileImageUrl ?? '',
+                  size: 80,
+                  name: userData.name,
+                  backgroundColor: const Color(0xFF6C63FF).withOpacity(0.3),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  userData.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.purple.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    userData.zodiacSign,
+                    style: const TextStyle(
+                      color: Colors.purple,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildProfileInfo('Idade', '${userData.age} anos'),
+                _buildProfileInfo('Membro desde', _formatDateTime(userData.createdAt)),
+                if (_controller.isCurrentUserAdmin)
+                  _buildProfileInfo('Email', userData.email),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6C63FF),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Fechar'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileInfo(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removeMember(String memberId) {
+    _controller.removeMember(
+      circleId: circleId,
+      memberId: memberId,
+    ).then((_) {
+      // Remover do cache local também
+      _membersCache.remove(memberId);
+
+      Get.snackbar(
+        'Sucesso',
+        'Membro removido do círculo',
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    }).catchError((error) {
+      Get.snackbar(
+        'Erro',
+        'Não foi possível remover o membro',
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.BOTTOM,
+      );
+    });
   }
 
   // ========== READINGS TAB ==========
@@ -672,156 +1366,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // lib/screens/mystic_circle/circle_details_screen.dart - PART 2
-
-  // ========== MEMBERS TAB ==========
-
-  Widget _buildMembersTab() {
-    final circle = _controller.selectedCircle.value;
-    if (circle == null) return const SizedBox.shrink();
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildMembersList(circle),
-        const SizedBox(height: 24),
-        if (circle.isAdmin(_controller.currentUserId ?? ''))
-          _buildInviteButton(),
-      ],
-    );
-  }
-
-  Widget _buildMembersList(MysticCircle circle) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          child: Text(
-            'Membros (${circle.totalMembers})',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        ...circle.memberIds.map((memberId) {
-          final isCreator = circle.isCreator(memberId);
-          final isAdmin = circle.isAdmin(memberId);
-          final isCurrentUser = memberId == _controller.currentUserId;
-
-          return _buildMemberCard(
-            memberId: memberId,
-            isCreator: isCreator,
-            isAdmin: isAdmin,
-            isCurrentUser: isCurrentUser,
-          );
-        }).toList(),
-      ],
-    );
-  }
-
-  Widget _buildMemberCard({
-    required String memberId,
-    required bool isCreator,
-    required bool isAdmin,
-    required bool isCurrentUser,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Card(
-        color: Colors.black.withOpacity(0.3),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFF6C63FF).withOpacity(0.3),
-            child: const Icon(Icons.person, color: Color(0xFF6C63FF)),
-          ),
-          title: Row(
-            children: [
-              Text(
-                'Membro $memberId',
-                style: const TextStyle(color: Colors.white),
-              ),
-              if (isCurrentUser) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'VOCÊ',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          subtitle: Text(
-            isCreator ? 'Criador' : isAdmin ? 'Administrador' : 'Membro',
-            style: TextStyle(
-              color: isCreator ? Colors.amber : isAdmin ? Colors.blue : Colors.white70,
-            ),
-          ),
-          trailing: !isCurrentUser && _controller.isCurrentUserAdmin
-              ? PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: Colors.white54),
-            color: const Color(0xFF2A2A40),
-            onSelected: (value) => _handleMemberAction(value, memberId),
-            itemBuilder: (context) => [
-              if (!isCreator) ...[
-                PopupMenuItem(
-                  value: 'remove',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.remove_circle, color: Colors.red),
-                      const SizedBox(width: 8),
-                      const Text('Remover', style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                ),
-                if (!isAdmin && _controller.isCurrentUserCreator)
-                  PopupMenuItem(
-                    value: 'promote',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.admin_panel_settings, color: Colors.blue),
-                        const SizedBox(width: 8),
-                        const Text('Tornar Admin', style: TextStyle(color: Colors.white)),
-                      ],
-                    ),
-                  ),
-              ],
-            ],
-          )
-              : null,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInviteButton() {
-    return ElevatedButton.icon(
-      onPressed: _showInviteDialog,
-      icon: const Icon(Icons.person_add),
-      label: const Text('Convidar Membros'),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF6C63FF),
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
       ),
     );
   }
@@ -1163,17 +1707,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
         break;
       case 'delete':
         _showDeleteCircleDialog(circle);
-        break;
-    }
-  }
-
-  void _handleMemberAction(String action, String memberId) {
-    switch (action) {
-      case 'remove':
-        _removeMember(memberId);
-        break;
-      case 'promote':
-        _promoteMember(memberId);
         break;
     }
   }
@@ -1675,23 +2208,6 @@ class _CircleDetailsScreenState extends State<CircleDetailsScreen>
     Get.snackbar(
       'Em Desenvolvimento',
       'Funcionalidade de configurações em breve!',
-      backgroundColor: const Color(0xFF6C63FF),
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-    );
-  }
-
-  void _removeMember(String memberId) {
-    _controller.removeMember(
-      circleId: circleId,
-      memberId: memberId,
-    );
-  }
-
-  void _promoteMember(String memberId) {
-    Get.snackbar(
-      'Em Desenvolvimento',
-      'Funcionalidade de promoção em breve!',
       backgroundColor: const Color(0xFF6C63FF),
       colorText: Colors.white,
       snackPosition: SnackPosition.BOTTOM,
