@@ -25,6 +25,8 @@ class _GoogleRegisterCompleteScreenState extends State<GoogleRegisterCompleteScr
   String _selectedGender = '';
   bool _isLoading = false;
 
+  String _loginProvider = 'google';
+
   // Lista de opções de gênero
   final List<Map<String, dynamic>> _genderOptions = [
     {
@@ -51,6 +53,8 @@ class _GoogleRegisterCompleteScreenState extends State<GoogleRegisterCompleteScr
     if (_authController.currentUser.value?.displayName != null) {
       _nameController.text = _authController.currentUser.value!.displayName!;
     }
+
+    _initializeUserData();
   }
 
   @override
@@ -95,6 +99,181 @@ class _GoogleRegisterCompleteScreenState extends State<GoogleRegisterCompleteScr
       age--;
     }
     return age;
+  }
+
+  Future<void> _initializeUserData() async {
+    debugPrint('=== _initializeUserData() ===');
+
+    final user = _authController.currentUser.value;
+    if (user == null) {
+      debugPrint('❌ Usuário não encontrado');
+      return;
+    }
+
+    try {
+      // Determinar o provedor de login
+      _loginProvider = _determineLoginProvider(user);
+      debugPrint('Provedor detectado: $_loginProvider');
+
+      // Obter nome do usuário
+      String userName = await _getUserDisplayName(user);
+      debugPrint('Nome do usuário obtido: $userName');
+
+      // Preencher o campo de nome se disponível
+      if (userName.isNotEmpty && userName != 'Usuário Apple' && userName != 'Usuário') {
+        _nameController.text = userName;
+        debugPrint('✅ Campo de nome preenchido com: $userName');
+      } else {
+        debugPrint('⚠️ Nome não disponível ou é genérico, deixando campo vazio para entrada manual');
+      }
+
+      setState(() {});
+
+    } catch (e) {
+      debugPrint('❌ Erro ao inicializar dados do usuário: $e');
+    }
+  }
+
+  Future<String> _getUserDisplayName(user) async {
+    debugPrint('=== _getUserDisplayName() ===');
+
+    try {
+      // 1. Primeiro, tentar obter do Firebase Auth
+      if (user.displayName != null &&
+          user.displayName!.isNotEmpty &&
+          user.displayName != 'Usuário Apple' &&
+          user.displayName != 'Usuário') {
+        debugPrint('Nome obtido do Firebase Auth: ${user.displayName}');
+        return user.displayName!.trim();
+      }
+
+      // 2. Tentar obter do Firestore (pode ter sido salvo durante o login)
+      try {
+        final userDoc = await _firebaseService.getUserData(user.uid);
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+
+          // Verificar nome no documento
+          final firestoreName = userData['name'] as String?;
+          if (firestoreName != null &&
+              firestoreName.isNotEmpty &&
+              firestoreName != 'Usuário Apple' &&
+              firestoreName != 'Usuário') {
+            debugPrint('Nome obtido do Firestore: $firestoreName');
+            return firestoreName.trim();
+          }
+
+          // Para Apple, verificar se há dados salvos durante o login
+          if (_loginProvider == 'apple') {
+            final appleData = userData['appleSignInData'] as Map<String, dynamic>?;
+            if (appleData != null) {
+              final extractedName = appleData['extractedDisplayName'] as String?;
+              if (extractedName != null &&
+                  extractedName.isNotEmpty &&
+                  extractedName != 'Usuário Apple') {
+                debugPrint('Nome obtido dos dados Apple salvos: $extractedName');
+                return extractedName.trim();
+              }
+
+              // Tentar construir nome dos dados Apple
+              final givenName = appleData['givenName'] as String?;
+              final familyName = appleData['familyName'] as String?;
+
+              if (givenName != null && givenName.isNotEmpty) {
+                final appleName = familyName != null && familyName.isNotEmpty
+                    ? '$givenName $familyName'
+                    : givenName;
+                debugPrint('Nome construído dos dados Apple: $appleName');
+                return appleName.trim();
+              }
+            }
+          }
+        }
+      } catch (firestoreError) {
+        debugPrint('⚠️ Erro ao obter dados do Firestore: $firestoreError');
+      }
+
+      // 3. Para Apple, tentar extrair nome do email
+      if (_loginProvider == 'apple' && user.email != null) {
+        final emailName = _extractNameFromEmail(user.email!);
+        if (emailName.isNotEmpty) {
+          debugPrint('Nome extraído do email Apple: $emailName');
+          return emailName;
+        }
+      }
+
+      // 4. Verificar argumentos passados pela navegação (se houver)
+      final args = Get.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        final argName = args['displayName'] as String?;
+        if (argName != null && argName.isNotEmpty && argName != 'Usuário Apple') {
+          debugPrint('Nome obtido dos argumentos: $argName');
+          return argName.trim();
+        }
+      }
+
+      debugPrint('⚠️ Nenhum nome válido encontrado');
+      return '';
+
+    } catch (e) {
+      debugPrint('❌ Erro ao obter nome do usuário: $e');
+      return '';
+    }
+  }
+
+  String _extractNameFromEmail(String email) {
+    try {
+      // Não processar emails do Apple Private Relay
+      if (email.contains('privaterelay.appleid.com')) {
+        return '';
+      }
+
+      final localPart = email.split('@').first;
+
+      // Remover números e caracteres especiais
+      String cleanName = localPart
+          .replaceAll(RegExp(r'[0-9_\.\-]'), ' ')
+          .trim();
+
+      // Capitalizar primeira letra de cada palavra
+      if (cleanName.isNotEmpty) {
+        return cleanName
+            .split(' ')
+            .where((word) => word.isNotEmpty)
+            .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+            .join(' ');
+      }
+    } catch (e) {
+      debugPrint('Erro ao extrair nome do email: $e');
+    }
+
+    return '';
+  }
+
+  String _determineLoginProvider(user) {
+    try {
+      final providerData = user.providerData;
+      debugPrint('Provider data: ${providerData.map((p) => p.providerId).toList()}');
+
+      for (final provider in providerData) {
+        if (provider.providerId == 'apple.com') {
+          return 'apple';
+        } else if (provider.providerId == 'google.com') {
+          return 'google';
+        }
+      }
+
+      // Fallback: verificar pelo email
+      final email = user.email ?? '';
+      if (email.contains('privaterelay.appleid.com')) {
+        return 'apple';
+      }
+
+      return 'google'; // Default
+    } catch (e) {
+      debugPrint('Erro ao determinar provedor: $e');
+      return 'google';
+    }
   }
 
   Future<void> _completeRegistration() async {
@@ -142,17 +321,6 @@ class _GoogleRegisterCompleteScreenState extends State<GoogleRegisterCompleteScr
 
       // Recarregar os dados do usuário
       await _authController.loadUserData();
-
-      // Mostrar mensagem de sucesso
-      Get.snackbar(
-        'Cadastro Concluído!',
-        'Suas informações foram salvas com sucesso',
-        backgroundColor: Colors.green,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.BOTTOM,
-        icon: const Icon(Icons.check_circle, color: Colors.white),
-        duration: const Duration(seconds: 3),
-      );
 
       // Navegar para a tela principal
       Get.offAllNamed(AppRoutes.navigation);
@@ -375,9 +543,6 @@ class _GoogleRegisterCompleteScreenState extends State<GoogleRegisterCompleteScr
                               validator: (value) {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Por favor, digite seu nome';
-                                }
-                                if (value.trim().split(' ').length < 2) {
-                                  return 'Por favor, digite seu nome completo';
                                 }
                                 return null;
                               },

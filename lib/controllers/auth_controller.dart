@@ -291,8 +291,6 @@ class AuthController extends GetxController {
     } else {
       await _handleExistingAppleUser(firebaseUser, appleCredential, displayName);
     }
-
-    _showSuccessSnackbar('Sucesso', 'Login com Apple realizado com sucesso!');
   }
 
   /// NOVO MÉTODO: Extrair nome do Apple de forma mais robusta
