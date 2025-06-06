@@ -186,7 +186,7 @@ class AuthController extends GetxController {
     return appleSignInAvailable.value;
   }
 
-  /// Login com Apple
+  /// Login com Apple - VERSÃO CORRIGIDA
   Future<User?> signInWithApple() async {
     try {
       debugPrint('=== signInWithApple() ===');
@@ -199,7 +199,7 @@ class AuthController extends GetxController {
         throw Exception('Apple Sign In não está disponível neste dispositivo');
       }
 
-      // Solicitar credenciais do Apple
+      // Solicitar credenciais do Apple com scopes específicos
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
           AppleIDAuthorizationScopes.email,
@@ -211,7 +211,13 @@ class AuthController extends GetxController {
         ),
       );
 
-      debugPrint('Apple credential obtido: ${appleCredential.userIdentifier}');
+      debugPrint('=== Apple Credential Debug ===');
+      debugPrint('User Identifier: ${appleCredential.userIdentifier}');
+      debugPrint('Email: ${appleCredential.email}');
+      debugPrint('Given Name: ${appleCredential.givenName}');
+      debugPrint('Family Name: ${appleCredential.familyName}');
+      debugPrint('Identity Token disponível: ${appleCredential.identityToken != null}');
+      debugPrint('Authorization Code disponível: ${appleCredential.authorizationCode != null}');
 
       // Criar credencial do Firebase
       final oauthCredential = OAuthProvider("apple.com").credential(
@@ -244,44 +250,133 @@ class AuthController extends GetxController {
       UserCredential userCredential,
       AuthorizationCredentialAppleID appleCredential,
       ) async {
-    debugPrint('Login com Apple bem-sucedido');
+    debugPrint('=== _handleSuccessfulAppleLogin ===');
 
     final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+    final firebaseUser = userCredential.user!;
+
+    debugPrint('É novo usuário: $isNewUser');
+    debugPrint('Firebase User Display Name: ${firebaseUser.displayName}');
+    debugPrint('Firebase User Email: ${firebaseUser.email}');
 
     // Garantir token
-    await userCredential.user!.getIdToken(true);
+    await firebaseUser.getIdToken(true);
     isAuthenticated.value = true;
 
-    // Extrair nome do usuário
-    String displayName = _extractDisplayName(userCredential.user!, appleCredential);
+    // CORREÇÃO: Extrair nome corretamente do Apple
+    String displayName = await _extractAppleDisplayName(
+        firebaseUser,
+        appleCredential,
+        isNewUser
+    );
 
-    // Atualizar displayName se necessário
-    if (userCredential.user!.displayName != displayName) {
-      await userCredential.user!.updateDisplayName(displayName);
+    debugPrint('Display Name extraído: $displayName');
+
+    // Atualizar displayName no Firebase Auth se necessário
+    if (firebaseUser.displayName != displayName && displayName.isNotEmpty && displayName != 'Usuário Apple') {
+      try {
+        await firebaseUser.updateDisplayName(displayName);
+        await firebaseUser.reload(); // Recarregar para obter as informações atualizadas
+        debugPrint('✅ Display name atualizado no Firebase Auth: $displayName');
+      } catch (e) {
+        debugPrint('⚠️ Erro ao atualizar display name no Firebase Auth: $e');
+      }
     }
 
     if (isNewUser) {
-      await _createAppleUserProfile(userCredential.user!, appleCredential, displayName);
+      await _createAppleUserProfile(firebaseUser, appleCredential, displayName);
       await _loadUserData();
       await ensureUserSettingsExist();
       Get.offAllNamed(AppRoutes.googleRegisterComplete);
     } else {
-      await _handleExistingAppleUser(userCredential.user!, displayName);
+      await _handleExistingAppleUser(firebaseUser, appleCredential, displayName);
     }
 
     _showSuccessSnackbar('Sucesso', 'Login com Apple realizado com sucesso!');
   }
 
-  String _extractDisplayName(User user, AuthorizationCredentialAppleID appleCredential) {
-    String displayName = user.displayName ?? 'Não Informado';
+  /// NOVO MÉTODO: Extrair nome do Apple de forma mais robusta
+  Future<String> _extractAppleDisplayName(
+      User firebaseUser,
+      AuthorizationCredentialAppleID appleCredential,
+      bool isNewUser
+      ) async {
+    debugPrint('=== _extractAppleDisplayName ===');
 
-    if (appleCredential.givenName != null && appleCredential.familyName != null) {
-      displayName = '${appleCredential.givenName} ${appleCredential.familyName}';
-    } else if (appleCredential.givenName != null) {
-      displayName = appleCredential.givenName!;
+    // 1. Primeiro, tentar obter nome do Apple Credential (apenas em novo cadastro)
+    if (isNewUser && appleCredential.givenName != null && appleCredential.familyName != null) {
+      final appleName = '${appleCredential.givenName} ${appleCredential.familyName}';
+      debugPrint('Nome obtido do Apple Credential (novo usuário): $appleName');
+      return appleName.trim();
     }
 
-    return displayName;
+    // 2. Se for apenas givenName disponível
+    if (isNewUser && appleCredential.givenName != null && appleCredential.givenName!.isNotEmpty) {
+      debugPrint('Apenas givenName disponível: ${appleCredential.givenName}');
+      return appleCredential.givenName!.trim();
+    }
+
+    // 3. Tentar obter do Firebase User
+    if (firebaseUser.displayName != null && firebaseUser.displayName!.isNotEmpty) {
+      debugPrint('Nome obtido do Firebase User: ${firebaseUser.displayName}');
+      return firebaseUser.displayName!.trim();
+    }
+
+    // 4. Se for usuário existente, tentar obter do Firestore
+    if (!isNewUser) {
+      try {
+        debugPrint('Tentando obter nome do Firestore para usuário existente...');
+        final userDoc = await _firebaseService.getUserData(firebaseUser.uid);
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          final firestoreName = userData['name'] as String?;
+          if (firestoreName != null && firestoreName.isNotEmpty && firestoreName != 'Usuário Apple') {
+            debugPrint('Nome obtido do Firestore: $firestoreName');
+            return firestoreName.trim();
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ Erro ao obter nome do Firestore: $e');
+      }
+    }
+
+    // 5. Tentar extrair nome do email
+    if (firebaseUser.email != null && firebaseUser.email!.isNotEmpty) {
+      final emailName = _extractNameFromEmail(firebaseUser.email!);
+      if (emailName.isNotEmpty) {
+        debugPrint('Nome extraído do email: $emailName');
+        return emailName;
+      }
+    }
+
+    // 6. Fallback final
+    debugPrint('Usando nome padrão como fallback');
+    return 'Usuário Apple';
+  }
+
+  /// NOVO MÉTODO: Extrair nome do email
+  String _extractNameFromEmail(String email) {
+    try {
+      final localPart = email.split('@').first;
+
+      // Remover números e caracteres especiais
+      String cleanName = localPart
+          .replaceAll(RegExp(r'[0-9_\.\-]'), ' ')
+          .trim();
+
+      // Capitalizar primeira letra de cada palavra
+      if (cleanName.isNotEmpty) {
+        return cleanName
+            .split(' ')
+            .where((word) => word.isNotEmpty)
+            .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+            .join(' ');
+      }
+    } catch (e) {
+      debugPrint('Erro ao extrair nome do email: $e');
+    }
+
+    return '';
   }
 
   Future<void> _createAppleUserProfile(
@@ -289,11 +384,16 @@ class AuthController extends GetxController {
       AuthorizationCredentialAppleID appleCredential,
       String displayName,
       ) async {
+    debugPrint('=== _createAppleUserProfile ===');
     debugPrint('Novo usuário Apple - criando perfil básico...');
+    debugPrint('Display Name para Firestore: $displayName');
+
+    // Garantir que temos pelo menos um email
+    String userEmail = user.email ?? appleCredential.email ?? '';
 
     await _firebaseService.createUserData(user.uid, {
       'name': displayName,
-      'email': user.email ?? appleCredential.email ?? '',
+      'email': userEmail,
       'createdAt': DateTime.now(),
       'profileImageUrl': user.photoURL ?? '',
       'favoriteReadings': [],
@@ -302,26 +402,59 @@ class AuthController extends GetxController {
       'loginProvider': 'apple',
       'registrationCompleted': false,
       'appleUserIdentifier': appleCredential.userIdentifier,
+      // Salvar dados Apple para debugging futuro
+      'appleSignInData': {
+        'givenName': appleCredential.givenName,
+        'familyName': appleCredential.familyName,
+        'email': appleCredential.email,
+        'extractedDisplayName': displayName,
+        'timestamp': DateTime.now().toIso8601String(),
+      },
     });
 
-    debugPrint('✅ Perfil básico de novo usuário Apple criado');
+    debugPrint('✅ Perfil básico de novo usuário Apple criado com nome: $displayName');
   }
 
-  Future<void> _handleExistingAppleUser(User user, String displayName) async {
+  Future<void> _handleExistingAppleUser(
+      User user,
+      AuthorizationCredentialAppleID appleCredential,
+      String displayName
+      ) async {
+    debugPrint('=== _handleExistingAppleUser ===');
     debugPrint('Usuário Apple existente - verificando registro...');
 
     final registrationCompleted = await checkRegistrationCompleted(user.uid);
+
+    // Sempre atualizar as informações do usuário existente
+    Map<String, dynamic> updateData = {
+      'lastLogin': DateTime.now(),
+    };
+
+    // Atualizar nome apenas se conseguimos extrair um nome válido
+    if (displayName.isNotEmpty && displayName != 'Usuário Apple') {
+      updateData['name'] = displayName;
+      debugPrint('Atualizando nome do usuário existente: $displayName');
+    }
+
+    // Atualizar dados Apple se disponíveis
+    if (appleCredential.givenName != null || appleCredential.familyName != null) {
+      updateData['appleSignInData'] = {
+        'givenName': appleCredential.givenName,
+        'familyName': appleCredential.familyName,
+        'email': appleCredential.email,
+        'extractedDisplayName': displayName,
+        'lastUpdate': DateTime.now().toIso8601String(),
+      };
+    }
+
+    await _firebaseService.updateUserData(user.uid, updateData);
 
     if (!registrationCompleted) {
       debugPrint('Registro incompleto - redirecionando...');
       await _loadUserData();
       Get.offAllNamed(AppRoutes.googleRegisterComplete);
     } else {
-      debugPrint('Registro completo - atualizando informações...');
-      await _firebaseService.updateUserData(user.uid, {
-        'lastLogin': DateTime.now(),
-        'name': displayName,
-      });
+      debugPrint('Registro completo - carregando dados...');
       await _loadUserData();
       Get.offAllNamed(AppRoutes.navigation);
     }
@@ -1190,146 +1323,7 @@ class AuthController extends GetxController {
     }
   }
 
-  Future<Map<String, dynamic>> runCompleteDiagnostics() async {
-    debugPrint('=== runCompleteDiagnostics() ===');
-
-    final results = <String, dynamic>{};
-
-    // 1. Estado atual do usuário
-    results['currentUserState'] = {
-      'isLoggedIn': isLoggedIn,
-      'currentUserExists': currentUser.value != null,
-      'isAuthenticated': isAuthenticated.value,
-      'hasUserModel': userModel.value != null,
-      'authError': authError.value,
-    };
-
-    // 2. Teste de autenticação
-    results['authTest'] = await testAuthentication();
-
-    // 3. Teste de disponibilidade do Apple Sign In
-    results['appleSignInAvailable'] = appleSignInAvailable.value;
-
-    // 4. Estado do timer de refresh
-    results['tokenRefreshTimer'] = {
-      'isActive': _tokenRefreshTimer != null && _tokenRefreshTimer!.isActive,
-      'reauthAttempts': _reauthAttempts,
-    };
-
-    // 5. Informações do usuário atual
-    if (currentUser.value != null) {
-      results['currentUserInfo'] = {
-        'uid': currentUser.value!.uid,
-        'email': currentUser.value!.email,
-        'displayName': currentUser.value!.displayName,
-        'emailVerified': currentUser.value!.emailVerified,
-        'isAnonymous': currentUser.value!.isAnonymous,
-        'creationTime': currentUser.value!.metadata.creationTime?.toIso8601String(),
-        'lastSignInTime': currentUser.value!.metadata.lastSignInTime?.toIso8601String(),
-        'providers': currentUser.value!.providerData.map((p) => {
-          'providerId': p.providerId,
-          'uid': p.uid,
-          'email': p.email,
-          'displayName': p.displayName,
-        }).toList(),
-      };
-    }
-
-    // 6. Informações do modelo do usuário
-    if (userModel.value != null) {
-      results['userModelInfo'] = {
-        'name': userModel.value!.name,
-        'email': userModel.value!.email,
-        'hasProfileImage': userModel.value!.profileImageUrl?.isNotEmpty,
-        'credits': userModel.value!.credits,
-        'favoriteReadingsCount': userModel.value!.favoriteReadings.length,
-        'favoriteReadersCount': userModel.value!.favoriteReaders.length,
-      };
-    }
-
-    debugPrint('Diagnósticos completos concluídos');
-    return results;
-  }
-
-  // ========== STATISTICS & ANALYTICS ==========
-
-  Future<Map<String, dynamic>> getUserStatistics() async {
-    try {
-      if (currentUser.value == null || userModel.value == null) {
-        return {};
-      }
-
-      return {
-        'accountAge': DateTime.now().difference(
-            currentUser.value!.metadata.creationTime ?? DateTime.now()
-        ).inDays,
-        'lastLoginDays': DateTime.now().difference(
-            currentUser.value!.metadata.lastSignInTime ?? DateTime.now()
-        ).inDays,
-        'totalCredits': userModel.value!.credits,
-        'favoriteReadings': userModel.value!.favoriteReadings.length,
-        'favoriteReaders': userModel.value!.favoriteReaders.length,
-        'emailVerified': currentUser.value!.emailVerified,
-        'loginProvider': userModel.value!.loginProvider ?? 'unknown',
-      };
-    } catch (e) {
-      debugPrint('❌ Erro ao obter estatísticas do usuário: $e');
-      return {};
-    }
-  }
-
   // ========== PRIVACY & SECURITY ==========
-
-  Future<void> updatePrivacySettings(Map<String, bool> settings) async {
-    try {
-      final user = currentUser.value;
-      if (user == null) {
-        _showErrorSnackbar('Erro', 'Usuário não está logado');
-        return;
-      }
-
-      await _firebaseService.updateUserData(user.uid, {
-        'privacySettings': settings,
-        'privacyUpdatedAt': FieldValue.serverTimestamp(),
-      });
-
-      await _loadUserData();
-      _showSuccessSnackbar('Sucesso', 'Configurações de privacidade atualizadas');
-
-    } catch (e) {
-      debugPrint('❌ Erro ao atualizar configurações de privacidade: $e');
-      _showErrorSnackbar('Erro', 'Não foi possível atualizar as configurações');
-    }
-  }
-
-  Future<Map<String, bool>> getPrivacySettings() async {
-    try {
-      final user = currentUser.value;
-      if (user == null) return {};
-
-      final userData = await _firebaseService.getUserData(user.uid);
-      if (userData.exists) {
-        final data = userData.data() as Map<String, dynamic>;
-        final privacySettings = data['privacySettings'] as Map<String, dynamic>?;
-
-        if (privacySettings != null) {
-          return privacySettings.map((key, value) => MapEntry(key, value as bool));
-        }
-      }
-
-      // Configurações padrão
-      return {
-        'allowNotifications': true,
-        'allowEmailMarketing': false,
-        'allowDataAnalytics': true,
-        'showProfileToOthers': true,
-        'allowContactFromReaders': true,
-      };
-    } catch (e) {
-      debugPrint('❌ Erro ao obter configurações de privacidade: $e');
-      return {};
-    }
-  }
 
   /// Deletar conta do usuário permanentemente
   Future<bool> deleteAccount({String? password}) async {
