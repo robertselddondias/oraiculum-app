@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/payment_controller.dart';
-import 'package:oraculum/screens/payment/widgets/payment_header.dart';
 import 'package:oraculum/screens/payment/widgets/credit_packages_section.dart';
 import 'package:oraculum/screens/payment/widgets/custom_amount_section.dart';
+import 'package:oraculum/screens/payment/widgets/payment_button.dart';
+import 'package:oraculum/screens/payment/widgets/payment_header.dart';
 import 'package:oraculum/screens/payment/widgets/payment_methods_section.dart';
 import 'package:oraculum/screens/payment/widgets/pix_payment_view.dart';
-import 'package:oraculum/screens/payment/widgets/payment_button.dart';
 import 'package:oraculum/screens/payment/widgets/success_dialog.dart';
 
 class PaymentMethodsScreen extends StatefulWidget {

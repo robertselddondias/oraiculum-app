@@ -1,9 +1,9 @@
-import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:oraculum/services/push_notification_service.dart';
 import 'package:oraculum/services/firebase_service.dart';
 import 'package:oraculum/services/gemini_service.dart';
+import 'package:oraculum/services/push_notification_service.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
 class NotificationController extends GetxController {

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:oraculum/controllers/notification_controller.dart';
 import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/controllers/notification_controller.dart';
 
 class NotificationsListScreen extends StatefulWidget {
   const NotificationsListScreen({super.key});

@@ -8,8 +8,8 @@ import 'package:get/get.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/tarot_controller.dart';
 import 'package:oraculum/models/tarot_model.dart';
-import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:oraculum/screens/tarot/widgets/mystic_welcome_dialog.dart';
+import 'package:oraculum/utils/zodiac_utils.dart';
 import 'package:share_plus/share_plus.dart';
 
 class TarotReadingScreen extends StatefulWidget {

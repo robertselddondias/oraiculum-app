@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
-import 'package:oraculum/services/push_notification_service.dart';
 import 'package:oraculum/services/firebase_service.dart';
+import 'package:oraculum/services/push_notification_service.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});

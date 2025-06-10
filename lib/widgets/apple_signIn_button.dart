@@ -1,8 +1,9 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AppleSignInButton extends StatelessWidget {
   final String? text;

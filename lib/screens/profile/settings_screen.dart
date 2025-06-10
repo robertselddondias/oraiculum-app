@@ -8,7 +8,6 @@ import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/controllers/settings_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/services/rating_service.dart';
 import 'package:oraculum/services/url_service.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 

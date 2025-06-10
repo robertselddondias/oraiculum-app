@@ -6,10 +6,10 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
-import 'package:oraculum/controllers/auth_controller.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:oraculum/config/routes.dart';
+import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// Serviço simplificado de Push Notifications para o Oraculum
 class PushNotificationService extends GetxService {

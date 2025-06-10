@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/controllers/auth_controller.dart';
 import 'package:oraculum/services/firebase_service.dart';
-import 'package:oraculum/services/stripe_payment_service.dart';
 import 'package:oraculum/services/payment_service.dart';
+import 'package:oraculum/services/stripe_payment_service.dart';
 
 class PaymentController extends GetxController {
   final PaymentService _paymentService = Get.find<PaymentService>();
