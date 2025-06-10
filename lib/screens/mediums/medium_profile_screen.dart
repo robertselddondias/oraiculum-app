@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:get/get.dart';
 import 'package:oraculum/config/routes.dart';
 import 'package:oraculum/controllers/medium_controller.dart';
@@ -11,17 +12,27 @@ class MediumProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final MediumController controller = Get.find<MediumController>();
 
-    // Obter dimensões da tela para layout responsivo
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-
-    // Ajustar padding baseado no tamanho da tela
     final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
 
     return Scaffold(
       body: Obx(() {
         if (controller.selectedMedium.value == null) {
-          return const Center(child: CircularProgressIndicator());
+          return Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF392F5A), Color(0xFF8C6BAE)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+          );
         }
 
         final medium = controller.selectedMedium.value!;
@@ -30,24 +41,33 @@ class MediumProfileScreen extends StatelessWidget {
           slivers: [
             _buildAppBar(context, medium, isSmallScreen),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildProfileHeader(context, medium, isSmallScreen),
-                    SizedBox(height: isSmallScreen ? 16 : 24),
-                    _buildAboutSection(context, medium, isSmallScreen),
-                    SizedBox(height: isSmallScreen ? 16 : 24),
-                    _buildSpecialtiesSection(context, medium, isSmallScreen),
-                    SizedBox(height: isSmallScreen ? 16 : 24),
-                    _buildInfoSection(context, medium, isSmallScreen),
-                    SizedBox(height: isSmallScreen ? 24 : 32),
-                    _buildAvailability(context, medium, isSmallScreen),
-                    SizedBox(height: isSmallScreen ? 24 : 32),
-                    _buildBookingButton(context, medium, isSmallScreen),
-                    const SizedBox(height: 16),
-                  ],
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF392F5A), Color(0xFF8C6BAE), Color(0xFF533483)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildProfileHeader(context, medium, isSmallScreen),
+                      SizedBox(height: isSmallScreen ? 20 : 28),
+                      _buildAboutSection(context, medium, isSmallScreen),
+                      SizedBox(height: isSmallScreen ? 20 : 28),
+                      _buildSpecialtiesSection(context, medium, isSmallScreen),
+                      SizedBox(height: isSmallScreen ? 20 : 28),
+                      _buildInfoSection(context, medium, isSmallScreen),
+                      SizedBox(height: isSmallScreen ? 20 : 28),
+                      _buildAvailability(context, medium, isSmallScreen),
+                      SizedBox(height: isSmallScreen ? 28 : 36),
+                      _buildBookingButton(context, medium, isSmallScreen),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -69,7 +89,6 @@ class MediumProfileScreen extends StatelessWidget {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Imagem de fundo
             Image.network(
               medium.imageUrl,
               fit: BoxFit.cover,
@@ -84,7 +103,6 @@ class MediumProfileScreen extends StatelessWidget {
                 );
               },
             ),
-            // Overlay gradiente para melhorar a legibilidade
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -110,7 +128,6 @@ class MediumProfileScreen extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.favorite_border),
           onPressed: () {
-            // Implementar adição aos favoritos
             ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Adicionado aos favoritos"))
             );
@@ -120,7 +137,6 @@ class MediumProfileScreen extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.share),
           onPressed: () {
-            // Implementar compartilhamento
             ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Compartilhando perfil..."))
             );
@@ -132,252 +148,405 @@ class MediumProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileHeader(BuildContext context, MediumModel medium, bool isSmallScreen) {
-    // Ajustes para telas pequenas
     final titleSize = isSmallScreen ? 20.0 : 22.0;
     final iconSize = isSmallScreen ? 16.0 : 18.0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    medium.name,
-                    style: TextStyle(
-                      fontSize: titleSize,
-                      fontWeight: FontWeight.bold,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      medium.name,
+                      style: TextStyle(
+                        fontSize: titleSize,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.star,
-                        color: Colors.amber,
-                        size: iconSize,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        medium.rating.toStringAsFixed(1),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF9D8A).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.star,
+                                color: const Color(0xFFFF9D8A),
+                                size: iconSize,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                medium.rating.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFFF9D8A),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '(${medium.reviewsCount} avaliações)',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          fontSize: isSmallScreen ? 12 : 14,
+                        const SizedBox(width: 8),
+                        Text(
+                          '(${medium.reviewsCount} avaliações)',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.7),
+                            fontSize: isSmallScreen ? 12 : 14,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: medium.isAvailable ? Colors.green : Colors.grey,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                medium.isAvailable ? 'Disponível' : 'Indisponível',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: isSmallScreen ? 11 : 12,
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        // Preço e experiência
-        Row(
-          children: [
-            Expanded(
-              child: _buildInfoCard(
-                context,
-                title: 'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}',
-                subtitle: 'por minuto',
-                isSmallScreen: isSmallScreen,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: medium.isAvailable
+                      ? const Color(0xFF4CAF50).withOpacity(0.2)
+                      : Colors.grey.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: medium.isAvailable
+                        ? const Color(0xFF4CAF50).withOpacity(0.5)
+                        : Colors.grey.withOpacity(0.5),
+                  ),
+                ),
+                child: Text(
+                  medium.isAvailable ? 'Online' : 'Offline',
+                  style: TextStyle(
+                    color: medium.isAvailable ? const Color(0xFF4CAF50) : Colors.grey,
+                    fontWeight: FontWeight.bold,
+                    fontSize: isSmallScreen ? 11 : 12,
+                  ),
+                ),
               ),
-            ),
-            SizedBox(width: isSmallScreen ? 8 : 16),
-            Expanded(
-              child: _buildInfoCard(
-                context,
-                title: '${medium.yearsOfExperience}',
-                subtitle: 'anos de experiência',
-                isSmallScreen: isSmallScreen,
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _buildGlassmorphicCard(
+                  context,
+                  title: 'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}',
+                  subtitle: 'por minuto',
+                  icon: Icons.attach_money,
+                  iconColor: const Color(0xFFFF9D8A),
+                  isSmallScreen: isSmallScreen,
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
-    );
+              SizedBox(width: isSmallScreen ? 12 : 16),
+              Expanded(
+                child: _buildGlassmorphicCard(
+                  context,
+                  title: '${medium.yearsOfExperience}',
+                  subtitle: 'anos de experiência',
+                  icon: Icons.history,
+                  iconColor: const Color(0xFF6C63FF),
+                  isSmallScreen: isSmallScreen,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, end: 0);
   }
 
-  Widget _buildInfoCard(BuildContext context, {required String title, required String subtitle, required bool isSmallScreen}) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
+  Widget _buildGlassmorphicCard(BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required bool isSmallScreen,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: isSmallScreen ? 16 : 18,
-              ),
-            ),
-            Text(subtitle,
-              style: TextStyle(fontSize: isSmallScreen ? 11 : 12),
-            ),
-          ],
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
         ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            icon,
+            color: iconColor,
+            size: isSmallScreen ? 20 : 24,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isSmallScreen ? 16 : 18,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: isSmallScreen ? 11 : 12,
+              color: Colors.white.withOpacity(0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildAboutSection(BuildContext context, MediumModel medium, bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
-    final contentTextSize = isSmallScreen ? 13.0 : 14.0;
+    final sectionTitleSize = isSmallScreen ? 18.0 : 20.0;
+    final contentTextSize = isSmallScreen ? 14.0 : 15.0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Sobre',
-          style: TextStyle(
-            fontSize: sectionTitleSize,
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
         ),
-        const SizedBox(height: 8),
-        Text(
-          medium.biography,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
-            height: 1.5,
-            fontSize: contentTextSize,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.info_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Sobre',
+                style: TextStyle(
+                  fontSize: sectionTitleSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    );
+          const SizedBox(height: 16),
+          Text(
+            medium.biography,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              height: 1.6,
+              fontSize: contentTextSize,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 200.ms, duration: 600.ms).slideX(begin: -0.2, end: 0);
   }
 
   Widget _buildSpecialtiesSection(BuildContext context, MediumModel medium, bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
-    final chipTextSize = isSmallScreen ? 11.0 : 12.0;
+    final sectionTitleSize = isSmallScreen ? 18.0 : 20.0;
+    final chipTextSize = isSmallScreen ? 12.0 : 13.0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Especialidades',
-          style: TextStyle(
-            fontSize: sectionTitleSize,
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
         ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: medium.specialties.map((specialty) {
-            return Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 10 : 12,
-                vertical: isSmallScreen ? 6 : 8,
-              ),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFF9D8A), Color(0xFF8E78FF)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.white,
+                  size: 20,
                 ),
               ),
-              child: Text(
-                specialty,
+              const SizedBox(width: 12),
+              Text(
+                'Especialidades',
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: sectionTitleSize,
                   fontWeight: FontWeight.bold,
-                  fontSize: chipTextSize,
+                  color: Colors.white,
                 ),
               ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: medium.specialties.asMap().entries.map((entry) {
+              final index = entry.key;
+              final specialty = entry.value;
+              return Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 14,
+                  vertical: isSmallScreen ? 8 : 10,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF6C63FF).withOpacity(0.3),
+                      const Color(0xFF8E78FF).withOpacity(0.3),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                ),
+                child: Text(
+                  specialty,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: chipTextSize,
+                  ),
+                ),
+              ).animate().fadeIn(
+                delay: Duration(milliseconds: 100 * index),
+                duration: const Duration(milliseconds: 300),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 400.ms, duration: 600.ms).slideX(begin: 0.2, end: 0);
   }
 
   Widget _buildInfoSection(BuildContext context, MediumModel medium, bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
+    final sectionTitleSize = isSmallScreen ? 18.0 : 20.0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Informações',
-          style: TextStyle(
-            fontSize: sectionTitleSize,
-            fontWeight: FontWeight.bold,
-          ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
         ),
-        const SizedBox(height: 10),
-        Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-            child: Column(
-              children: [
-                _buildInfoRow(
-                  context,
-                  'Idiomas',
-                  medium.languages.join(', '),
-                  Icons.language,
-                  isSmallScreen: isSmallScreen,
-                ),
-                const Divider(),
-                _buildInfoRow(
-                  context,
-                  'Experiência',
-                  '${medium.yearsOfExperience} anos',
-                  Icons.history,
-                  isSmallScreen: isSmallScreen,
-                ),
-                if (medium.isAvailable) ...[
-                  const Divider(),
-                  _buildInfoRow(
-                    context,
-                    'Status',
-                    'Disponível para agendamento',
-                    Icons.check_circle,
-                    valueColor: Colors.green,
-                    isSmallScreen: isSmallScreen,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF8E78FF), Color(0xFF6C63FF)],
                   ),
-                ],
-              ],
-            ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Informações',
+                style: TextStyle(
+                  fontSize: sectionTitleSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
-    );
+          const SizedBox(height: 16),
+          _buildInfoRow(
+            context,
+            'Idiomas',
+            medium.languages.join(', '),
+            Icons.language,
+            isSmallScreen: isSmallScreen,
+          ),
+          const SizedBox(height: 12),
+          _buildInfoRow(
+            context,
+            'Experiência',
+            '${medium.yearsOfExperience} anos',
+            Icons.history,
+            isSmallScreen: isSmallScreen,
+          ),
+          if (medium.isAvailable) ...[
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              context,
+              'Status',
+              'Disponível para agendamento',
+              Icons.check_circle,
+              valueColor: const Color(0xFF4CAF50),
+              isSmallScreen: isSmallScreen,
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(delay: 600.ms, duration: 600.ms).slideX(begin: -0.2, end: 0);
   }
 
   Widget _buildInfoRow(
@@ -388,35 +557,49 @@ class MediumProfileScreen extends StatelessWidget {
         Color? valueColor,
         required bool isSmallScreen,
       }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: Theme.of(context).colorScheme.primary,
-            size: isSmallScreen ? 18 : 20,
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C63FF).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF6C63FF),
+              size: isSmallScreen ? 16 : 18,
+            ),
           ),
-          SizedBox(width: isSmallScreen ? 8 : 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  fontSize: isSmallScreen ? 11 : 12,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: isSmallScreen ? 11 : 12,
+                  ),
                 ),
-              ),
-              Text(
-                value,
-                style: TextStyle(
-                  color: valueColor ?? Theme.of(context).colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                  fontSize: isSmallScreen ? 13 : 14,
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: valueColor ?? Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: isSmallScreen ? 13 : 14,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -424,116 +607,169 @@ class MediumProfileScreen extends StatelessWidget {
   }
 
   Widget _buildAvailability(BuildContext context, MediumModel medium, bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 16.0 : 18.0;
+    final sectionTitleSize = isSmallScreen ? 18.0 : 20.0;
     final dayTextSize = isSmallScreen ? 13.0 : 14.0;
     final hoursTextSize = isSmallScreen ? 12.0 : 13.0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Disponibilidade',
-          style: TextStyle(
-            fontSize: sectionTitleSize,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-            child: Column(
-              children: [
-                _buildAvailabilityRow(context, 'Segunda', '09:00 - 18:00',
-                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
-                const Divider(),
-                _buildAvailabilityRow(context, 'Terça', '09:00 - 18:00',
-                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
-                const Divider(),
-                _buildAvailabilityRow(context, 'Quarta', '09:00 - 18:00',
-                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
-                const Divider(),
-                _buildAvailabilityRow(context, 'Quinta', '09:00 - 18:00',
-                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
-                const Divider(),
-                _buildAvailabilityRow(context, 'Sexta', '09:00 - 18:00',
-                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
-                const Divider(),
-                _buildAvailabilityRow(context, 'Sábado', '10:00 - 14:00',
-                    dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
-                const Divider(),
-                _buildAvailabilityRow(context, 'Domingo', 'Indisponível',
-                    isAvailable: false, dayTextSize: dayTextSize, hoursTextSize: hoursTextSize),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+    final availability = [
+      {'day': 'Segunda', 'hours': '09:00 - 18:00', 'available': true},
+      {'day': 'Terça', 'hours': '09:00 - 18:00', 'available': true},
+      {'day': 'Quarta', 'hours': '09:00 - 18:00', 'available': true},
+      {'day': 'Quinta', 'hours': '09:00 - 18:00', 'available': true},
+      {'day': 'Sexta', 'hours': '09:00 - 18:00', 'available': true},
+      {'day': 'Sábado', 'hours': '10:00 - 14:00', 'available': true},
+      {'day': 'Domingo', 'hours': 'Indisponível', 'available': false},
+    ];
 
-  Widget _buildAvailabilityRow(
-      BuildContext context,
-      String day,
-      String hours, {
-        bool isAvailable = true,
-        required double dayTextSize,
-        required double hoursTextSize,
-      }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            day,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-              fontSize: dayTextSize,
-            ),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.schedule,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                'Disponibilidade',
+                style: TextStyle(
+                  fontSize: sectionTitleSize,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
-          Text(
-            hours,
-            style: TextStyle(
-              color: isAvailable
-                  ? Theme.of(context).colorScheme.onSurface
-                  : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              fontSize: hoursTextSize,
-            ),
-          ),
+          const SizedBox(height: 16),
+          ...availability.asMap().entries.map((entry) {
+            final index = entry.key;
+            final item = entry.value;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: item['available'] as bool
+                              ? const Color(0xFF4CAF50)
+                              : Colors.grey,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        item['day'] as String,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                          fontSize: dayTextSize,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    item['hours'] as String,
+                    style: TextStyle(
+                      color: (item['available'] as bool)
+                          ? Colors.white.withOpacity(0.9)
+                          : Colors.white.withOpacity(0.6),
+                      fontSize: hoursTextSize,
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(
+              delay: Duration(milliseconds: 50 * index),
+              duration: const Duration(milliseconds: 300),
+            );
+          }).toList(),
         ],
       ),
-    );
+    ).animate().fadeIn(delay: 800.ms, duration: 600.ms).slideY(begin: 0.2, end: 0);
   }
 
   Widget _buildBookingButton(BuildContext context, MediumModel medium, bool isSmallScreen) {
-    final buttonTextSize = isSmallScreen ? 14.0 : 16.0;
+    final buttonTextSize = isSmallScreen ? 15.0 : 16.0;
 
-    return SizedBox(
+    return Container(
       width: double.infinity,
-      child: ElevatedButton(
+      decoration: BoxDecoration(
+        gradient: medium.isAvailable
+            ? const LinearGradient(
+          colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        )
+            : null,
+        color: medium.isAvailable ? null : Colors.grey,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: medium.isAvailable
+            ? [
+          BoxShadow(
+            color: const Color(0xFF6C63FF).withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ]
+            : null,
+      ),
+      child: ElevatedButton.icon(
         onPressed: medium.isAvailable
             ? () => Get.toNamed(AppRoutes.booking)
             : null,
         style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 16),
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 14 : 18),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: Text(
+        icon: Icon(
+          medium.isAvailable ? Icons.calendar_today : Icons.block,
+          color: Colors.white,
+          size: 20,
+        ),
+        label: Text(
           medium.isAvailable ? 'Agendar Consulta' : 'Indisponível para Agendamento',
           style: TextStyle(
             fontSize: buttonTextSize,
             fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(delay: 1000.ms, duration: 600.ms).scale(begin: const Offset(0.8, 0.8), end: const Offset(1.0, 1.0));
   }
 }
