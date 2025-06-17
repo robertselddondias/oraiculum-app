@@ -59,12 +59,13 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCVdEl5vlTS3CDtr-BAjU7CkAzesM3hqIY',
-    appId: '1:558056975643:ios:e6b1ce019dfd8c230937be',
+    appId: '1:558056975643:ios:35a11af1a6b5e2370937be',
     messagingSenderId: '558056975643',
     projectId: 'oraculum-app-dcde3',
     storageBucket: 'oraculum-app-dcde3.firebasestorage.app',
-    iosClientId: '558056975643-o6vmlq8ai2v46n6jg9ks4lmssdtgtns1.apps.googleusercontent.com',
-    iosBundleId: 'com.selddon.oraculum.oraculum',
+    androidClientId: '558056975643-lem38nve503188e0kgdnecca756vmjlp.apps.googleusercontent.com',
+    iosClientId: '558056975643-pfmb1t0ita25kfc49a5hmnvs71hbf6g7.apps.googleusercontent.com',
+    iosBundleId: 'com.selddon.oraculum',
   );
 
 }

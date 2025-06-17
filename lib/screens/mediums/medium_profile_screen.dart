@@ -17,38 +17,34 @@ class MediumProfileScreen extends StatelessWidget {
     final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
 
     return Scaffold(
-      body: Obx(() {
-        if (controller.selectedMedium.value == null) {
-          return Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF392F5A), Color(0xFF8C6BAE)],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: const Center(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1A1A2E),
+              Color(0xFF16213E),
+              Color(0xFF0F3460),
+              Color(0xFF533483),
+            ],
+          ),
+        ),
+        child: Obx(() {
+          if (controller.selectedMedium.value == null) {
+            return const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
-            ),
-          );
-        }
+            );
+          }
 
-        final medium = controller.selectedMedium.value!;
+          final medium = controller.selectedMedium.value!;
 
-        return CustomScrollView(
-          slivers: [
-            _buildAppBar(context, medium, isSmallScreen),
-            SliverToBoxAdapter(
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF392F5A), Color(0xFF8C6BAE), Color(0xFF533483)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
+          return CustomScrollView(
+            slivers: [
+              _buildAppBar(context, medium, isSmallScreen),
+              SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 16),
                   child: Column(
@@ -70,10 +66,10 @@ class MediumProfileScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      }),
+            ],
+          );
+        }),
+      ),
     );
   }
 
@@ -84,7 +80,7 @@ class MediumProfileScreen extends StatelessWidget {
       expandedHeight: expandedHeight,
       pinned: true,
       elevation: 0,
-      stretch: true,
+      backgroundColor: Colors.transparent,
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -94,7 +90,11 @@ class MediumProfileScreen extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+                    ),
+                  ),
                   child: const Icon(
                     Icons.person,
                     size: 80,
@@ -121,12 +121,14 @@ class MediumProfileScreen extends StatelessWidget {
           medium.name,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
       ),
+      iconTheme: const IconThemeData(color: Colors.white),
       actions: [
         IconButton(
-          icon: const Icon(Icons.favorite_border),
+          icon: const Icon(Icons.favorite_border, color: Colors.white),
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Adicionado aos favoritos"))
@@ -135,7 +137,7 @@ class MediumProfileScreen extends StatelessWidget {
           tooltip: 'Adicionar aos favoritos',
         ),
         IconButton(
-          icon: const Icon(Icons.share),
+          icon: const Icon(Icons.share, color: Colors.white),
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Compartilhando perfil..."))
@@ -154,10 +156,10 @@ class MediumProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.1),
           width: 1,
         ),
         boxShadow: [
@@ -224,71 +226,60 @@ class MediumProfileScreen extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+                        ),
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                      child: Text(
+                        'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}/min',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: medium.isAvailable
-                      ? const Color(0xFF4CAF50).withOpacity(0.2)
-                      : Colors.grey.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: medium.isAvailable
-                        ? const Color(0xFF4CAF50).withOpacity(0.5)
-                        : Colors.grey.withOpacity(0.5),
+              Column(
+                children: [
+                  _buildStatCard(
+                    'Online',
+                    medium.isAvailable ? 'Agora' : 'Offline',
+                    medium.isAvailable ? Icons.circle : Icons.circle_outlined,
+                    medium.isAvailable ? const Color(0xFF4CAF50) : Colors.grey,
+                    isSmallScreen: isSmallScreen,
                   ),
-                ),
-                child: Text(
-                  medium.isAvailable ? 'Online' : 'Offline',
-                  style: TextStyle(
-                    color: medium.isAvailable ? const Color(0xFF4CAF50) : Colors.grey,
-                    fontWeight: FontWeight.bold,
-                    fontSize: isSmallScreen ? 11 : 12,
+                  const SizedBox(height: 12),
+                  _buildStatCard(
+                    'Consultas',
+                    '${medium.reviewsCount}',
+                    Icons.psychology,
+                    const Color(0xFF8E78FF),
+                    isSmallScreen: isSmallScreen,
                   ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildGlassmorphicCard(
-                  context,
-                  title: 'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}',
-                  subtitle: 'por minuto',
-                  icon: Icons.attach_money,
-                  iconColor: const Color(0xFFFF9D8A),
-                  isSmallScreen: isSmallScreen,
-                ),
-              ),
-              SizedBox(width: isSmallScreen ? 12 : 16),
-              Expanded(
-                child: _buildGlassmorphicCard(
-                  context,
-                  title: '${medium.yearsOfExperience}',
-                  subtitle: 'anos de experiência',
-                  icon: Icons.history,
-                  iconColor: const Color(0xFF6C63FF),
-                  isSmallScreen: isSmallScreen,
-                ),
+                ],
               ),
             ],
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.3, end: 0);
+    ).animate().fadeIn(duration: 600.ms).slideY(begin: 0.2, end: 0);
   }
 
-  Widget _buildGlassmorphicCard(BuildContext context, {
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required Color iconColor,
-    required bool isSmallScreen,
-  }) {
+  Widget _buildStatCard(
+      String title,
+      String subtitle,
+      IconData icon,
+      Color iconColor, {
+        required bool isSmallScreen,
+      }) {
     return Container(
       padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
       decoration: BoxDecoration(
@@ -336,10 +327,10 @@ class MediumProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -394,10 +385,10 @@ class MediumProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -480,10 +471,10 @@ class MediumProfileScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -611,23 +602,13 @@ class MediumProfileScreen extends StatelessWidget {
     final dayTextSize = isSmallScreen ? 13.0 : 14.0;
     final hoursTextSize = isSmallScreen ? 12.0 : 13.0;
 
-    final availability = [
-      {'day': 'Segunda', 'hours': '09:00 - 18:00', 'available': true},
-      {'day': 'Terça', 'hours': '09:00 - 18:00', 'available': true},
-      {'day': 'Quarta', 'hours': '09:00 - 18:00', 'available': true},
-      {'day': 'Quinta', 'hours': '09:00 - 18:00', 'available': true},
-      {'day': 'Sexta', 'hours': '09:00 - 18:00', 'available': true},
-      {'day': 'Sábado', 'hours': '10:00 - 14:00', 'available': true},
-      {'day': 'Domingo', 'hours': 'Indisponível', 'available': false},
-    ];
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -640,12 +621,12 @@ class MediumProfileScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+                    colors: [Color(0xFF6C63FF), Color(0xFFFF9D8A)],
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
-                  Icons.schedule,
+                  Icons.access_time,
                   color: Colors.white,
                   size: 20,
                 ),
@@ -662,65 +643,38 @@ class MediumProfileScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          ...availability.asMap().entries.map((entry) {
-            final index = entry.key;
-            final item = entry.value;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
+          ...medium.availability.entries.map((entry) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: item['available'] as bool
-                              ? const Color(0xFF4CAF50)
-                              : Colors.grey,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        item['day'] as String,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                          fontSize: dayTextSize,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    entry.key,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: dayTextSize,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   Text(
-                    item['hours'] as String,
+                    entry.value,
                     style: TextStyle(
-                      color: (item['available'] as bool)
-                          ? Colors.white.withOpacity(0.9)
-                          : Colors.white.withOpacity(0.6),
+                      color: Colors.white.withOpacity(0.7),
                       fontSize: hoursTextSize,
                     ),
                   ),
                 ],
               ),
-            ).animate().fadeIn(
-              delay: Duration(milliseconds: 50 * index),
-              duration: const Duration(milliseconds: 300),
             );
-          }).toList(),
+          }),
         ],
       ),
-    ).animate().fadeIn(delay: 800.ms, duration: 600.ms).slideY(begin: 0.2, end: 0);
+    ).animate().fadeIn(delay: 800.ms, duration: 600.ms).slideX(begin: 0.2, end: 0);
   }
 
   Widget _buildBookingButton(BuildContext context, MediumModel medium, bool isSmallScreen) {
-    final buttonTextSize = isSmallScreen ? 15.0 : 16.0;
+    final buttonTextSize = isSmallScreen ? 14.0 : 16.0;
 
     return Container(
       width: double.infinity,
@@ -728,21 +682,20 @@ class MediumProfileScreen extends StatelessWidget {
         gradient: medium.isAvailable
             ? const LinearGradient(
           colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         )
-            : null,
-        color: medium.isAvailable ? null : Colors.grey,
+            : LinearGradient(
+          colors: [Colors.grey.withOpacity(0.5), Colors.grey.withOpacity(0.3)],
+        ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: medium.isAvailable
             ? [
           BoxShadow(
-            color: const Color(0xFF6C63FF).withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF6C63FF).withOpacity(0.4),
+            blurRadius: 15,
+            spreadRadius: 2,
           ),
         ]
-            : null,
+            : [],
       ),
       child: ElevatedButton.icon(
         onPressed: medium.isAvailable

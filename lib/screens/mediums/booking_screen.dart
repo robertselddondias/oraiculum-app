@@ -30,82 +30,149 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   void initState() {
     super.initState();
-    // Garantir que os créditos do usuário estejam atualizados
     _paymentController.loadUserCredits();
+  }
+
+  Map<String, double> _getResponsiveDimensions(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final isTablet = screenWidth >= 600;
+
+    return {
+      'padding': isTablet ? 24.0 : isSmallScreen ? 12.0 : 16.0,
+      'titleSize': isTablet ? 22.0 : isSmallScreen ? 16.0 : 18.0,
+      'subtitleSize': isTablet ? 18.0 : isSmallScreen ? 14.0 : 16.0,
+      'bodySize': isTablet ? 16.0 : isSmallScreen ? 13.0 : 15.0,
+      'captionSize': isTablet ? 14.0 : isSmallScreen ? 12.0 : 13.0,
+      'spacing': isTablet ? 32.0 : 24.0,
+      'cardPadding': isTablet ? 24.0 : 20.0,
+      'avatarSize': isTablet ? 50.0 : isSmallScreen ? 30.0 : 40.0,
+      'iconSize': isTablet ? 28.0 : 24.0,
+    };
   }
 
   @override
   Widget build(BuildContext context) {
-    // Ajustes responsivos baseados no tamanho da tela
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
-    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
+    final dimensions = _getResponsiveDimensions(context);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Agendar Consulta'),
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        title: Text(
+          'Agendar Consulta',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: dimensions['titleSize']!,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: Obx(() {
-        if (_mediumController.selectedMedium.value == null) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final medium = _mediumController.selectedMedium.value!;
-
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(horizontalPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildMediumCard(medium, isSmallScreen),
-              SizedBox(height: isSmallScreen ? 16 : 24),
-              _buildDateSelection(isSmallScreen),
-              SizedBox(height: isSmallScreen ? 16 : 24),
-              _buildTimeSelection(isSmallScreen),
-              SizedBox(height: isSmallScreen ? 16 : 24),
-              _buildDurationSelection(isSmallScreen),
-              SizedBox(height: isSmallScreen ? 16 : 24),
-              _buildPriceSummary(isSmallScreen),
-              SizedBox(height: isSmallScreen ? 24 : 32),
-              _buildBookingButton(isSmallScreen),
-              const SizedBox(height: 16),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1A1A2E),
+              Color(0xFF16213E),
+              Color(0xFF0F3460),
+              Color(0xFF533483),
             ],
           ),
-        );
-      }),
+        ),
+        child: Obx(() {
+          if (_mediumController.selectedMedium.value == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final medium = _mediumController.selectedMedium.value!;
+
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.all(dimensions['padding']!),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildMediumCard(medium, dimensions),
+                  SizedBox(height: dimensions['spacing']!),
+                  _buildDateSelection(dimensions),
+                  SizedBox(height: dimensions['spacing']!),
+                  _buildTimeSelection(dimensions),
+                  SizedBox(height: dimensions['spacing']!),
+                  _buildDurationSelection(dimensions),
+                  SizedBox(height: dimensions['spacing']!),
+                  _buildPriceSummary(dimensions),
+                  SizedBox(height: dimensions['spacing']! + 8),
+                  _buildBookingButton(dimensions),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 
-  Widget _buildMediumCard(medium, bool isSmallScreen) {
-    final titleSize = isSmallScreen ? 16.0 : 18.0;
-    final subtitleSize = isSmallScreen ? 12.0 : 14.0;
-    final priceSize = isSmallScreen ? 14.0 : 15.0;
-    final avatarSize = isSmallScreen ? 25.0 : 30.0;
-
+  Widget _buildMediumCard(medium, Map<String, double> dimensions) {
     return Card(
-      elevation: 2,
+      elevation: 8,
+      color: Colors.black.withOpacity(0.3),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(
+          color: Colors.white.withOpacity(0.1),
+          width: 1,
+        ),
       ),
-      child: Padding(
-        padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+      child: Container(
+        padding: EdgeInsets.all(dimensions['cardPadding']!),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withOpacity(0.05),
+              Colors.white.withOpacity(0.02),
+            ],
+          ),
+        ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: avatarSize,
-              backgroundImage: NetworkImage(medium.imageUrl),
-              backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              onBackgroundImageError: (_, __) {},
-              child: medium.imageUrl.isEmpty
-                  ? Icon(
-                Icons.person,
-                size: avatarSize,
-                color: Theme.of(context).colorScheme.primary,
-              )
-                  : null,
+            Container(
+              width: dimensions['avatarSize']! * 2,
+              height: dimensions['avatarSize']! * 2,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: const Color(0xFF6C63FF).withOpacity(0.3),
+                  width: 2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6C63FF).withOpacity(0.2),
+                    blurRadius: 15,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: ClipOval(
+                child: medium.imageUrl.isNotEmpty
+                    ? Image.network(
+                  medium.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _buildDefaultAvatar(dimensions),
+                )
+                    : _buildDefaultAvatar(dimensions),
+              ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 20),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,43 +180,54 @@ class _BookingScreenState extends State<BookingScreen> {
                   Text(
                     medium.name,
                     style: TextStyle(
-                      fontSize: titleSize,
+                      fontSize: dimensions['titleSize']!,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
                       const Icon(
                         Icons.star,
                         color: Colors.amber,
-                        size: 14,
+                        size: 16,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         medium.rating.toStringAsFixed(1),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: subtitleSize,
+                          fontSize: dimensions['bodySize']!,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 8),
                       Text(
                         '(${medium.reviewsCount} avaliações)',
                         style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                          fontSize: subtitleSize - 2,
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: dimensions['captionSize']!,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}/min',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: priceSize,
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'R\$ ${medium.pricePerMinute.toStringAsFixed(2)}/min',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: dimensions['bodySize']!,
+                      ),
                     ),
                   ),
                 ],
@@ -161,57 +239,127 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildDateSelection(bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 15.0 : 16.0;
-    final contentTextSize = isSmallScreen ? 14.0 : 16.0;
+  Widget _buildDefaultAvatar(Map<String, double> dimensions) {
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+        ),
+      ),
+      child: Icon(
+        Icons.person,
+        size: dimensions['avatarSize']!,
+        color: Colors.white,
+      ),
+    );
+  }
 
+  Widget _buildSectionCard({
+    required String title,
+    required Widget child,
+    required Map<String, double> dimensions,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Data da Consulta',
+          title,
           style: TextStyle(
-            fontSize: sectionTitleSize,
+            fontSize: dimensions['subtitleSize']!,
             fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Card(
-          elevation: 1,
+          elevation: 4,
+          color: Colors.black.withOpacity(0.3),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
           ),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(dimensions['cardPadding']!),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.05),
+                  Colors.white.withOpacity(0.02),
+                ],
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateSelection(Map<String, double> dimensions) {
+    return _buildSectionCard(
+      title: 'Data da Consulta',
+      dimensions: dimensions,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C63FF).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.calendar_today,
+              color: const Color(0xFF6C63FF),
+              size: dimensions['iconSize']!,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: isSmallScreen ? 20 : 24,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      DateFormat.yMMMMd('pt_BR').format(_selectedDate),
-                      style: TextStyle(
-                        fontSize: contentTextSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: _showDatePicker,
-                      child: const Text('Alterar'),
-                    ),
-                  ],
+                Text(
+                  DateFormat.yMMMMd('pt_BR').format(_selectedDate),
+                  style: TextStyle(
+                    fontSize: dimensions['bodySize']!,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat.EEEE('pt_BR').format(_selectedDate),
+                  style: TextStyle(
+                    fontSize: dimensions['captionSize']!,
+                    color: Colors.white.withOpacity(0.7),
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-      ],
+          TextButton(
+            onPressed: _showDatePicker,
+            style: TextButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF).withOpacity(0.2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'Alterar',
+              style: TextStyle(color: Color(0xFF6C63FF)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -225,7 +373,7 @@ class _BookingScreenState extends State<BookingScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
-              primary: Theme.of(context).colorScheme.primary,
+              primary: const Color(0xFF6C63FF),
               onPrimary: Colors.white,
             ),
           ),
@@ -241,88 +389,88 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  Widget _buildTimeSelection(bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 15.0 : 16.0;
-    final contentTextSize = isSmallScreen ? 14.0 : 16.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Horário da Consulta',
-          style: TextStyle(
-            fontSize: sectionTitleSize,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Card(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: isSmallScreen ? 20 : 24,
-                    ),
-                    const SizedBox(width: 12),
-                    DropdownButton<String>(
-                      value: _selectedTime,
-                      onChanged: (String? newValue) {
-                        if (newValue != null) {
-                          setState(() {
-                            _selectedTime = newValue;
-                          });
-                        }
-                      },
-                      items: _availableTimes
-                          .map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      underline: Container(),
-                      style: TextStyle(
-                        fontSize: contentTextSize,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+  Widget _buildTimeSelection(Map<String, double> dimensions) {
+    return _buildSectionCard(
+      title: 'Horário da Consulta',
+      dimensions: dimensions,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF8E78FF).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.access_time,
+              color: const Color(0xFF8E78FF),
+              size: dimensions['iconSize']!,
             ),
           ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8E78FF).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF8E78FF).withOpacity(0.3),
+                ),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: _selectedTime,
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _selectedTime = newValue;
+                      });
+                    }
+                  },
+                  items: _availableTimes
+                      .map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(
+                        value,
+                        style: TextStyle(
+                          fontSize: dimensions['bodySize']!,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  dropdownColor: Colors.black.withOpacity(0.9),
+                  icon: const Icon(
+                    Icons.keyboard_arrow_down,
+                    color: Color(0xFF8E78FF),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildDurationSelection(bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 15.0 : 16.0;
-    final chipTextSize = isSmallScreen ? 13.0 : 14.0;
-
+  Widget _buildDurationSelection(Map<String, double> dimensions) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Duração da Consulta',
           style: TextStyle(
-            fontSize: sectionTitleSize,
+            fontSize: dimensions['subtitleSize']!,
             fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         SizedBox(
-          height: isSmallScreen ? 50 : 60,
+          height: 70,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: _availableDurations.length,
@@ -337,38 +485,53 @@ class _BookingScreenState extends State<BookingScreen> {
                   });
                 },
                 child: Container(
-                  width: isSmallScreen ? 70 : 80,
+                  width: 90,
                   margin: const EdgeInsets.only(right: 12),
                   decoration: BoxDecoration(
+                    gradient: isSelected
+                        ? const LinearGradient(
+                      colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+                    )
+                        : null,
                     color: isSelected
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 10 : 12),
+                        ? null
+                        : Colors.black.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.grey.withOpacity(0.5),
+                          ? Colors.transparent
+                          : Colors.white.withOpacity(0.1),
                     ),
                     boxShadow: isSelected
                         ? [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                        blurRadius: 8,
-                        spreadRadius: 1,
+                        color: const Color(0xFF6C63FF).withOpacity(0.4),
+                        blurRadius: 12,
+                        spreadRadius: 2,
                       ),
                     ]
                         : [],
                   ),
                   child: Center(
-                    child: Text(
-                      '$duration min',
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                        fontSize: chipTextSize,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$duration',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: dimensions['titleSize']!,
+                          ),
+                        ),
+                        Text(
+                          'min',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: dimensions['captionSize']!,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -380,149 +543,168 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildPriceSummary(bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 15.0 : 16.0;
-    final titleTextSize = isSmallScreen ? 14.0 : 16.0;
-    final contentTextSize = isSmallScreen ? 12.0 : 14.0;
-    final totalTextSize = isSmallScreen ? 16.0 : 18.0;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Resumo de Pagamento',
-          style: TextStyle(
-            fontSize: sectionTitleSize,
-            fontWeight: FontWeight.bold,
+  Widget _buildPriceSummary(Map<String, double> dimensions) {
+    return _buildSectionCard(
+      title: 'Resumo de Pagamento',
+      dimensions: dimensions,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Consulta',
+                style: TextStyle(
+                  fontSize: dimensions['bodySize']!,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                'R\$ ${_totalAmount.toStringAsFixed(2)}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: dimensions['bodySize']!,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 10),
-        Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'R\$ ${_mediumController.selectedMedium.value!.pricePerMinute.toStringAsFixed(2)}/min',
+                style: TextStyle(
+                  fontSize: dimensions['captionSize']!,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+              ),
+              Text(
+                '$_selectedDuration minutos',
+                style: TextStyle(
+                  fontSize: dimensions['captionSize']!,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-            child: Column(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Divider(
+              color: Colors.white.withOpacity(0.2),
+              thickness: 1,
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total',
+                style: TextStyle(
+                  fontSize: dimensions['titleSize']!,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'R\$ ${_totalAmount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: dimensions['titleSize']!,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Consulta',
-                      style: TextStyle(
-                        fontSize: titleTextSize,
-                      ),
-                    ),
-                    Text(
-                      'R\$ ${_totalAmount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: titleTextSize,
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Seus créditos',
+                  style: TextStyle(
+                    fontSize: dimensions['bodySize']!,
+                    color: Colors.white,
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Preço: R\$ ${_mediumController.selectedMedium.value!.pricePerMinute.toStringAsFixed(2)}/min',
-                      style: TextStyle(
-                        fontSize: contentTextSize,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                    Text(
-                      'Duração: $_selectedDuration min',
-                      style: TextStyle(
-                        fontSize: contentTextSize,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Total',
-                      style: TextStyle(
-                        fontSize: totalTextSize,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'R\$ ${_totalAmount.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: totalTextSize,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Seus créditos',
-                      style: TextStyle(
-                        fontSize: contentTextSize,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                    Obx(() => Text(
-                      'R\$ ${_paymentController.userCredits.value.toStringAsFixed(2)}',
-                      style: TextStyle(
-                        fontSize: contentTextSize,
-                        fontWeight: FontWeight.bold,
-                        color: _paymentController.userCredits.value >= _totalAmount
-                            ? Colors.green
-                            : Theme.of(context).colorScheme.error,
-                      ),
-                    )),
-                  ],
-                ),
+                Obx(() => Text(
+                  'R\$ ${_paymentController.userCredits.value.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    fontSize: dimensions['bodySize']!,
+                    fontWeight: FontWeight.bold,
+                    color: _paymentController.userCredits.value >= _totalAmount
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                )),
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildBookingButton(bool isSmallScreen) {
+  Widget _buildBookingButton(Map<String, double> dimensions) {
     return Obx(() {
       final hasEnoughCredits = _paymentController.userCredits.value >= _totalAmount;
-      final buttonTextSize = isSmallScreen ? 14.0 : 16.0;
-      final errorTextSize = isSmallScreen ? 12.0 : 14.0;
+      final isLoading = _mediumController.isLoading.value || _paymentController.isLoading.value;
 
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
+          Container(
             width: double.infinity,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: hasEnoughCredits
+                  ? const LinearGradient(
+                colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+              )
+                  : null,
+              color: hasEnoughCredits ? null : Colors.grey.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: hasEnoughCredits
+                  ? [
+                BoxShadow(
+                  color: const Color(0xFF6C63FF).withOpacity(0.4),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                ),
+              ]
+                  : [],
+            ),
             child: ElevatedButton(
-              onPressed: (_mediumController.isLoading.value ||
-                  _paymentController.isLoading.value)
-                  ? null
-                  : () => _confirmBooking(),
+              onPressed: isLoading || !hasEnoughCredits ? null : _confirmBooking,
               style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 16),
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+                  borderRadius: BorderRadius.circular(20),
                 ),
               ),
-              child: (_mediumController.isLoading.value ||
-                  _paymentController.isLoading.value)
+              child: isLoading
                   ? const SizedBox(
-                height: 20,
-                width: 20,
+                height: 24,
+                width: 24,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   color: Colors.white,
@@ -531,40 +713,68 @@ class _BookingScreenState extends State<BookingScreen> {
                   : Text(
                 'Confirmar Agendamento',
                 style: TextStyle(
-                  fontSize: buttonTextSize,
+                  fontSize: dimensions['bodySize']!,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
             ),
           ),
           if (!hasEnoughCredits) ...[
             const SizedBox(height: 16),
-            Text(
-              'Você não possui créditos suficientes para este agendamento.',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.error,
-                fontSize: errorTextSize,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.red.withOpacity(0.3),
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () => Get.toNamed(AppRoutes.paymentMethods),
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: isSmallScreen ? 12 : 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(isSmallScreen ? 12 : 16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.red,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Créditos insuficientes para este agendamento',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: dimensions['captionSize']!,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                child: Text(
-                  'Adicionar Créditos',
-                  style: TextStyle(
-                    fontSize: buttonTextSize,
-                    fontWeight: FontWeight.bold,
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: () => Get.toNamed(AppRoutes.paymentMethods),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFF6C63FF)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Adicionar Créditos',
+                        style: TextStyle(
+                          fontSize: dimensions['bodySize']!,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF6C63FF),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ),
           ],
@@ -574,7 +784,6 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   void _confirmBooking() async {
-    // Criar um DateTime combinando a data e hora selecionadas
     final timeComponents = _selectedTime.split(':');
     final hour = int.parse(timeComponents[0]);
     final minute = int.parse(timeComponents[1]);
@@ -587,40 +796,92 @@ class _BookingScreenState extends State<BookingScreen> {
       minute,
     );
 
-    // Confirmar com o usuário
     final confirmed = await Get.dialog<bool>(
-      AlertDialog(
-        title: const Text('Confirmar Agendamento'),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Médium: ${_mediumController.selectedMedium.value!.name}'),
-            const SizedBox(height: 8),
-            Text('Data: ${DateFormat.yMMMMd('pt-BR').format(_selectedDate)}'),
-            const SizedBox(height: 4),
-            Text('Horário: $_selectedTime'),
-            const SizedBox(height: 4),
-            Text('Duração: $_selectedDuration minutos'),
-            const SizedBox(height: 4),
-            Text('Valor: R\$ ${_totalAmount.toStringAsFixed(2)}'),
-          ],
+      Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.event_available,
+                color: Color(0xFF6C63FF),
+                size: 48,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Confirmar Agendamento',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildConfirmationDetails(),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(result: false),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancelar',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6C63FF), Color(0xFF8E78FF)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: ElevatedButton(
+                        onPressed: () => Get.back(result: true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Confirmar',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(result: false),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton(
-            onPressed: () => Get.back(result: true),
-            child: const Text('Confirmar'),
-          ),
-        ],
       ),
     );
 
     if (confirmed == true) {
-      // Realizar o agendamento
       final success = await _mediumController.bookAppointment(
         _mediumController.selectedMedium.value!.id,
         appointmentDateTime,
@@ -636,8 +897,65 @@ class _BookingScreenState extends State<BookingScreen> {
           colorText: Colors.white,
           snackPosition: SnackPosition.BOTTOM,
           margin: const EdgeInsets.all(16),
+          borderRadius: 12,
+          icon: const Icon(Icons.check_circle, color: Colors.white),
         );
       }
     }
+  }
+
+  Widget _buildConfirmationDetails() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildDetailRow('Médium', _mediumController.selectedMedium.value!.name),
+          _buildDetailRow('Data', DateFormat.yMMMMd('pt-BR').format(_selectedDate)),
+          _buildDetailRow('Horário', _selectedTime),
+          _buildDetailRow('Duração', '$_selectedDuration minutos'),
+          const Divider(color: Colors.white24),
+          _buildDetailRow(
+            'Valor Total',
+            'R\$ ${_totalAmount.toStringAsFixed(2)}',
+            isTotal: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 14,
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: isTotal ? const Color(0xFF6C63FF) : Colors.white,
+              fontSize: isTotal ? 16 : 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

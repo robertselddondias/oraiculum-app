@@ -30,7 +30,7 @@ if (keyPropertiesFile.exists()) {
 
 android {
     namespace = "com.selddon.oraculum"
-    compileSdk = 35
+    compileSdk = 34
     ndkVersion = "27.0.12077973"
 
     // Configuração para assinar o app lendo de um arquivo seguro
@@ -44,13 +44,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
 
     sourceSets {
@@ -60,7 +60,7 @@ android {
     defaultConfig {
         applicationId = "com.selddon.oraculum"
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 34
         versionCode = getLocalProperty("flutter.versionCode", project).toIntOrNull() ?: 1
         versionName = getLocalProperty("flutter.versionName", project).takeIf { it.isNotEmpty() } ?: "1.0.0"
         multiDexEnabled = true
@@ -83,16 +83,17 @@ flutter {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-base:18.4.0")
     implementation(platform("org.jetbrains.kotlin:kotlin-bom:2.0.0"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("androidx.multidex:multidex:2.0.1")
-
-    // CORRIGIDO: Versão da biblioteca desugar alterada para uma versão estável e disponível.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
-    // Dependências do Firebase (BoM - Bill of Materials)
+    // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-perf")
 }

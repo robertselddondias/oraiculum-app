@@ -7,7 +7,7 @@ import 'package:oraculum/models/consultation_request_model.dart';
 import 'package:oraculum/utils/zodiac_utils.dart';
 
 class ConsultationScheduleScreen extends StatefulWidget {
-  const ConsultationScheduleScreen({Key? key}) : super(key: key);
+  const ConsultationScheduleScreen({super.key});
 
   @override
   State<ConsultationScheduleScreen> createState() => _ConsultationScheduleScreenState();
