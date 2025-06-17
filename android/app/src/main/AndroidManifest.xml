@@ -1,15 +1,9 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.selddon.oraculum">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- PERMISSÕES ESSENCIAIS -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
-
-    <!-- Notificações Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-
-    <!-- Câmera e Galeria -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO"/>
@@ -17,11 +11,9 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>
 
     <application
-            android:name="io.flutter.app.FlutterApplication"
             android:label="Oraculum"
             android:icon="@mipmap/ic_launcher"
-            android:theme="@style/NormalTheme"
-            android:enableOnBackInvokedCallback="true">
+            android:theme="@style/NormalTheme">
 
         <activity
                 android:name=".MainActivity"
@@ -29,14 +21,13 @@
                 android:launchMode="singleTop"
                 android:theme="@style/LaunchTheme"
                 android:hardwareAccelerated="true"
-                android:windowSoftInputMode="adjustResize"
-                android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
+                android:windowSoftInputMode="adjustResize">
 
             <meta-data
                     android:name="io.flutter.embedding.android.NormalTheme"
                     android:resource="@style/NormalTheme"/>
 
-            <intent-filter>
+            <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
@@ -46,16 +37,5 @@
                 android:name="com.google.android.gms.version"
                 android:value="@integer/google_play_services_version"/>
     </application>
-
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="https"/>
-        </intent>
-    </queries>
 
 </manifest>

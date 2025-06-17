@@ -10,7 +10,6 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Função para carregar propriedades locais
 fun getLocalProperty(key: String, project: Project): String {
     val properties = Properties()
     val localPropertiesFile = project.rootProject.file("local.properties")
@@ -21,25 +20,17 @@ fun getLocalProperty(key: String, project: Project): String {
     return ""
 }
 
-// Carregar propriedades da chave de assinatura de um arquivo seguro
-val keyPropertiesFile = rootProject.file("android/key.properties")
-val keyProperties = Properties()
-if (keyPropertiesFile.exists()) {
-    keyProperties.load(FileInputStream(keyPropertiesFile))
-}
-
 android {
     namespace = "com.selddon.oraculum"
-    compileSdk = 34
+    compileSdk = 35
     ndkVersion = "27.0.12077973"
 
-    // Configuração para assinar o app lendo de um arquivo seguro
     signingConfigs {
         create("release") {
+            keyAlias = System.getenv("KEY_ALIAS") ?: "chave_release"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "@@22anakin31"
             storeFile = file("release-key.jks")
-            storePassword = "@@22anakin31"
-            keyAlias = "chave_release"
-            keyPassword = "@@22anakin31"
+            storePassword = System.getenv("STORE_PASSWORD") ?: "@@22anakin31"
         }
     }
 
@@ -54,13 +45,13 @@ android {
     }
 
     sourceSets {
-        getByName("main").java.srcDirs("src/main/kotlin")
+        getByName("main").java.srcDirs("src/main/java", "src/main/kotlin")
     }
 
     defaultConfig {
         applicationId = "com.selddon.oraculum"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 35
         versionCode = getLocalProperty("flutter.versionCode", project).toIntOrNull() ?: 1
         versionName = getLocalProperty("flutter.versionName", project).takeIf { it.isNotEmpty() } ?: "1.0.0"
         multiDexEnabled = true
@@ -71,10 +62,19 @@ android {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
         debug {
-            signingConfig = signingConfigs.getByName("debug")
+            isDebuggable = true
+            applicationIdSuffix = ".debug"
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 }
 
@@ -83,17 +83,20 @@ flutter {
 }
 
 dependencies {
-    implementation("com.google.android.gms:play-services-base:18.4.0")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
     implementation(platform("org.jetbrains.kotlin:kotlin-bom:2.0.0"))
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("androidx.multidex:multidex:2.0.1")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation(platform("com.google.firebase:firebase-bom:33.4.0"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-appcheck-playintegrity")
     implementation("com.google.firebase:firebase-crashlytics")
     implementation("com.google.firebase:firebase-perf")
+    implementation("com.google.firebase:firebase-messaging")
+
+    implementation("androidx.work:work-runtime:2.9.1")
+    implementation("androidx.core:core-ktx:1.13.1")
 }
